@@ -1,0 +1,38 @@
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+[Act 1 T1] Act 1 begins: Locate and secure initial fungal-resistant seed samples from the abandoned Ohio State University research facility.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+[Act 1 T1] Act 1 begins: Establish contact with the nearest Veridian Network settlement, 'Haven's Rest,' and gather initial intel on the Silent Rot.
+[Act 1 T1] Act 1 begins: Locate and secure the initial component needed to access Aetheria's control network: a functional data relay at the 'Whisperwind Observatory'.
+[Act 1 T1] The oppressive stillness of the area was broken only by the unsettling, rhythmic pulse of the Grey Rot clinging to the observatory's foundations.
+[Act 1 T2] The observatory’s ancient mechanisms groaned as the team ventured deeper, knowing the fate of the Shattered Coast rested on their success.
+[Act 1 T2] The team cautiously descended, aware that the Observatory's dormant systems might awaken with unpredictable consequences.
+[Act 1 T3] The lingering scent of ozone and decay permeated the chamber, hinting at past attempts to maintain Aetheria and combat the Grey Rot's advance.
+[Act 1 T1] Act 1 begins: Locate and secure a functional radio transmitter capable of reaching Aetheria, while learning the initial scale of the 'Static Cascade'.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Act 1 begins: Establish initial compatibility and generate early-stage interest, subtly introducing family secrets.
+[Act 1 T1] Encountered Lorenzo. person/npc. Archetype: inquisitive.
+[Act 1 T1] The lingering scent of turpentine and unspoken anxieties hung heavy in the air, foreshadowing the difficulties that lay ahead in solidifying the families' intertwined futures.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+[Act 1 T1] Act 1 begins: Discover the origin of the Shadow Blight and identify a potential path to its source.
+[Act 1 T1] The unsettling moan intensified, carrying with it the stench of decay and hinting at a deeper corruption taking root within the surrounding woods.
+[Act 1 T2] The unsettling shimmer above the well water signaled a deeper connection between the Bleeding Maw and Veridia’s water sources.
+[Act 1 T3] The discovery of the crystalline structures within the tainted water revealed a disturbing connection to the encroaching Shadow Blight.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] Act 1 begins: Investigate the initial disturbances at Blackwood Manor and discover the nature of the haunting.
+[Act 1 T1] Act 1 begins: Investigate Blackwood Manor and determine the source of the haunting.
+[Act 1 T1] Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Act 1 begins: Investigate the recent disturbances at Blackwood Manor and determine the nature of the haunting.
+[Act 1 T1] The pervasive corruption emanating from the cellar visibly withered the vibrant blooms nearest its entrance.
+[Act 1 T1] Act 1 begins: Investigate the initial reports of disturbances at Blackwood Manor and identify the primary supernatural threat.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] Act 1 begins: Investigate the initial reports of strange occurrences at Blackwood Manor and identify a potential source of the haunting.
+[Act 1 T1] The unsettling echo intensified as the party approached the music box, suggesting a connection between the artifact and the manor's spectral disturbances.
+[Act 1 T2] The lingering despair within the library seemed to cling to the ancient tomes, intensifying the unsettling feeling of a forgotten tragedy.

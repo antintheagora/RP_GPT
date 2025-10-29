@@ -31,39 +31,56 @@ Keeps:
 """
 
 from __future__ import annotations
-import base64, json, os, random, re, shutil, subprocess, sys, textwrap, time, threading, itertools
-import ssl
+import json, random, re, sys
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Dict, List, Optional, Tuple, Any, Literal
-from urllib import request, parse
 
-# =============================
-# ---------- MUSIC ------------
-# =============================
-
-MUSIC_AVAILABLE = True
-try:
-    import pygame
-except Exception:
-    MUSIC_AVAILABLE = False
-
-MUSIC_PATH = "/Users/nuclear_mac/Projects/Documents/RP_GPT/Assets/Music/title_theme.ogg"
-
-def init_music():
-    if not MUSIC_AVAILABLE:
-        print("[Music] pygame not installed; skipping music.")
-        return
-    try:
-        pygame.mixer.init()
-        if not os.path.exists(MUSIC_PATH):
-            print(f"[Music] File not found: {MUSIC_PATH}")
-            return
-        pygame.mixer.music.load(MUSIC_PATH)
-        pygame.mixer.music.play(-1)
-        print("[Music] Playing title theme (looping).")
-    except Exception as e:
-        print(f"[Music] Could not start music: {e}")
+from Core.Music import init_music
+from Core.Helpers import (
+    wrap,
+    sanitize_prose,
+    summarize_for_prompt,
+    verbish_from_microplan,
+    infer_species_and_comm_style,
+    role_style_hint,
+    personality_roll,
+    journal_add,
+    journal_lore_line,
+)
+from Core.Image_Gen import (
+    make_player_portrait_prompt,
+    make_act_transition_prompt,
+    make_act_start_prompt,
+    make_startup_prompt,
+    make_ending_prompt,
+    make_combat_image_prompt,
+    generate_turn_image,
+    pollinations_url,
+)
+from Core.Interactions import (
+    pick_actor,
+    talk_loop,
+    combat_turn,
+    use_item,
+)
+from Core.Terminal_HUD import header, hud
+from Core.AI_Dungeon_Master import (
+    GemmaError,
+    GemmaClient,
+    campaign_blueprint_prompt,
+    world_journal_prompt,
+    turn_narration_prompt,
+    recap_prompt,
+    talk_reply_prompt,
+    observe_prompt,
+    combat_observe_prompt,
+    option_microplans_prompt,
+    custom_action_outcome_prompt,
+    next_situation_prompt,
+    set_extra_world_text,
+    get_extra_world_text,
+)
 
 # =============================
 # ---------- CONFIG -----------
@@ -78,11 +95,8 @@ try:
 except Exception:
     certifi = None
 
-# Extra world-bible info (optional user-provided, set during setup)
-EXTRA_WORLD_TEXT: str = ""
-
 # =============================
-# ---------- MODELS ----------
+# ---------- PLAYER AND GAME STATES ----------
 # =============================
 
 class Scenario(Enum):
@@ -201,6 +215,7 @@ class GameState:
     custom_stat:Optional[str]=None; combat_turn_already_counted:bool=False
     history:List[str]=field(default_factory=list)
     turn_narrative_cache:Optional[str]=None
+    combined_turn_text:Optional[str]=None
     last_custom_intent:Optional[str]=None
     last_shown_turn:int=-1
     scene_phase:int=0
@@ -229,491 +244,10 @@ class GameState:
         return None
 
 # =============================
-# ---------- LOADING UI -------
-# =============================
-
-class LoadingBar:
-    def __init__(self, label:str="Thinking"):
-        self.label=label; self._stop=threading.Event(); self._thread=None
-    def start(self):
-        def run():
-            spinner=itertools.cycle("⠋⠙⠸⠴⠦⠇"); width=24; t0=time.time()
-            while not self._stop.is_set():
-                elapsed=time.time()-t0; fill=int((elapsed*10)%(width+1)); bar="█"*fill + " "*(width-fill)
-                sys.stdout.write(f"\r{self.label} {next(spinner)} |{bar}| "); sys.stdout.flush(); time.sleep(0.07)
-            sys.stdout.write("\r"+" "*(len(self.label)+width+12)+"\r"); sys.stdout.flush()
-        self._thread=threading.Thread(target=run, daemon=True); self._thread.start()
-    def stop(self):
-        self._stop.set()
-        if self._thread: self._thread.join()
-
-# =============================
 # ---------- GEMMA ------------
 # =============================
 
-class GemmaError(RuntimeError): pass
-_GEMMA=None
-
-class GemmaClient:
-    def __init__(self, model:str="gemma3:12b", max_retries:int=4, retry_backoff:float=1.15, timeout:int=90):
-        if not shutil.which("ollama"):
-            print("ERROR: Ollama not found on PATH."); sys.exit(1)
-        self.model=model; self.max_retries=max_retries; self.retry_backoff=retry_backoff; self.timeout=timeout
-    def check_or_pull_model(self):
-        out=subprocess.run(["ollama","show",self.model], capture_output=True, text=True)
-        if out.returncode!=0:
-            ans=input(f"Model '{self.model}' not found. Pull now? [Y/n] > ").strip().lower() or "y"
-            if ans!="n":
-                code=subprocess.call(["ollama","pull",self.model])
-                if code!=0: raise GemmaError("Model pull failed or canceled.")
-            else: raise GemmaError("Model not available.")
-    def _run(self, prompt:str, tag:str)->str:
-        lb=LoadingBar(f"{tag}…")
-        for attempt in range(1, self.max_retries+1):
-            try:
-                lb.start()
-                out=subprocess.run(["ollama","run",self.model,prompt], capture_output=True, text=True, timeout=self.timeout)
-                lb.stop()
-                txt=(out.stdout or "").strip()
-                if not txt: raise GemmaError("Empty output from model.")
-                return txt
-            except Exception as e:
-                lb.stop()
-                if attempt>=self.max_retries: raise GemmaError(f"{tag} failed after {attempt} attempts: {e}")
-                time.sleep(self.retry_backoff**attempt)
-    def text(self, prompt:str, tag:str, max_chars:int|None=None)->str:
-        t=self._run(prompt, tag); t=t[:max_chars] if max_chars else t; return t
-    def json(self, prompt:str, tag:str)->Any:
-        raw=self._run(prompt, tag); m=re.search(r"\{.*\}", raw, flags=re.S)
-        if not m: raise GemmaError(f"No JSON object in output for {tag}.")
-        block=m.group(0); return json.loads(block)
-
-# =============================
-# ---------- HELPERS ----------
-# =============================
-
-def wrap(s,w=78): return "\n".join(textwrap.wrap(s,w)) if s else ""
-
-METER_LINE_RE = re.compile(r"^\s*(?:Atmospheric Decay|Crimson Bloom|Bloom Proximity|Pressure|"+re.escape("Aetheria")+r")\s*:?\s*\d+\/100\.?\s*$", re.I)
-
-def sanitize_prose(txt:str)->str:
-    """Strip accidental meter lines and ensure a clean ending."""
-    if not txt: return ""
-    # Remove any meter-looking lines
-    lines=[ln for ln in txt.splitlines() if not METER_LINE_RE.match(ln.strip())]
-    txt="\n".join(lines).strip()
-    # De-hyphenate obvious mid-word breaks like "sugg-" "\n" "est"
-    txt=re.sub(r"(\w+)-\n(\w+)", r"\1\2", txt)
-    txt=re.sub(r"\s+\n\s+", "\n", txt)
-    txt=re.sub(r"\s{2,}", " ", txt)
-    # Ensure terminal punctuation
-    if txt and txt[-1] not in ".!?…":
-        txt += "."
-    return txt
-
-def summarize_for_prompt(s:str, limit_chars:int=500)->str:
-    s = re.sub(r"\s+", " ", s).strip()
-    return (s[:limit_chars] + ("…" if len(s)>limit_chars else "")) if s else "none"
-
-def verbish_from_microplan(plan:str)->str:
-    if not plan: return ""
-    frag = plan.split(";")[0]
-    frag = frag.split(".")[0]
-    return frag.strip()
-
-def infer_species_and_comm_style(kind:str)->Tuple[str,str]:
-    lk = (kind or "").lower()
-    if any(w in lk for w in ["dog","wolf","boar","bear","beast","animal"]):
-        return "animal","animal"
-    if any(w in lk for w in ["ghoul","feral","mutant"]):
-        return "mutant","limited"
-    if any(w in lk for w in ["synthetic","android","robot","machine"]):
-        return "synthetic","speech"
-    return "human","speech"
-
-def role_style_hint(actor:Actor)->str:
-    # prefer comm_style over kind
-    if actor.comm_style == "animal":
-        return "Non-verbal sounds and body language; keep lines primal and short; describe posture/ears/etc."
-    if actor.comm_style == "gestures":
-        return "Communicates with gestures/signals; keep responses minimal and descriptive rather than verbose."
-    if actor.comm_style == "limited":
-        return "Limited words; rasping, broken cadence; avoid long sentences or polite small talk."
-    # fall back to kind-based
-    k=actor.kind.lower()
-    if any(w in k for w in ["dog","wolf","beast","animal"]):
-        return "Non-verbal or simple sounds; convey intent via body language. Keep lines short and primal."
-    if any(w in k for w in ["ghoul","feral","mutant"]):
-        return "Limited vocabulary; rasping, unsettling cadence. Avoid polite small talk unless explicitly established."
-    if any(w in k for w in ["raider","bandit","cult"]):
-        return "Rough, terse, suspicious. Sarcasm over eloquence."
-    return "Speak naturally per personality."
-
-def personality_roll()->str:
-    return random.choice(["joyful","inquisitive","stoic","aggressive","cautious","bitter","amiable","serene","anxious","zealous"])
-
-def journal_add(state:GameState, entry:str):
-    entry=entry.strip()
-    if not entry: return
-    stamp=f"[Act {state.act.index} T{state.act.turns_taken}] {entry}"
-    state.journal.append(stamp)
-    try:
-        with open("world_journal.txt","a",encoding="utf-8") as f:
-            f.write(stamp+"\n")
-    except Exception:
-        pass
-
-def journal_lore_line(state:GameState, g:'GemmaClient', seed:str=""):
-    """Append a 1-sentence natural-language lore update derived from current situation/state."""
-    try:
-        last = state.act.situation or seed or "The situation evolves."
-        prompt = (
-            "Append ONE sentence to a world chronicle based on this situation and campaign nouns. "
-            "Past tense. No numeric meters. No quotes. Complete sentence.\n"
-            f"Campaign: {state.blueprint.campaign_goal}. Pressure name: {state.pressure_name}.\n"
-            f"Situation: {last}\n"
-        )
-        if EXTRA_WORLD_TEXT:
-            prompt += f"World bible details: {EXTRA_WORLD_TEXT[:500]}\n"
-        line = sanitize_prose(g.text(prompt, tag="Lore", max_chars=220))
-        if line: journal_add(state, line)
-    except Exception:
-        pass
-
-# =============================
-# ---------- PROMPTS ----------
-# =============================
-
-def campaign_blueprint_prompt(label:str)->str:
-    extra = f'\n"extra_world_details": "{EXTRA_WORLD_TEXT[:600].replace("\\"," ").replace("\"","'")}"\n' if EXTRA_WORLD_TEXT else ""
-    return f"""
-Design a coherent 3‑act plan for a {label} RPG.{extra}
-
-Output STRICT JSON ONLY:
-{{
-  "campaign_goal": "string",
-  "pressure_name": "string",
-  "pressure_logic": "string",
-  "acts": {{
-    "1": {{
-      "goal": "string",
-      "intro_paragraph": "1-3 sentences introducing location, stakes, NPCs; explicitly serving the campaign goal",
-      "pressure_evolution": "string",
-      "suggested_encounters": ["short phrases"],
-      "seed_actors": [{{"name":"string","kind":"string","hp":14,"attack":3,"disposition":0,"personality":"string"}}],
-      "seed_items": [{{"name":"string","tags":["weapon"],"hp_delta":0,"attack_delta":2,"special_mods":{{}},"goal_delta":0,"pressure_delta":0,"consumable":false,"notes":"string"}}]
-    }},
-    "2": {{
-      "goal": "string (follows act1 toward act3)",
-      "intro_paragraph": "1-3 sentences connecting act1 to act2 with explicit consequences from act1",
-      "pressure_evolution": "string",
-      "suggested_encounters": ["short phrases"],
-      "seed_actors": [{{...}}], "seed_items": [{{...}}]
-    }},
-    "3": {{
-      "goal": "string (final step to complete campaign_goal)",
-      "intro_paragraph": "1-3 sentences that feel inevitable from acts 1-2",
-      "pressure_evolution": "string",
-      "suggested_encounters": ["short phrases"],
-      "seed_actors": [{{...}}], "seed_items": [{{...}}]
-    }}
-  }}
-}}
-Rules: Acts 1–2 must advance Act 3; pressure ties to final objective and escalates; concrete names only.
-"""
-
-def world_journal_prompt(state:GameState)->str:
-    last = "\n".join(state.journal[-14:]) if state.journal else "None yet."
-    base = f"World Journal (for tone/consistency). Recent annotated entries:\n{last}\n"
-    if EXTRA_WORLD_TEXT:
-        base += f"\nWorld bible details:\n{EXTRA_WORLD_TEXT[:500]}\n"
-    return base
-
-def turn_narration_prompt(state:GameState, last_event:str, goal_lock:bool)->str:
-    bp=state.blueprint; plan=bp.acts[state.act.index]
-    recent=summarize_for_prompt("; ".join(state.history[-6:]), 420)
-    custom = state.last_custom_intent or "none"
-    loc = state.location_desc or "unspecified locale"
-    lock_rule = "Tighten toward the act goal; only introduce elements on that path." if goal_lock else "Allow surprise, but keep a single clear focus."
-    return f"""
-Write 1–3 sentences of turn narration for a {state.scenario_label} RPG.
-{world_journal_prompt(state)}
-React to: {last_event}. Acknowledge player's custom intent: {custom}.
-Focus on Act {state.act.index} goal "{plan.goal}" and campaign goal "{bp.campaign_goal}".
-Pressure "{bp.pressure_name}" {state.pressure}/100; progress {state.act.goal_progress}/100; scene phase {state.scene_phase}.
-Current location: {loc}. Prior beats: {recent}.
-Rules: {lock_rule} Do NOT restate/invent any numeric meters. Complete sentences; no mid-word hyphenation; plain text only.
-"""
-
-def recap_prompt(state:GameState, ok:bool)->str:
-    mood="advantage hard-won" if ok else "moment slipping away"
-    bp=state.blueprint; recent=summarize_for_prompt("; ".join(state.history[-10:]), 600)
-    return f"""
-Between-act recap (3–5 sentences), mood: {mood}, for a {state.scenario_label} RPG.
-Summarize the act, its effect on pressure "{bp.pressure_name}", and setup next act toward "{bp.campaign_goal}".
-Progress {state.act.goal_progress}/100; pressure {state.pressure}/100; scene phase {state.scene_phase}. Prior beats: {recent}.
-Rules: Do NOT include numeric meter lines. Complete sentences; no mid-word hyphenation. Plain text only.
-"""
-
-def talk_reply_prompt(state:GameState, actor:Actor, user_line:str)->str:
-    bp=state.blueprint
-    rel = ("friendly" if actor.disposition>=30 else "neutral" if actor.disposition>=0 else "hostile")
-    return f"""
-NPC reply <=180 chars (no quotes). 
-NPC: {actor.name} ({actor.kind}), role {actor.role}, disp {actor.disposition} ({rel}), archetype "{actor.personality_archetype or actor.personality}", comm "{actor.comm_style}".
-Style hint: {role_style_hint(actor)}
-{world_journal_prompt(state)}
-World: {state.scenario_label}. Pressure {bp.pressure_name} {state.pressure}/100. Player said: {user_line}
-Respond in character; be specific; reference stakes if natural. If comm is not 'speech', communicate via the style. No numeric meters.
-"""
-
-def observe_prompt(state:GameState, goal_lock:bool)->str:
-    bp=state.blueprint; plan=bp.acts[state.act.index]; loc=state.location_desc or "scene"
-    lock="Drive toward the act goal." if goal_lock else "Keep a single, clear focus."
-    recent_focus=summarize_for_prompt((state.last_result_para + " " + state.last_situation_para), 300)
-    return f"One sentence observation for a {state.scenario_label} {loc}, aligned with Act {state.act.index} goal '{plan.goal}' and campaign goal '{bp.campaign_goal}'. Bias toward: {recent_focus}. {lock} No quotes, no numeric meters."
-
-def combat_observe_prompt(state:GameState, enemy:Actor, goal_lock:bool)->str:
-    bp=state.blueprint; plan=bp.acts[state.act.index]
-    lock = "Tight focus; on-path clue." if goal_lock else "One hint only."
-    return f"<=140 chars hint about {enemy.name} the {enemy.kind}; Act {state.act.index} goal '{plan.goal}', pressure {bp.pressure_name} {state.pressure}/100. {lock} No quotes or meters."
-
-def option_microplans_prompt(state:GameState, stats:List[str], goal_lock:bool)->str:
-    bp=state.blueprint; plan=bp.acts[state.act.index]
-    situation = state.act.situation
-    last2 = summarize_for_prompt((state.last_result_para + " " + state.last_situation_para), 480)
-    hist = summarize_for_prompt("; ".join(state.history[-6:]), 380)
-    stat_hints = {
-        "STR": "force, leverage, break, push, brace",
-        "PER": "notice, analyze patterns, track, inspect",
-        "END": "endure, long march, resist fatigue/toxins",
-        "CHA": "persuade, rally, deceive, calm, negotiate",
-        "INT": "deduce, plan, solve mechanisms, recall lore",
-        "AGI": "sneak, dodge, climb, swift precise moves",
-        "LUC": "bold gambit with uncertain payoff"
-    }
-    hints = {k: stat_hints[k] for k in stats}
-    persist_hint = ("Prefer to use entities and details that appeared in the last printed Result/Situation, "
-                    "but it's allowed to introduce off-screen items/actors if plausible in context.")
-    if goal_lock:
-        persist_hint = ("Drive toward the act goal; prefer entities named in the last Result/Situation; "
-                        "avoid unrelated threats unless they clearly advance the goal.")
-    return f"""
-Provide microplans (STRICT JSON only) for a {state.scenario_label} RPG turn.
-
-Context:
-- Act goal: "{plan.goal}"
-- Campaign goal: "{bp.campaign_goal}"
-- Pressure "{bp.pressure_name}": {state.pressure}/100; progress {state.act.goal_progress}/100.
-- Current situation: {situation}
-- Last printed focus: {last2}
-- Prior beats: {hist}
-- Scene phase: {state.scene_phase}
-
-Stat semantics:
-{hints}
-
-Return JSON mapping EXACTLY these keys to strings (<= 100 chars, no quotes in values):
-{{"{stats[0]}":"...", "{stats[1]}":"...", "{stats[2]}":"..."}}
-
-Rules: {persist_hint} Do NOT restate numeric meters. Complete sentences; no mid-word hyphenation. Return ONLY JSON.
-"""
-
-def custom_action_outcome_prompt(state:GameState, stat:str, intent:str, success:bool, goal_lock:bool)->str:
-    bp=state.blueprint; plan=bp.acts[state.act.index]; outcome = "SUCCESS" if success else "FAIL"
-    lock="Drive toward the act goal." if goal_lock and success else "Keep a single focus."
-    return f"""
-Write 1–2 sentences for a {state.scenario_label} RPG describing the outcome of a custom action.
-Intent: {intent} (using {stat}). Outcome: {outcome}.
-Tie to Act {state.act.index} goal "{plan.goal}", campaign goal "{bp.campaign_goal}", and pressure "{bp.pressure_name}" at {state.pressure}/100.
-Rules: {lock} Do NOT write numeric meters. No second person; complete sentences; no mid-word hyphenation; plain text only.
-"""
-
-def next_situation_prompt(state:GameState, outcome: str, intent: str | None, goal_lock:bool) -> str:
-    bp=state.blueprint; plan=bp.acts[state.act.index]
-    recent=summarize_for_prompt("; ".join(state.history[-6:]) or "none", 500)
-    prev=state.act.situation
-    intent_txt=intent or "none"
-    loc = state.location_desc or "the current area"
-    lock_rule = "Drive directly toward the act goal. Introduce a concrete waypoint, sightline, or puzzle ON that path; no unrelated new threats." if goal_lock and outcome=="success" else "Allow texture, but keep one clear focus; avoid unrelated new elements."
-    return f"""
-Write a new situation paragraph (2–4 sentences) for a {state.scenario_label} RPG in {loc}.
-- Act {state.act.index} goal: "{plan.goal}"
-- Campaign goal: "{bp.campaign_goal}"
-- Pressure "{bp.pressure_name}": {state.pressure}/100; Act progress: {state.act.goal_progress}/100
-- Previous situation (do NOT repeat verbatim): {prev}
-- Recent beats: {recent}
-- Player intent/result: {intent_txt} -> {outcome.upper()}
-- Scene phase: {state.scene_phase}
-
-Rules:
-- If SUCCESS: advance logically (new room/route/clue/NPC); {lock_rule}
-- If FAIL: evolve the obstacle/complication; hint a new angle; avoid repetition.
-- Do NOT restate numeric meters. Complete sentences; no mid-word hyphenation. Plain text only.
-"""
-
-# =============================
-# ---------- IMAGES -----------
-# =============================
-
-def image_style_prefix() -> str:
-    return (
-        "early CGI, 1990s bryce 3D render, low-poly polygonal textures, "
-        "FMV cutscene aesthetic, eerie unsettling vibe, uncanny expressions, "
-        "surreal lighting, creepy shadows, muted palette, soft volumetrics, "
-        "no text overlay, no watermark"
-    )
-
-def make_player_portrait_prompt(player:Player) -> str:
-    parts=[]
-    if player.age: parts.append(f"age {player.age}")
-    if player.sex: parts.append(str(player.sex))
-    if player.hair_color: parts.append(f"{player.hair_color} hair")
-    if player.clothing: parts.append(f"wearing {player.clothing}")
-    if player.appearance: parts.append(player.appearance)
-    desc=", ".join(parts) if parts else "adventurer in practical attire"
-    return f"Close-up portrait of {player.name}, {desc}. {image_style_prefix()}."
-
-def describe_actor_physical(g:GemmaClient, state:GameState, actor:Actor) -> str:
-    try:
-        plan = state.blueprint.acts[state.act.index]
-        loc = state.location_desc or "current scene"
-        prompt = (
-            "In 1–2 sentences, describe the physical appearance of this character. "
-            "Avoid camera/style jargon; focus on in-world details. Complete sentences."
-            f"\nName: {actor.name}\nKind/Role: {actor.kind}/{actor.role}\n"
-            f"Context: {state.scenario_label} at {loc}. Act goal: {plan.goal}."
-        )
-        desc = g.text(prompt, tag="PortraitDesc", max_chars=260).strip()
-        if desc:
-            actor.desc = sanitize_prose(desc)
-        return actor.desc
-    except Exception:
-        return actor.desc
-
-def make_actor_portrait_prompt(actor:Actor) -> str:
-    base = actor.desc.strip() if actor.desc else f"{actor.name}, a {actor.kind} ({actor.role})"
-    return f"Close-up portrait of {base}. {image_style_prefix()}."
-
-def make_combat_image_prompt(state:GameState, enemy:Actor) -> str:
-    env = state.location_desc or "the immediate area"
-    return (
-        f"Battle scene in {env}. Player {state.player.name} vs {enemy.name} the {enemy.kind}. "
-        f"Cinematic motion appropriate to {state.scenario_label}. {image_style_prefix()}."
-    )
-
-def make_act_transition_prompt(state:GameState, idx:int) -> str:
-    env = state.location_desc or state.blueprint.acts[idx].intro_paragraph
-    return f"Act {idx} transition: establishing shot of {env}. {image_style_prefix()}."
-
-def make_act_start_prompt(state:GameState, idx:int) -> str:
-    env = state.location_desc or state.blueprint.acts[idx].intro_paragraph
-    return f"Act {idx} opening: environment establishing shot of {env}. {image_style_prefix()}."
-
-def make_startup_prompt(state:GameState) -> str:
-    env = state.location_desc or state.blueprint.acts[state.act.index].intro_paragraph
-    return f"Opening shot: {env}. Focus on mood and place. {image_style_prefix()}."
-
-def make_ending_prompt(state:GameState, success:bool) -> str:
-    env = state.location_desc or "final battleground"
-    tone = "hard-won relief and fragile hope" if success else "somber acceptance and lingering dread"
-    return f"Ending tableau in {env}, tone: {tone}. {image_style_prefix()}."
-
-def make_image_prompt(state: GameState) -> str:
-    bp = state.blueprint; plan = bp.acts[state.act.index]
-    actors = [f"{a.name} ({a.role})" for a in state.act.actors if a.discovered and a.alive]
-    companions = [c.name for c in state.companions if c.alive]
-    enemies = [a.name for a in state.act.actors if a.alive and a.role=="enemy" and a.discovered]
-    actors_txt = ", ".join(actors) if actors else "none"
-    comps_txt = ", ".join(companions) if companions else "none"
-    foes_txt = ", ".join(enemies) if enemies else "none"
-    last = (state.history[-1] if state.history else "begin")
-    situation = state.act.situation or "scene evolves"
-    loc = state.location_desc or "the scene"
-    if state.last_actor and state.last_actor.alive and state.last_actor.discovered:
-        focus = f"close-up on {state.last_actor.name}"
-    else:
-        focus = f"establishing shot of {loc}"
-    return (
-        f"{focus}. {image_style_prefix()}. "
-        f"Act {state.act.index} goal: {plan.goal}. Campaign: {bp.campaign_goal}. "
-        f"Pressure {bp.pressure_name}: {state.pressure}/100. Progress: {state.act.goal_progress}/100. "
-        f"Discovered actors: {actors_txt}. Companions: {comps_txt}. Enemies: {foes_txt}. "
-        f"Situation: {situation}. Last beat: {last}."
-    )
-
-def supports_iterm_inline() -> bool: return bool(os.environ.get("ITERM_SESSION_ID"))
-def supports_kitty() -> bool: return bool(os.environ.get("KITTY_WINDOW_ID"))
-def pollinations_url(prompt: str, w: int, h: int) -> str:
-    q = parse.quote_plus(prompt); return f"https://image.pollinations.ai/prompt/{q}?width={w}&height={h}&nologo=true"
-def download_image(url: str, out_path: str, timeout: int = IMG_TIMEOUT):
-    req = request.Request(url, headers={"User-Agent": "RP-GPT/1.0"})
-    try:
-        if certifi:
-            ctx = ssl.create_default_context(cafile=certifi.where())
-        else:
-            ctx = ssl.create_default_context()
-        with request.urlopen(req, timeout=timeout, context=ctx) as resp, open(out_path, "wb") as f:
-            f.write(resp.read())
-        return
-    except Exception as e_verified:
-        try:
-            unverified = ssl._create_unverified_context()
-            with request.urlopen(req, timeout=timeout, context=unverified) as resp, open(out_path, "wb") as f:
-                f.write(resp.read())
-            return
-        except Exception as e_unverified:
-            raise RuntimeError(f"Image download failed (verified: {e_verified}; unverified: {e_unverified})")
-def iterm_inline_image(path: str, width: int = 0, height: int = 0):
-    with open(path, "rb") as f:
-        data = base64.b64encode(f.read()).decode("utf-8")
-    params = "inline=1"
-    if width: params += f";width={width}px"
-    if height: params += f";height={height}px"
-    sys.stdout.write(f"\033]1337;File={params}:{data}\a\n"); sys.stdout.flush()
-def kitty_inline_stub(path: str): print(f"[Kitty] Image saved: {path}")
-def show_image_in_terminal_or_fallback(state: GameState, path: str, url: str):
-    print()
-    if supports_iterm_inline():
-        try: iterm_inline_image(path, width=IMG_WIDTH, height=IMG_HEIGHT); print("(image above)\n"); return
-        except Exception as e: print(f"[iTerm inline failed] {e}")
-    if supports_kitty():
-        try: kitty_inline_stub(path); print(); return
-        except Exception as e: print(f"[Kitty inline failed] {e}")
-    if sys.platform == "darwin" and shutil.which("open"):
-        try: subprocess.Popen(["open", path]); print(f"[Opened in Preview] {path}\n{url}\n"); return
-        except Exception as e: print(f"[open failed] {e}")
-    print(f"[Saved image] {path}\n{url}\n")
-
-def generate_turn_image(state:GameState):
-    if not state.images_enabled: return
-    try:
-        prompt = make_image_prompt(state)
-        actors = []
-        if state.last_actor and state.last_actor.discovered and state.last_actor.alive:
-            actors.append(state.last_actor.name)
-        queue_image_event(
-            state, kind="turn", prompt=prompt, actors=actors,
-            extra={"mode": state.mode.name, "location": state.location_desc or "", "goal": state.blueprint.acts[state.act.index].goal}
-        )
-    except Exception as e:
-        print(f"[Image queue error] {e}")
-
-# =============================
-# ---------- RENDER -----------
-# =============================
-
-def header():
-    print("="*78); print("RP-GPT6 — Gemma-Orchestrated RPG".center(78)); print("="*78)
-
-def hud(state:GameState):
-    p=state.player; plan=state.blueprint.acts[state.act.index]
-    print(f"Act: {state.act.index}/{state.act_count} | Turn: {state.act.turns_taken}/{state.act.turn_cap}")
-    print(f"HP:{p.hp} ATK:{p.attack} | Act Goal: {state.act.goal_progress}/100  ({plan.goal})")
-    print(f"{state.pressure_name}: {state.pressure}/100 | Campaign: {state.blueprint.campaign_goal}")
-    s=p.stats
-    print(f"S:{s.STR} P:{s.PER} E:{s.END} C:{s.CHA} I:{s.INT} A:{s.AGI} L:{s.LUC} | Phase:{state.scene_phase} Stall:{state.stall_count} | Custom uses left:{max(0,3-state.act.custom_uses)}")
-    print("-"*78)
+_GEMMA: Optional[GemmaClient] = None
 
 # =============================
 # ---------- DICE -------------
@@ -877,210 +411,6 @@ def begin_act(state:GameState, idx:int):
         pass
 
 # =============================
-# ------- INTERACTION ---------
-# =============================
-
-def pick_actor(state: GameState) -> Optional[Actor]:
-    avail=[a for a in state.act.actors if a.discovered and a.alive]
-    if not avail:
-        print("No one to interact with (yet)."); return None
-    if len(avail) == 1:
-        only = avail[0]
-        print(f"Only {only.name} is here. Engage? [Y/n]")
-        ans = input("> ").strip().lower() or "y"
-        if ans != "n":
-            state.last_actor = only; return only
-        return None
-    print("Choose a target:")
-    for i, a in enumerate(avail, start=1):
-        print(f"  [{i}] {a.name} ({a.kind}/{a.role}) — disp {a.disposition} hp:{a.hp}")
-    print("  [0] Cancel")
-    while True:
-        sel = input("> ").strip()
-        if sel == "0": return None
-        if sel.isdigit() and 1 <= int(sel) <= len(avail):
-            target = avail[int(sel) - 1]; state.last_actor = target; return target
-        print("Pick a valid index.")
-
-# =============================
-# --------- TALK LOOP ---------
-# =============================
-
-def talk_loop(state:GameState, actor:Actor, g:GemmaClient):
-    print(f"\nTalking to {actor.name} — disposition {actor.disposition}")
-    state.last_actor = actor
-    if not actor.desc: describe_actor_physical(g, state, actor)
-    try:
-        queue_image_event(state, "portrait", make_actor_portrait_prompt(actor), actors=[actor.name], extra={"mode":"TALK"})
-    except Exception:
-        pass
-    conv_log=[]; exchanges=0; MAX_EX=5
-    while True:
-        pool=[k for k in SPECIAL_KEYS if k!="CHA"]; a,b=random.sample(pool,2)
-        print("  [1] Appeal (CHA)")
-        print(f"  [2] {a}")
-        print(f"  [3] {b}")
-        print("  [4] Say something (free-form)")
-        print("  [0] End conversation")
-        s=input("> ").strip()
-        if s=="0" or exchanges>=MAX_EX:
-            if exchanges>=MAX_EX: print("[Talk] You’ve said enough for now.")
-            post_talk_outcomes(state, actor)
-            state.history.append(f"Talked to {actor.name}")
-            outcome = "success" if actor.disposition >= 20 else "fail"
-            result_line = f"You finish talking to {actor.name}. Current disposition: {actor.disposition}."
-            # Show the result line here (avoid duplication in evolve_situation)
-            print(wrap(result_line))
-            evolve_situation(state, g, outcome, f"talk with {actor.name}", result_line)
-            state.mode=TurnMode.EXPLORE; return
-        if s=="4":
-            user_line=input("You: ")
-            delta=0; low=user_line.lower()
-            pos = ["please","help","thanks","gift","sorry","respect","share","protect","ally","save","plan"]
-            neg = ["stupid","die","hate","kill","threat","insult","steal","betray","lie","coward"]
-            if any(w in low for w in pos): delta+=random.randint(6,14)
-            if any(w in low for w in neg): delta-=random.randint(8,16)
-            delta += (state.player.effective_stat("CHA")-5)//2
-            actor.disposition=max(-100, min(100, actor.disposition+delta))
-            reply=g.text(talk_reply_prompt(state,actor,user_line), tag="Talk", max_chars=220)
-            print(wrap(f"{actor.name}: {sanitize_prose(reply)} (Disposition {('+' if delta>=0 else '')}{delta})"))
-            conv_log.append(f"said:{user_line[:40]} reply:{reply[:40]}"); exchanges+=1; continue
-        if s in {"1","2","3"}:
-            stat="CHA" if s=="1" else (a if s=="2" else b)
-            dc = calc_dc(state, base=12, extra=(0 if actor.disposition >= 0 else 2))
-            ok,total=check(state,stat,dc)
-            if ok:
-                gain=12 if stat=="CHA" else 8; actor.disposition=min(100, actor.disposition+gain)
-                print(wrap(f"Success ({stat} {total} vs DC {dc}). {actor.name} softens (+{gain} disp)."))
-            else:
-                loss=8 if stat=="CHA" else 6; actor.disposition=max(-100, actor.disposition-loss)
-                print(wrap(f"Fail ({stat} {total} vs DC {dc}). {actor.name} bristles (-{loss} disp)."))
-            conv_log.append(f"{stat}:{'OK' if ok else 'FAIL'} (disp {actor.disposition})"); exchanges+=1
-            if actor.disposition<=-30 and random.random()<0.35:
-                print(f"{actor.name} lashes out!")
-                state.last_enemy=actor; state.mode=TurnMode.COMBAT
-                try: queue_image_event(state, "combat", make_combat_image_prompt(state, actor), actors=[state.player.name, actor.name], extra={"mode":"COMBAT"})
-                except Exception: pass
-                return
-
-def post_talk_outcomes(state:GameState, actor:Actor):
-    if actor.disposition>=50 and random.random()<0.4:
-        print(f"{actor.name} clears the way ahead."); try_advance(state,"talk-cleared-path")
-    if actor.disposition>=30 and random.random()<0.5:
-        it=Item("Small Favor",["boon"],goal_delta=5,notes="A timely edge")
-        state.player.add_item(it); state.act.goal_progress=min(100,state.act.goal_progress+it.goal_delta)
-        print(f"{actor.name} offers a {it.name}. (+{it.goal_delta} act goal)")
-
-# =============================
-# --------- COMBAT ------------
-# =============================
-
-def remove_if_dead(state:GameState, actor:Actor):
-    if actor.alive: return
-    state.act.actors = [a for a in state.act.actors if a is not actor]
-    state.companions = [c for c in state.companions if c is not actor]
-    state.act.undiscovered = [a for a in state.act.undiscovered if a is not actor]
-
-def enemy_attack(state:GameState, enemy:Actor):
-    evade=(state.player.effective_stat("PER")+state.player.effective_stat("AGI"))/2
-    hit=random.randint(1,20)
-    if hit+enemy.attack<=10+int(evade/2): print(f"{enemy.name} misses."); return
-    dmg=max(1, enemy.attack+random.randint(1,4)+(state.act.index-1))
-    state.player.hp-=dmg; print(f"{enemy.name} hits you for {dmg}. (HP {state.player.hp})")
-
-def combat_parley(state:GameState, enemy:Actor, g:GemmaClient, goal_lock:bool):
-    print("Parley — say something:"); line=input("You: ")
-    dc = calc_dc(state, base=12); ok,_=check(state,"CHA",dc)
-    delta= random.randint(6,12) if ok else -random.randint(4,9)
-    pos=["mercy","stop","deal","trade","truth","ally","reason","surrender","forgive","stand down"]
-    neg=["die","kill","worthless","coward","burn","crush","hate","monster"]
-    low=line.lower()
-    if any(w in low for w in pos): delta+=random.randint(4,8)
-    if any(w in low for w in neg): delta-=random.randint(6,10)
-    enemy.disposition=max(-100,min(100,enemy.disposition+delta))
-    reply=g.text(talk_reply_prompt(state,enemy,line), tag="Combat Parley", max_chars=200)
-    print(wrap(f"{enemy.name}: {sanitize_prose(reply)} (Disposition {('+' if delta>=0 else '')}{delta})"))
-    if enemy.disposition>=20:
-        action_text = f"You sway {enemy.name}; combat ebbs."
-        state.mode=TurnMode.EXPLORE
-        print(wrap(action_text))
-        evolve_situation(state, g, "success", f"parley with {enemy.name}", action_text)
-        return True
-    if enemy.alive: enemy_attack(state,enemy)
-    evolve_situation(state, g, "fail", f"parley with {enemy.name}", f"You appeal to {enemy.name}, but they refuse.")
-    return False
-
-def combat_turn(state:GameState, enemy:Actor, g:GemmaClient, goal_lock:bool):
-    p=state.player; state.last_actor = enemy
-    try: queue_image_event(state, "combat", make_combat_image_prompt(state, enemy), actors=[state.player.name, enemy.name], extra={"mode":"COMBAT"})
-    except Exception: pass
-    print(f"\n-- COMBAT with {enemy.name} (HP {enemy.hp}, ATK {enemy.attack}) --")
-    print("  [1] Attack\n  [2] Use Item\n  [3] Parley (talk)\n  [4] Sneak away (AGI)\n  [5] Observe weakness\n  [0] Back")
-    s=input("> ").strip()
-    if s=="1":
-        bonus=2 if enemy.disposition>50 else 0
-        dmg=max(1, p.attack+bonus+random.randint(1,4)); enemy.hp-=dmg
-        action_text = f"You strike {enemy.name} for {dmg}."
-        print(action_text)
-        if enemy.hp<=0:
-            print(f"{enemy.name} falls."); action_text += f" {enemy.name} falls."
-            enemy.alive=False; state.act.goal_progress=min(100,state.act.goal_progress+15)  # bumped
-            try_advance(state,"enemy-defeated"); state.history.append(f"Defeated {enemy.name}")
-            evolve_situation(state, g, "success", f"defeated {enemy.name}", action_text)
-            remove_if_dead(state, enemy); state.mode=TurnMode.EXPLORE; return True
-        enemy_attack(state,enemy); state.history.append(f"Hit {enemy.name} for {dmg}")
-        evolve_situation(state, g, "fail", "attack exchange", action_text); return True
-    if s=="2":
-        used_text = use_item(state)
-        if enemy.alive: enemy_attack(state,enemy)
-        state.history.append(f"Used item vs {enemy.name}")
-        evolve_situation(state, g, "fail", "combat use item", used_text or "You use an item."); return True
-    if s=="3":
-        ended = combat_parley(state, enemy, g, goal_lock); state.history.append(f"Parley vs {enemy.name}"); return True
-    if s=="4":
-        dc = calc_dc(state, base=13); ok,total=check(state,"AGI",dc)
-        if ok: 
-            action_text="You slip away."; print(action_text)
-            state.mode=TurnMode.EXPLORE; evolve_situation(state, g, "success", "slip away", action_text)
-        else:
-            action_text=f"You stumble (AGI {total} vs DC {dc})."; print(action_text)
-            enemy_attack(state,enemy); evolve_situation(state, g, "fail", "slip away", action_text)
-        state.history.append(f"Sneak vs {enemy.name}: {'OK' if ok else 'FAIL'}"); return True
-    if s=="5":
-        line=g.text(combat_observe_prompt(state,enemy,goal_lock), tag="Combat observe", max_chars=160)
-        action_text="You read their motion: "+sanitize_prose(line or "")
-        print(wrap(action_text)); enemy.disposition=max(enemy.disposition,55)
-        enemy_attack(state,enemy); state.history.append(f"Observed {enemy.name}")
-        evolve_situation(state, g, "fail", "observe weakness", action_text); return True
-    action_text="You hesitate."; print(action_text)
-    enemy_attack(state,enemy); state.history.append(f"Hesitated vs {enemy.name}")
-    evolve_situation(state, g, "fail", "hesitate", action_text); return True
-
-# =============================
-# --------- ITEMS -------------
-# =============================
-
-def use_item(state:GameState) -> str:
-    inv=state.player.inventory
-    if not inv: msg="Your pack is empty."; print(msg); return msg
-    print("Use which item?")
-    for i,it in enumerate(inv,1):
-        mods=", ".join([f"{k}{v:+d}" for k,v in it.special_mods.items()])
-        print(f"  [{i}] {it.name} (HP{it.hp_delta:+d}, ATK{it.attack_delta:+d}, ActGoal{it.goal_delta:+d}, Press{it.pressure_delta:+d}{'; '+mods if mods else ''}) — {it.notes}")
-    print("  [0] Cancel")
-    s=input("> ").strip()
-    if s=="0": return "You decide not to use anything."
-    if not s.isdigit() or not (1<=int(s)<=len(inv)): print("No effect."); return "No effect."
-    it=inv[int(s)-1]; p=state.player
-    p.hp=min(100,p.hp+it.hp_delta); p.attack+=it.attack_delta
-    for k,v in it.special_mods.items(): setattr(p.stats,k,max(1,getattr(p.stats,k)+v))
-    if it.goal_delta: state.act.goal_progress=min(100,state.act.goal_progress+it.goal_delta)
-    if it.pressure_delta: state.pressure=max(0,min(100,state.pressure+it.pressure_delta))
-    msg=f"You use {it.name}."; print(wrap(msg))
-    if it.consumable: inv.pop(int(s)-1)
-    state.history.append(f"Used {it.name}"); return msg
-
-# =============================
 # --------- OPTIONS -----------
 # =============================
 
@@ -1211,7 +541,7 @@ def evolve_situation(state: GameState, g: GemmaClient, outcome: str, intent: Opt
     state.turn_narrative_cache = None
     state.last_turn_success = (outcome=="success")
     # Journal: add a lore line after evolution
-    journal_lore_line(state, g, seed=action_text or situation_txt)
+    journal_lore_line(state, g, get_extra_world_text(), seed=action_text or situation_txt)
 
 # =============================
 # ------- ENCOUNTERS ----------
@@ -1380,7 +710,7 @@ def do_rest(state:GameState, g:GemmaClient):
     )
     print(); print(wrap(sanitize_prose(dream))); print()
     # Journal lore note for rest
-    journal_lore_line(state, g, seed="A quiet camp and fitful dreams.")
+    journal_lore_line(state, g, get_extra_world_text(), seed="A quiet camp and fitful dreams.")
     return
 
 def process_choice(state:GameState, ch:str, ex:ExploreOptions, g:GemmaClient)->bool:
@@ -1505,7 +835,7 @@ def end_of_turn(state:GameState, g:GemmaClient):
         b.duration_turns-=1
         if b.duration_turns<=0: state.player.buffs.remove(b); print(f"[Buff fades] {b.name}")
     state.turn_narrative_cache = None
-    generate_turn_image(state)
+    generate_turn_image(state, queue_image_event)
     # reset per-turn flags
     state.rested_this_turn = False
 
@@ -1762,6 +1092,9 @@ def main():
     global _GEMMA
     print("="*78); print("RP-GPT6 — Gemma-Orchestrated RPG".center(78)); print("="*78)
     sc,label=pick_scenario()
+    extra_world = prompt_extra_world_details()
+    if extra_world:
+        set_extra_world_text(extra_world)
     player=init_player()
     model=input("Gemma model for Ollama? (default gemma3:12b) > ").strip() or "gemma3:12b"
     g=GemmaClient(model=model); _GEMMA=g
