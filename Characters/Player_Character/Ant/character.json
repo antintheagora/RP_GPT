@@ -1,0 +1,21 @@
+{
+  "name": "Ant",
+  "sex": "Male",
+  "age": 31,
+  "appearance": "blue valut jumpsuit",
+  "special": {
+    "STR": 5,
+    "PER": 7,
+    "END": 5,
+    "CHA": 6,
+    "INT": 7,
+    "AGI": 5,
+    "LUC": 5
+  },
+  "scenario_label": "The Wasteland",
+  "created_at": 1762022193.6205037,
+  "portrait": "portrait.jpg",
+  "locked": true,
+  "updated_at": 1762047768.1045923,
+  "clothing": ""
+}

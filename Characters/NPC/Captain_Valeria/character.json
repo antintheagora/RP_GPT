@@ -1,0 +1,18 @@
+{
+  "name": "Captain Valeria",
+  "role": "npc",
+  "kind": "Dominion Officer",
+  "hp": 16,
+  "attack": 4,
+  "updated_at": 1762242776.209291,
+  "last_seen": 1762242776.2092915,
+  "encounters": 1,
+  "desc": "Ruthless, disciplined, cynical",
+  "personality": "Ruthless, disciplined, cynical",
+  "personality_archetype": "bitter",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

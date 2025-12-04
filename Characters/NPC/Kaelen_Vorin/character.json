@@ -1,0 +1,18 @@
+{
+  "name": "Kaelen Vorin",
+  "role": "npc",
+  "kind": "Ironclad Dominion Patrol Leader",
+  "hp": 18,
+  "attack": 1,
+  "updated_at": 1762229028.363897,
+  "last_seen": 1762229028.3638973,
+  "encounters": 1,
+  "desc": "Duty-bound, cynical, suspicious.",
+  "personality": "Duty-bound, cynical, suspicious.",
+  "personality_archetype": "amiable",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

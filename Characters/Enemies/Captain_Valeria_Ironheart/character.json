@@ -1,0 +1,18 @@
+{
+  "name": "Captain Valeria Ironheart",
+  "role": "enemy",
+  "kind": "Human Soldier",
+  "hp": 24,
+  "attack": 5,
+  "updated_at": 1762237136.9932847,
+  "last_seen": 1762237136.9932852,
+  "encounters": 1,
+  "desc": "Duty-bound, ruthless, believes in order at any cost",
+  "personality": "Duty-bound, ruthless, believes in order at any cost",
+  "personality_archetype": "amiable",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

@@ -1,0 +1,18 @@
+{
+  "name": "Lord Alaric",
+  "role": "npc",
+  "kind": "Human Noble",
+  "hp": 18,
+  "attack": 5,
+  "updated_at": 1762814770.6381161,
+  "last_seen": 1762814770.6381161,
+  "encounters": 3,
+  "desc": "Desperate, pragmatic, bordering on ruthless",
+  "personality": "Cautious, pragmatic, burdened by responsibility",
+  "personality_archetype": "bitter",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

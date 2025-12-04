@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="grid gap-6 lg:grid-cols-2">
+    <div id="turn-panel" hx-get="{{ url_for('turn_panel') }}" hx-trigger="load, refresh-turn from:body" hx-target="this" class="min-h-[24rem]"></div>
+    <div id="log-panel" hx-get="{{ url_for('log_panel') }}" hx-trigger="load, refresh-turn from:body" hx-target="this" class="min-h-[24rem]"></div>
+  </div>
+{% endblock %}

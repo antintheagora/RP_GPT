@@ -1,0 +1,83 @@
+{
+  "nodes": {
+    "The crumbling Freehold of Oakhaven, nestled amidst the scarred plains of the Ashlands, suffers under the growing threat of The Blight \u2013 a creeping corruption twisting the land and its inhabitants": {
+      "name": "The crumbling Freehold of Oakhaven, nestled amidst the scarred plains of the Ashlands, suffers under the growing threat of The Blight \u2013 a creeping corruption twisting the land and its inhabitants",
+      "kind": "place",
+      "grid": [
+        0,
+        -4
+      ],
+      "discovered": true,
+      "visited": true
+    },
+    "Elder Lyra": {
+      "name": "Elder Lyra",
+      "kind": "place",
+      "grid": [
+        0,
+        -1
+      ],
+      "discovered": true,
+      "visited": true
+    },
+    "Freehold": {
+      "name": "Freehold",
+      "kind": "place",
+      "grid": [
+        0,
+        -2
+      ],
+      "discovered": true,
+      "visited": true
+    },
+    "The Blight": {
+      "name": "The Blight",
+      "kind": "place",
+      "grid": [
+        3,
+        -4
+      ],
+      "discovered": true,
+      "visited": false
+    },
+    "Ironclad Dominion": {
+      "name": "Ironclad Dominion",
+      "kind": "place",
+      "grid": [
+        2,
+        -1
+      ],
+      "discovered": true,
+      "visited": false
+    }
+  },
+  "edges": [
+    {
+      "a": "The crumbling Freehold of Oakhaven, nestled amidst the scarred plains of the Ashlands, suffers under the growing threat of The Blight \u2013 a creeping corruption twisting the land and its inhabitants",
+      "b": "Elder Lyra",
+      "weight": 3
+    },
+    {
+      "a": "The crumbling Freehold of Oakhaven, nestled amidst the scarred plains of the Ashlands, suffers under the growing threat of The Blight \u2013 a creeping corruption twisting the land and its inhabitants",
+      "b": "Freehold",
+      "weight": 2
+    },
+    {
+      "a": "The crumbling Freehold of Oakhaven, nestled amidst the scarred plains of the Ashlands, suffers under the growing threat of The Blight \u2013 a creeping corruption twisting the land and its inhabitants",
+      "b": "The Blight",
+      "weight": 3
+    },
+    {
+      "a": "Elder Lyra",
+      "b": "Ironclad Dominion",
+      "weight": 2
+    },
+    {
+      "a": "Elder Lyra",
+      "b": "Freehold",
+      "weight": 1
+    }
+  ],
+  "current": "Freehold",
+  "start": "The crumbling Freehold of Oakhaven, nestled amidst the scarred plains of the Ashlands, suffers under the growing threat of The Blight \u2013 a creeping corruption twisting the land and its inhabitants"
+}

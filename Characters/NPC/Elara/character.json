@@ -1,0 +1,18 @@
+{
+  "name": "Elara",
+  "role": "npc",
+  "kind": "Human (Herbalist)",
+  "hp": 14,
+  "attack": 2,
+  "updated_at": 1762837234.5083704,
+  "last_seen": 1762837234.5083704,
+  "encounters": 5,
+  "desc": "Weary, knowledgeable, secretive",
+  "personality": "Kind, desperate, resourceful",
+  "personality_archetype": "serene",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

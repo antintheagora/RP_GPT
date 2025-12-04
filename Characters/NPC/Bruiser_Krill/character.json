@@ -1,0 +1,18 @@
+{
+  "name": "'Bruiser' Krill",
+  "role": "npc",
+  "kind": "Super Mutant",
+  "hp": 18,
+  "attack": 2,
+  "updated_at": 1762095971.0641775,
+  "last_seen": 1762095971.0641778,
+  "encounters": 1,
+  "desc": "Brutish, aggressive, follows orders blindly",
+  "personality": "Brutish, aggressive, follows orders blindly",
+  "personality_archetype": "inquisitive",
+  "species": "mutant",
+  "comm_style": "limited",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

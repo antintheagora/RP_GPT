@@ -1,0 +1,18 @@
+{
+  "name": "Bandit Leader Rex",
+  "role": "npc",
+  "kind": "human",
+  "hp": 18,
+  "attack": 4,
+  "updated_at": 1762044565.6028252,
+  "last_seen": 1762044565.6028256,
+  "encounters": 1,
+  "desc": "Greedy, opportunistic",
+  "personality": "Greedy, opportunistic",
+  "personality_archetype": "aggressive",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

@@ -1,0 +1,18 @@
+{
+  "name": "Kaelen",
+  "role": "npc",
+  "kind": "Rogue",
+  "hp": 12,
+  "attack": 2,
+  "updated_at": 1762837128.7938223,
+  "last_seen": 1762837128.7938223,
+  "encounters": 6,
+  "desc": "Suspicious, hardened, and skeptical.",
+  "personality": "Cunning, opportunistic, driven by profit",
+  "personality_archetype": "bitter",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

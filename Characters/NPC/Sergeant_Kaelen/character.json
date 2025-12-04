@@ -1,0 +1,18 @@
+{
+  "name": "Sergeant Kaelen",
+  "role": "npc",
+  "kind": "Enemy",
+  "hp": 14,
+  "attack": 3,
+  "updated_at": 1762052789.4993834,
+  "last_seen": 1762052789.499384,
+  "encounters": 1,
+  "desc": "Brutal, efficient, loyal to the Dominion",
+  "personality": "Brutal, efficient, loyal to the Dominion",
+  "personality_archetype": "bitter",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

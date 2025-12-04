@@ -1,0 +1,18 @@
+{
+  "name": "Lieutenant Aris Thorne",
+  "role": "npc",
+  "kind": "NCR Officer",
+  "hp": 14,
+  "attack": 3,
+  "updated_at": 1762047198.538614,
+  "last_seen": 1762047198.5386143,
+  "encounters": 1,
+  "desc": "Weary, Pragmatic, Loyal",
+  "personality": "Weary, Pragmatic, Loyal",
+  "personality_archetype": "inquisitive",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

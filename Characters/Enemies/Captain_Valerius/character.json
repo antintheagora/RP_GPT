@@ -1,0 +1,18 @@
+{
+  "name": "Captain Valerius",
+  "role": "enemy",
+  "kind": "Human (Dominion Soldier)",
+  "hp": 18,
+  "attack": 4,
+  "updated_at": 1762246453.7866325,
+  "last_seen": 1762246453.7866328,
+  "encounters": 6,
+  "desc": "Dogmatic, ruthless, believes in the Dominion's order.",
+  "personality": "Ruthless, duty-bound, believes in order through force.",
+  "personality_archetype": "inquisitive",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

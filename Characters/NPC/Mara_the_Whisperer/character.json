@@ -1,0 +1,18 @@
+{
+  "name": "Mara the Whisperer",
+  "role": "npc",
+  "kind": "Neutral",
+  "hp": 8,
+  "attack": 2,
+  "updated_at": 1762218260.7931275,
+  "last_seen": 1762218260.7931278,
+  "encounters": 1,
+  "desc": "Evasive, knowledgeable, cryptic",
+  "personality": "Evasive, knowledgeable, cryptic",
+  "personality_archetype": "zealous",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

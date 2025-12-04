@@ -1,0 +1,18 @@
+{
+  "name": "Elder Alaric",
+  "role": "npc",
+  "kind": "NPC",
+  "hp": 20,
+  "attack": 1,
+  "updated_at": 1762229456.1028476,
+  "last_seen": 1762229456.102848,
+  "encounters": 1,
+  "desc": "Wise, burdened, desperate",
+  "personality": "Wise, burdened, desperate",
+  "personality_archetype": "bitter",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

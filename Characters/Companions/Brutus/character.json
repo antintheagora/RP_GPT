@@ -1,0 +1,20 @@
+{
+  "name": "Brutus",
+  "role": "companion",
+  "kind": "dog",
+  "hp": 14,
+  "attack": 2,
+  "updated_at": 1762837234.5316384,
+  "last_seen": 1762837234.5316384,
+  "encounters": 137,
+  "desc": "shaggy dog with alert ears",
+  "bio": "A loyal dog; communicates with posture, growls, and barks.",
+  "personality": "protective, keen",
+  "personality_archetype": "joyful",
+  "species": "animal",
+  "comm_style": "animal",
+  "portrait": "portrait.jpg",
+  "sex": "male",
+  "familiarity": "great friend",
+  "alignment": "neutral"
+}

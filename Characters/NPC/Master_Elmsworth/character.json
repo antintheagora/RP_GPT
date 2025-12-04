@@ -1,0 +1,18 @@
+{
+  "name": "Master Elmsworth",
+  "role": "npc",
+  "kind": "Scholar",
+  "hp": 10,
+  "attack": 0,
+  "updated_at": 1762221507.225118,
+  "last_seen": 1762221507.2251184,
+  "encounters": 1,
+  "desc": "Driven, anxious, clinging to hope",
+  "personality": "Driven, anxious, clinging to hope",
+  "personality_archetype": "serene",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

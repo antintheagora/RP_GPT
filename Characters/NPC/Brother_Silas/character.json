@@ -1,0 +1,18 @@
+{
+  "name": "Brother Silas",
+  "role": "npc",
+  "kind": "Human Cleric",
+  "hp": 16,
+  "attack": 2,
+  "updated_at": 1762237136.9949417,
+  "last_seen": 1762237136.9949422,
+  "encounters": 1,
+  "desc": "Compassionate, hesitant, struggling with faith",
+  "personality": "Compassionate, hesitant, struggling with faith",
+  "personality_archetype": "aggressive",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

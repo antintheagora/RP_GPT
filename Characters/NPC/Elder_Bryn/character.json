@@ -1,0 +1,18 @@
+{
+  "name": "Elder Bryn",
+  "role": "npc",
+  "kind": "Human (Warden)",
+  "hp": 10,
+  "attack": 1,
+  "updated_at": 1762234569.6504161,
+  "last_seen": 1762234569.6504169,
+  "encounters": 2,
+  "desc": "Weary, but hopeful, fiercely protective of Oakhaven",
+  "personality": "Weary, wise, hopeful despite circumstances.",
+  "personality_archetype": "bitter",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

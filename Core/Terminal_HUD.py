@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import itertools
+import os
 import sys
 import threading
 import time
@@ -21,9 +22,13 @@ class LoadingBar:
         self.label = label
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
+        disable = os.environ.get("RP_GPT_DISABLE_SPINNER", "").lower()
+        self._enabled = sys.stdout.isatty() and disable not in {"1", "true", "yes"}
 
     def start(self) -> None:
         """Begin printing a spinner in the console."""
+        if not self._enabled:
+            return
 
         def run() -> None:
             # Cycle through a handful of Unicode spinner characters for flavor.
@@ -49,6 +54,8 @@ class LoadingBar:
 
     def stop(self) -> None:
         """Tell the spinner to halt and wait for the thread to finish."""
+        if not self._enabled:
+            return
         self._stop.set()
         if self._thread:
             self._thread.join()

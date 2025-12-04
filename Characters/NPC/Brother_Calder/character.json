@@ -1,0 +1,21 @@
+{
+  "name": "Brother Calder",
+  "role": "npc",
+  "kind": "scribe",
+  "desc": "A monkish historian with ink-stained fingers and wary eyes.",
+  "bio": "Collects tales of civilizations that fell to hubris; shares lore if treated with respect.",
+  "personality": "scholarly, cautious",
+  "personality_archetype": "stoic",
+  "species": "human",
+  "hp": 12,
+  "attack": 1,
+  "encounters": 15,
+  "portrait": null,
+  "created_at": 1762028093.403134,
+  "updated_at": 1762219744.7946115,
+  "last_seen": 1762219744.7946115,
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

@@ -1,0 +1,18 @@
+{
+  "name": "Kaelen Stonefist",
+  "role": "npc",
+  "kind": "Dwarf Chieftain",
+  "hp": 22,
+  "attack": 5,
+  "updated_at": 1762229926.7325027,
+  "last_seen": 1762229926.732503,
+  "encounters": 2,
+  "desc": "Ruthless, disciplined, suspicious",
+  "personality": "Stubborn, honorable, suspicious",
+  "personality_archetype": "stoic",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

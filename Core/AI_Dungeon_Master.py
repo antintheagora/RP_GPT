@@ -1,14 +1,23 @@
-"""AI-facing helpers: Gemma client wrapper plus all narrative prompt builders."""
+"""AI-facing helpers: Gemma client wrapper, narrative prompt builders,
+plus image-prompt utilities hardened for higher success rates.
+
+This module centralizes:
+- GemmaClient: small Ollama client with retries and spinner.
+- Prompt builders for narrative beats (blueprints, turns, recaps, etc.).
+- Image prompt helpers that keep prompts short, safe, and repeatable while
+  preserving some descriptive detail (bounded length + word sanitization).
+"""
 
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import subprocess
 import sys
 import time
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from Core.Helpers import (
     infer_species_and_comm_style,
@@ -24,11 +33,9 @@ if TYPE_CHECKING:
     from RP_GPT import Actor, GameState
 
 
-
 # =============================
 # ---------- GEMMA ------------
 # =============================
-
 
 # Stored copy of any long-form lore the player supplies during setup.
 EXTRA_WORLD_TEXT: str = ""
@@ -50,28 +57,86 @@ class GemmaError(RuntimeError):
 
 
 class GemmaClient:
-    """Small helper around `ollama run` so we can retry and tag requests."""
+    """Small helper around Ollama (CLI or HTTP) so we can retry and tag requests."""
 
-    def __init__(self, model: str = "gemma3:12b", max_retries: int = 4, retry_backoff: float = 1.15, timeout: int = 90):
-        if not shutil.which("ollama"):
-            print("ERROR: Ollama not found on PATH.")
-            sys.exit(1)
+    def __init__(
+        self,
+        model: str = "gemma3:12b",
+        max_retries: int = 4,
+        retry_backoff: float = 1.15,
+        timeout: int = 90,
+        base_url: Optional[str] = None,
+    ):
         self.model = model
         self.max_retries = max_retries
         self.retry_backoff = retry_backoff
         self.timeout = timeout
 
-    def check_or_pull_model(self) -> None:
-        """Ensure the requested model is available locally (prompt to pull if not)."""
-        result = subprocess.run(["ollama", "show", self.model], capture_output=True, text=True)
-        if result.returncode != 0:
-            answer = input(f"Model '{self.model}' not found. Pull now? [Y/n] > ").strip().lower() or "y"
-            if answer != "n":
-                code = subprocess.call(["ollama", "pull", self.model])
-                if code != 0:
-                    raise GemmaError("Model pull failed or canceled.")
+        # Decide between CLI and HTTP mode.
+        env_host = os.environ.get("OLLAMA_HOST", "").strip()
+        self.base_url = (base_url or env_host).rstrip("/") if (base_url or env_host) else ""
+        self._ollama_cmd: Optional[str] = None
+
+        if not self.base_url:
+            cmd = shutil.which("ollama")
+            if not cmd and os.name == "nt":
+                candidates = [
+                    r"C:\\Program Files\\Ollama\\ollama.exe",
+                    os.path.expandvars(r"%LOCALAPPDATA%\\Programs\\Ollama\\ollama.exe"),
+                ]
+                for p in candidates:
+                    if p and os.path.exists(p):
+                        cmd = p
+                        break
+            if cmd:
+                self._ollama_cmd = cmd
             else:
-                raise GemmaError("Model not available.")
+                # Fallback to the default local API endpoint.
+                self.base_url = "http://127.0.0.1:11434"
+
+    def check_or_pull_model(self) -> None:
+        """Ensure the requested model is available (CLI or HTTP)."""
+        noninteractive = os.environ.get("RP_GPT_NONINTERACTIVE", "").lower() in {"1", "true", "yes"}
+        if self._ollama_cmd:
+            result = subprocess.run(
+                [self._ollama_cmd, "show", self.model],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="ignore",
+            )
+            if result.returncode != 0:
+                if noninteractive:
+                    raise GemmaError(
+                        f"Model '{self.model}' not found locally. Run 'ollama pull {self.model}' and restart."
+                    )
+                answer = input(f"Model '{self.model}' not found. Pull now? [Y/n] > ").strip().lower() or "y"
+                if answer != "n":
+                    code = subprocess.call([self._ollama_cmd, "pull", self.model])
+                    if code != 0:
+                        raise GemmaError("Model pull failed or canceled.")
+                else:
+                    raise GemmaError("Model not available.")
+            return
+
+        # HTTP mode: check models at /api/tags
+        try:
+            import urllib.request
+
+            with urllib.request.urlopen(self.base_url + "/api/tags", timeout=self.timeout) as resp:
+                data = json.loads(resp.read().decode("utf-8", errors="ignore") or "{}")
+                models = {m.get("name", "") for m in (data.get("models") or [])}
+                if self.model not in models:
+                    raise GemmaError(
+                        f"Model '{self.model}' not available on {self.base_url}. "
+                        f"Run 'ollama pull {self.model}' on that host, or set OLLAMA_HOST to a server that has it."
+                    )
+        except GemmaError:
+            raise
+        except Exception as exc:
+            raise GemmaError(
+                f"Unable to reach Ollama at {self.base_url}. Install Ollama or set OLLAMA_HOST. ({exc})"
+            ) from exc
 
     def _run(self, prompt: str, tag: str) -> str:
         """Invoke Ollama and return plain text output (with retries + spinner)."""
@@ -79,10 +144,38 @@ class GemmaClient:
         for attempt in range(1, self.max_retries + 1):
             try:
                 spinner.start()
+                if not hasattr(self, "_ollama_cmd") or not self._ollama_cmd:
+                    # HTTP mode via Ollama REST API
+                    import urllib.request
+
+                    req = urllib.request.Request(
+                        (self.base_url if hasattr(self, "base_url") and self.base_url else "http://127.0.0.1:11434")
+                        + "/api/generate",
+                        data=json.dumps({
+                            "model": self.model,
+                            "prompt": prompt,
+                            "stream": False,
+                        }).encode("utf-8"),
+                        headers={"Content-Type": "application/json"},
+                        method="POST",
+                    )
+                    with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                        body = resp.read().decode("utf-8", errors="ignore")
+                    spinner.stop()
+                    try:
+                        payload = json.loads(body or "{}")
+                        text = (payload.get("response") or "").strip()
+                    except Exception:
+                        text = (body or "").strip()
+                    if not text:
+                        raise GemmaError("Empty output from model.")
+                    return text
                 result = subprocess.run(
-                    ["ollama", "run", self.model, prompt],
+                    [self._ollama_cmd, "run", self.model, prompt],
                     capture_output=True,
                     text=True,
+                    encoding="utf-8",
+                    errors="ignore",
                     timeout=self.timeout,
                 )
                 spinner.stop()
@@ -95,7 +188,7 @@ class GemmaClient:
                 if attempt >= self.max_retries:
                     raise GemmaError(f"{tag} failed after {attempt} attempts: {exc}") from exc
                 # Exponential-ish backoff so we do not hammer Ollama after errors.
-                time.sleep(self.retry_backoff**attempt)
+                time.sleep(self.retry_backoff ** attempt)
 
     def text(self, prompt: str, tag: str, max_chars: Optional[int] = None) -> str:
         """Return truncated text (handy for short responses)."""
@@ -108,23 +201,144 @@ class GemmaClient:
         match = re.search(r"\{.*\}", raw, flags=re.S)
         if not match:
             raise GemmaError(f"No JSON object in output for {tag}.")
-        return json.loads(match.group(0))
+        text = match.group(0)
+        try:
+            return json.loads(text)
+        except Exception:
+            # Be lenient about trailing commas that some models emit.
+            fixed = re.sub(r",\s*([}\]])", r"\1", text)
+            try:
+                return json.loads(fixed)
+            except Exception as exc:
+                raise GemmaError(f"{tag} JSON parse failed: {exc}") from exc
 
+
+# =============================
+# --------- IMAGE HELPERS -----
+# =============================
+
+# Words that commonly trip SFW filters or reduce hit rate; we replace them with toned-down terms.
+SAFE_WORDS = {
+    "blood": "wounds",
+    "gore": "grim detail",
+    "corpse": "fallen figure",
+    "decapitated": "vanquished",
+    "beheading": "vanquishing",
+    "nude": "covered",
+    "naked": "covered",
+}
+
+
+def compress_and_sanitize(text: str, max_len: int = 360) -> str:
+    """Sanitize/shorten prompts to keep image endpoints happy while preserving detail.
+
+    - Replaces risky words with tamer synonyms (case-insensitive, word-boundary aware).
+    - Strips numeric meter fragments (e.g., "83/100", "pressure 70").
+    - Collapses whitespace and trims to max_len.
+    """
+    for k, v in SAFE_WORDS.items():
+        text = re.sub(rf"\b{k}\b", v, text, flags=re.IGNORECASE)
+    text = re.sub(r"\b\d{1,3}\s*/\s*\d{1,3}\b", "", text)  # 83/100
+    text = re.sub(r"\b(progress|pressure)\s*\d{1,3}\b", "", text, flags=re.IGNORECASE)
+    text = " ".join(text.split())
+    return text[:max_len]
+
+
+def default_image_style_prefix() -> str:
+    """Consistent vibe for renders (retro FMV / Bryce-like).
+
+    Keep this short: style should *augment* content rather than dominate the token budget.
+    """
+    return (
+        "early CGI, 1990s bryce 3D render, FMV cutscene aesthetic, low-poly textures, "
+        "eerie lighting, creepy shadows, muted palette, soft volumetrics, no text, no watermark"
+    )
+
+
+def image_prompt_from_state(
+    state: "GameState",
+    *,
+    style_prefix: Optional[str] = None,
+    detail_level: str = "moderate",
+    max_len: int = 360,
+) -> str:
+    """Compose a short, noun-heavy image prompt from state.
+
+    detail_level: "minimal" | "moderate" | "rich" (bounded by max_len regardless)
+    """
+    style = style_prefix or default_image_style_prefix()
+    location = state.location_desc or "a brooding scene"
+
+    # Focus line prefers a discovered, alive last_actor; otherwise establishing.
+    if getattr(state, "last_actor", None) and state.last_actor.alive and state.last_actor.discovered:
+        focus = f"close-up on {state.last_actor.name} in {location}"
+    else:
+        focus = f"establishing shot of {location}"
+
+    situation = (state.act.situation or "scene evolves").strip()
+
+    # Add one or two concrete nouns from recent beats to keep flavor without long lists.
+    recent = ": ".join(filter(None, [
+        summarize_for_prompt("; ".join(state.history[-3:]), 90),
+    ])) if state.history else ""
+
+    # Detail tiers: add descriptors in a fixed order for determinism
+    descriptors = {
+        "minimal": "moody, restrained detail",
+        "moderate": "weathered stone, dim candlelight, drifting fog",
+        "rich": "weathered stone, dim candlelight, drifting fog, subtle specular highlights, ancient engravings",
+    }
+    detail = descriptors.get(detail_level, descriptors["moderate"])  # default
+
+    core = f"{focus}. situation: {situation}. {detail}. {style}."
+    if recent:
+        core = f"{core} recent beat: {recent}."
+
+    return compress_and_sanitize(core, max_len=max_len)
 
 
 # =============================
 # ---------- PROMPTS ----------
 # =============================
 
-def campaign_blueprint_prompt(label: str) -> str:
-    """Prompt Gemma for the full 3-act campaign blueprint."""
-    extra = (
-        f'\n"extra_world_details": "{EXTRA_WORLD_TEXT[:600].replace("\\\\", " ").replace("\"", "\'")}"\n'
-        if EXTRA_WORLD_TEXT
-        else ""
-    )
+
+def campaign_blueprint_prompt(label: str, overrides: Optional[Dict[str, object]] = None) -> str:
+    """Prompt Gemma for the campaign blueprint, honoring any user overrides."""
+    if EXTRA_WORLD_TEXT:
+        sanitized = EXTRA_WORLD_TEXT[:600].replace("\\", " ").replace('"', "'")
+        extra = f'\n"extra_world_details": "{sanitized}"\n'
+    else:
+        extra = ""
+    target_acts = 3
+    user_lines: list[str] = []
+    if overrides:
+        goal = overrides.get("campaign_goal")
+        if goal:
+            user_lines.append(f'- Campaign goal: "{str(goal).strip()}" (preserve wording verbatim).')
+        pressure = overrides.get("pressure_name")
+        if pressure:
+            user_lines.append(f'- Pressure name: "{str(pressure).strip()}" (use exactly this phrasing).')
+        role = overrides.get("player_role")
+        if role:
+            user_lines.append(f'- Player role: "{str(role).strip()}". Reflect it when framing encounters.')
+        acts = overrides.get("acts")
+        if acts:
+            try:
+                target_acts = max(1, min(5, int(acts)))
+                user_lines.append(f"- Target number of acts: {target_acts}.")
+            except Exception:
+                target_acts = 3
+        turns = overrides.get("turns_per_act")
+        if turns:
+            user_lines.append(f"- Pace each act for roughly {turns} turns (soft guidance).")
+    directives = ""
+    if user_lines:
+        directives = "User directives:\n" + "\n".join(user_lines) + "\n"
+
     return f"""
-Design a coherent 3‑act plan for a {label} RPG.{extra}
+Design a coherent {target_acts}-act plan for a {label} RPG.{extra}
+{directives}
+Acts dictionary must contain numeric-string keys "1" through "{target_acts}" in order.
 
 Output STRICT JSON ONLY:
 {{
@@ -344,6 +558,12 @@ __all__ = [
     "get_extra_world_text",
     "GemmaError",
     "GemmaClient",
+    # Image helpers (importable by your image pipeline)
+    "SAFE_WORDS",
+    "compress_and_sanitize",
+    "default_image_style_prefix",
+    "image_prompt_from_state",
+    # Narrative prompt builders
     "campaign_blueprint_prompt",
     "world_journal_prompt",
     "turn_narration_prompt",

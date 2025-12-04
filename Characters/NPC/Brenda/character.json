@@ -1,0 +1,18 @@
+{
+  "name": "Brenda",
+  "role": "npc",
+  "kind": "host_wife",
+  "hp": 14,
+  "attack": 3,
+  "updated_at": 1762057429.5331788,
+  "last_seen": 1762036660.737795,
+  "encounters": 1,
+  "desc": "Bohemian, free-spirited, easily frustrated by structure",
+  "personality": "Bohemian, free-spirited, easily frustrated by structure",
+  "personality_archetype": "aggressive",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "female",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

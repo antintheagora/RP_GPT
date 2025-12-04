@@ -1,0 +1,15 @@
+{
+  "name": "Grim",
+  "role": "npc",
+  "kind": "Dwarf",
+  "hp": 18,
+  "attack": 5,
+  "updated_at": 1762837153.7755303,
+  "last_seen": 1762837153.7755303,
+  "encounters": 1,
+  "desc": "Grumbling, loyal, skilled craftsman",
+  "personality": "Grumbling, loyal, skilled craftsman",
+  "personality_archetype": "cautious",
+  "species": "human",
+  "comm_style": "speech"
+}

@@ -1,0 +1,18 @@
+{
+  "name": "Silas the Hermit",
+  "role": "npc",
+  "kind": "Human",
+  "hp": 8,
+  "attack": 2,
+  "updated_at": 1762218173.7917078,
+  "last_seen": 1762218173.791708,
+  "encounters": 1,
+  "desc": "Eccentric, secretive, knowledgeable about ancient lore.",
+  "personality": "Eccentric, secretive, knowledgeable about ancient lore.",
+  "personality_archetype": "inquisitive",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

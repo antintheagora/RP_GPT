@@ -1,0 +1,63 @@
+{
+  "nodes": {
+    "Emerging from Vault 101, you find yourselves amidst the crumbling infrastructure of Southern California": {
+      "name": "Emerging from Vault 101, you find yourselves amidst the crumbling infrastructure of Southern California",
+      "kind": "place",
+      "grid": [
+        4,
+        0
+      ],
+      "discovered": true,
+      "visited": true
+    },
+    "Southern California": {
+      "name": "Southern California",
+      "kind": "place",
+      "grid": [
+        6,
+        0
+      ],
+      "discovered": true,
+      "visited": true
+    },
+    "Super Mutant": {
+      "name": "Super Mutant",
+      "kind": "place",
+      "grid": [
+        4,
+        -5
+      ],
+      "discovered": true,
+      "visited": false
+    },
+    "Super Mutants": {
+      "name": "Super Mutants",
+      "kind": "place",
+      "grid": [
+        6,
+        -5
+      ],
+      "discovered": true,
+      "visited": true
+    }
+  },
+  "edges": [
+    {
+      "a": "Emerging from Vault 101, you find yourselves amidst the crumbling infrastructure of Southern California",
+      "b": "Southern California",
+      "weight": 2
+    },
+    {
+      "a": "Emerging from Vault 101, you find yourselves amidst the crumbling infrastructure of Southern California",
+      "b": "Super Mutant",
+      "weight": 5
+    },
+    {
+      "a": "Southern California",
+      "b": "Super Mutants",
+      "weight": 5
+    }
+  ],
+  "current": "Super Mutants",
+  "start": "Emerging from Vault 101, you find yourselves amidst the crumbling infrastructure of Southern California"
+}

@@ -1,0 +1,18 @@
+{
+  "name": "Elowen",
+  "role": "npc",
+  "kind": "Freehold Elder",
+  "hp": 14,
+  "attack": 2,
+  "updated_at": 1762237889.7884777,
+  "last_seen": 1762237889.788478,
+  "encounters": 1,
+  "desc": "Weary, wise, distrustful but hopeful.",
+  "personality": "Weary, wise, distrustful but hopeful.",
+  "personality_archetype": "stoic",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

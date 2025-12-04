@@ -1,0 +1,18 @@
+{
+  "name": "Gribble",
+  "role": "npc",
+  "kind": "Gecko",
+  "hp": 8,
+  "attack": 1,
+  "updated_at": 1762186729.3720968,
+  "last_seen": 1762043430.189535,
+  "encounters": 1,
+  "desc": "Erratic, territorial, suspicious",
+  "personality": "Erratic, territorial, suspicious",
+  "personality_archetype": "amiable",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "female",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

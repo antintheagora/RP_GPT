@@ -1,0 +1,18 @@
+{
+  "name": "Captain Thorne",
+  "role": "enemy",
+  "kind": "Ironclad Soldier",
+  "hp": 20,
+  "attack": 6,
+  "updated_at": 1762236734.1709852,
+  "last_seen": 1762236734.1709855,
+  "encounters": 3,
+  "desc": "Brutal, duty-bound, cynical",
+  "personality": "Ruthless, ambitious, believes in order through force.",
+  "personality_archetype": "zealous",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

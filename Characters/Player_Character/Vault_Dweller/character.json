@@ -1,0 +1,21 @@
+{
+  "name": "Vault Dweller",
+  "sex": "Female",
+  "age": 26,
+  "appearance": "Blonde",
+  "special": {
+    "STR": 5,
+    "PER": 6,
+    "END": 5,
+    "CHA": 6,
+    "INT": 5,
+    "AGI": 7,
+    "LUC": 5
+  },
+  "scenario_label": "Grimdark fantasy",
+  "created_at": 1762043412.5470145,
+  "portrait": "portrait.jpg",
+  "locked": true,
+  "updated_at": 1762187982.2811544,
+  "clothing": ""
+}

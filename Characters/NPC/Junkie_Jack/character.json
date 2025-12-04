@@ -1,0 +1,18 @@
+{
+  "name": "Junkie Jack",
+  "role": "npc",
+  "kind": "Trader",
+  "hp": 8,
+  "attack": 1,
+  "updated_at": 1762036421.2693045,
+  "last_seen": 1762036421.269305,
+  "encounters": 1,
+  "desc": "Greedy, Nervous",
+  "personality": "Greedy, Nervous",
+  "personality_archetype": "amiable",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

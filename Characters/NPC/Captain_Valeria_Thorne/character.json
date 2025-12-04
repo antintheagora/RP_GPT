@@ -1,0 +1,18 @@
+{
+  "name": "Captain Valeria Thorne",
+  "role": "npc",
+  "kind": "Dominion Officer",
+  "hp": 18,
+  "attack": 5,
+  "updated_at": 1762239430.3237684,
+  "last_seen": 1762239430.3237686,
+  "encounters": 2,
+  "desc": "Ruthless, pragmatic, believes in order through force.",
+  "personality": "Duty-bound, pragmatic, distrustful",
+  "personality_archetype": "amiable",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

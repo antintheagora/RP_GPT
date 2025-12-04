@@ -1,0 +1,18 @@
+{
+  "name": "Whisper",
+  "role": "enemy",
+  "kind": "Ghoul Merchant",
+  "hp": 12,
+  "attack": 2,
+  "updated_at": 1762047576.140206,
+  "last_seen": 1762047576.1402063,
+  "encounters": 1,
+  "desc": "Opportunistic and secretive",
+  "personality": "Opportunistic and secretive",
+  "personality_archetype": "aggressive",
+  "species": "mutant",
+  "comm_style": "limited",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

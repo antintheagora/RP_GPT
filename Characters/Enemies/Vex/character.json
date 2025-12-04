@@ -1,0 +1,19 @@
+{
+  "name": "Vex",
+  "role": "enemy",
+  "kind": "raider",
+  "desc": "An armored raider with scarred plating and a glare that never softens.",
+  "bio": "Leads small strike teams on smash-and-grab raids. Loyal to whoever pays in ammo.",
+  "personality": "reckless, vicious",
+  "personality_archetype": "aggressive",
+  "species": "human",
+  "hp": 28,
+  "attack": 6,
+  "encounters": 0,
+  "portrait": null,
+  "created_at": 1762028093.403487,
+  "updated_at": 1762028093.403487,
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

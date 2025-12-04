@@ -1,0 +1,21 @@
+{
+  "name": "Nira Quickstep",
+  "role": "companion",
+  "kind": "scout",
+  "desc": "A lithe scout with a half-smirk and a pair of battered goggles.",
+  "bio": "Knows forgotten byroads and prefers clever plans to loud ones. Values curiosity.",
+  "personality": "wry, loyal",
+  "personality_archetype": "inquisitive",
+  "species": "human",
+  "hp": 18,
+  "attack": 4,
+  "encounters": 28,
+  "portrait": "portrait.jpg",
+  "created_at": 1762028093.4044342,
+  "updated_at": 1762219744.7906013,
+  "last_seen": 1762219744.7906015,
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

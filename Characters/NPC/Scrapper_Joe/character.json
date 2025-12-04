@@ -1,0 +1,18 @@
+{
+  "name": "\"Scrapper\" Joe",
+  "role": "npc",
+  "kind": "Trader",
+  "hp": 10,
+  "attack": 3,
+  "updated_at": 1762050434.5204263,
+  "last_seen": 1762050434.5204268,
+  "encounters": 1,
+  "desc": "Greedy, opportunistic, cowardly",
+  "personality": "Greedy, opportunistic, cowardly",
+  "personality_archetype": "amiable",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

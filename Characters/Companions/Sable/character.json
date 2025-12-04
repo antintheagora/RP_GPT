@@ -1,0 +1,20 @@
+{
+  "name": "Sable",
+  "role": "companion",
+  "kind": "rogue",
+  "hp": 16,
+  "attack": 4,
+  "updated_at": 1762837234.5256212,
+  "last_seen": 1762837234.5256212,
+  "encounters": 127,
+  "desc": "lean thief with a sharp grin",
+  "bio": "A quick-handed rogue who values leverage over loyalty.",
+  "personality": "wry, opportunistic",
+  "personality_archetype": "inquisitive",
+  "species": "human",
+  "comm_style": "speech",
+  "portrait": "portrait.jpg",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral good"
+}

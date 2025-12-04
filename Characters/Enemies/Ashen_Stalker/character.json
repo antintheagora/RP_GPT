@@ -1,0 +1,19 @@
+{
+  "name": "Ashen Stalker",
+  "role": "enemy",
+  "kind": "mutant",
+  "desc": "A sinewy mutant wreathed in ash, moving with disturbing grace.",
+  "bio": "Haunts the edges of irradiated zones, hunting the unwary and dragging them below.",
+  "personality": "predatory, patient",
+  "personality_archetype": "relentless",
+  "species": "mutant",
+  "hp": 32,
+  "attack": 7,
+  "encounters": 0,
+  "portrait": null,
+  "created_at": 1762028093.4039235,
+  "updated_at": 1762028093.4039237,
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

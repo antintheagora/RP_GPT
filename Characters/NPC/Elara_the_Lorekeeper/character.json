@@ -1,0 +1,18 @@
+{
+  "name": "Elara, the Lorekeeper",
+  "role": "npc",
+  "kind": "Scholar",
+  "hp": 8,
+  "attack": 1,
+  "updated_at": 1762233847.795499,
+  "last_seen": 1762233847.7954996,
+  "encounters": 1,
+  "desc": "Wise, weary, hopeful",
+  "personality": "Wise, weary, hopeful",
+  "personality_archetype": "bitter",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

@@ -1,0 +1,15 @@
+{
+  "name": "Moira",
+  "role": "npc",
+  "kind": "Elder",
+  "hp": 8,
+  "attack": 1,
+  "updated_at": 1762837128.7929292,
+  "last_seen": 1762837128.7929292,
+  "encounters": 1,
+  "desc": "Worried, wise, and desperate.",
+  "personality": "Worried, wise, and desperate.",
+  "personality_archetype": "aggressive",
+  "species": "human",
+  "comm_style": "speech"
+}

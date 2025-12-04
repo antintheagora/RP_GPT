@@ -1,0 +1,18 @@
+{
+  "name": "Lily",
+  "role": "npc",
+  "kind": "child",
+  "hp": 6,
+  "attack": 1,
+  "updated_at": 1762036660.7393165,
+  "last_seen": 1762036660.7393167,
+  "encounters": 1,
+  "desc": "Rebellious, resistant to change",
+  "personality": "Rebellious, resistant to change",
+  "personality_archetype": "cautious",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

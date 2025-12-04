@@ -1,0 +1,18 @@
+{
+  "name": "Captain Marius",
+  "role": "npc",
+  "kind": "Human",
+  "hp": 12,
+  "attack": 4,
+  "updated_at": 1762245025.733277,
+  "last_seen": 1762245025.7332773,
+  "encounters": 9,
+  "desc": "Stern, duty-bound, suspicious of outsiders",
+  "personality": "Ruthless, pragmatic, loyal to the Dominion.",
+  "personality_archetype": "joyful",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

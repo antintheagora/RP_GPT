@@ -1,0 +1,18 @@
+{
+  "name": "Marcus",
+  "role": "enemy",
+  "kind": "NCR Soldier",
+  "hp": 26,
+  "attack": 6,
+  "updated_at": 1762045963.6132858,
+  "last_seen": 1762045963.6132865,
+  "encounters": 1,
+  "desc": "Weary but determined to serve",
+  "personality": "Weary but determined to serve",
+  "personality_archetype": "aggressive",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

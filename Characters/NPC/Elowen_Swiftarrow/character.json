@@ -1,0 +1,18 @@
+{
+  "name": "Elowen Swiftarrow",
+  "role": "npc",
+  "kind": "Elven Hunter",
+  "hp": 18,
+  "attack": 5,
+  "updated_at": 1762237136.9941003,
+  "last_seen": 1762237136.9941006,
+  "encounters": 1,
+  "desc": "Independent, pragmatic, deeply connected to nature",
+  "personality": "Independent, pragmatic, deeply connected to nature",
+  "personality_archetype": "anxious",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

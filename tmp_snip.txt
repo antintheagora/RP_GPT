@@ -1,0 +1,10 @@
+        # Flavor text celebrating the specific success
+        prompt = (
+            "Write 1 short celebratory beat (1–2 sentences) acknowledging a tangible success just achieved, "
+            "grounded in the action below, consistent with the world; no numeric meters.\n"
+            f"Action: {action_text}\n{world_journal_prompt(state)}"
+        )
+        beat = sanitize_prose(g.text(prompt, tag="Celebrate", max_chars=240))
+        if beat:
+            print("\n"+wrap(beat))
+        # Offer Rest immediately

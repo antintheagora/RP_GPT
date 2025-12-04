@@ -1,0 +1,18 @@
+{
+  "name": "Elder Maevia",
+  "role": "npc",
+  "kind": "Human Mystic",
+  "hp": 10,
+  "attack": 1,
+  "updated_at": 1762243003.5113723,
+  "last_seen": 1762243003.5113728,
+  "encounters": 1,
+  "desc": "Wise, cautious, burdened by forgotten knowledge",
+  "personality": "Wise, cautious, burdened by forgotten knowledge",
+  "personality_archetype": "aggressive",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

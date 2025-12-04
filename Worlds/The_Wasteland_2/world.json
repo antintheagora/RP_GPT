@@ -1,0 +1,29 @@
+{
+  "name": "The Wasteland",
+  "lore_bible": "The California wasteland of Fallout games.",
+  "campaign_goal": "Defeat the super mutants",
+  "pressure_name": "Super mutants overrunning the NCR",
+  "player_role": "VauVaVault dweller",
+  "acts": 3,
+  "turns_per_act": 10,
+  "created_at": 1762022129.7760339,
+  "portrait": "portrait.jpg",
+  "portrait_path": "Worlds\\The_Wasteland_2\\portrait.jpg",
+  "updated_at": 1762219744.7845058,
+  "selected_companions": [
+    "Brutus",
+    "Nira Quickstep",
+    "Sable",
+    "Scout"
+  ],
+  "selected_npcs": [
+    "Brother Calder",
+    "Jasper",
+    "iguana"
+  ],
+  "selected_enemies": [
+    "Ghoul",
+    "super mutant"
+  ],
+  "allow_random_characters": false
+}

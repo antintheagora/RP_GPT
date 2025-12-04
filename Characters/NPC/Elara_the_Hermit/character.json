@@ -1,0 +1,18 @@
+{
+  "name": "Elara, the Hermit",
+  "role": "npc",
+  "kind": "Sage",
+  "hp": 10,
+  "attack": 1,
+  "updated_at": 1762837182.1568635,
+  "last_seen": 1762837182.1568635,
+  "encounters": 2,
+  "desc": "Eccentric, paranoid, holds crucial knowledge",
+  "personality": "Wise, cautious, burdened by secrets.",
+  "personality_archetype": "inquisitive",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

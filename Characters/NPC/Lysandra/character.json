@@ -1,0 +1,18 @@
+{
+  "name": "Lysandra",
+  "role": "npc",
+  "kind": "Coven Initiate",
+  "hp": 10,
+  "attack": 2,
+  "updated_at": 1762240940.4731727,
+  "last_seen": 1762240940.473173,
+  "encounters": 4,
+  "desc": "Reserved, enigmatic, seeks forbidden knowledge.",
+  "personality": "Reserved, curious, seeking forbidden knowledge.",
+  "personality_archetype": "cautious",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

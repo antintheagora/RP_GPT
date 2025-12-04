@@ -1,0 +1,19 @@
+{
+  "name": "Sergeant Miller",
+  "role": "enemy",
+  "kind": "NCR Soldier",
+  "hp": 32,
+  "attack": 6,
+  "updated_at": 1762186473.0695946,
+  "last_seen": 1762186473.0695949,
+  "encounters": 8,
+  "desc": "Weary, dutiful",
+  "personality": "Gruff, pragmatic, weary",
+  "personality_archetype": "stoic",
+  "species": "human",
+  "comm_style": "speech",
+  "portrait": "portrait.jpg",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

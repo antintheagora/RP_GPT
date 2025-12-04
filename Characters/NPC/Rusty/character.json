@@ -1,0 +1,18 @@
+{
+  "name": "Rusty",
+  "role": "npc",
+  "kind": "Human",
+  "hp": 8,
+  "attack": 1,
+  "updated_at": 1762040724.3659983,
+  "last_seen": 1762040724.3659985,
+  "encounters": 1,
+  "desc": "Slightly paranoid scavenger, might have useful information.",
+  "personality": "Slightly paranoid scavenger, might have useful information.",
+  "personality_archetype": "anxious",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

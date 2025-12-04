@@ -1,0 +1,18 @@
+{
+  "name": "Roric",
+  "role": "npc",
+  "kind": "Human (Scavenger)",
+  "hp": 6,
+  "attack": 1,
+  "updated_at": 1762233726.942283,
+  "last_seen": 1762233726.9422836,
+  "encounters": 1,
+  "desc": "Greedy, fearful, opportunistic",
+  "personality": "Greedy, fearful, opportunistic",
+  "personality_archetype": "bitter",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

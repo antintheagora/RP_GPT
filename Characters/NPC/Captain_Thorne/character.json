@@ -1,0 +1,18 @@
+{
+  "name": "Captain Thorne",
+  "role": "npc",
+  "kind": "Human",
+  "hp": 14,
+  "attack": 3,
+  "updated_at": 1762243586.676747,
+  "last_seen": 1762243586.6767476,
+  "encounters": 3,
+  "desc": "Ruthless, disciplined, and ambitious.",
+  "personality": "Ruthless, pragmatic, loyal to the Dominion",
+  "personality_archetype": "anxious",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

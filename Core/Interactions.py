@@ -12,54 +12,6 @@ if TYPE_CHECKING:
     from RP_GPT import Actor, GameState, GemmaClient
 
 
-
-
-
-
-def describe_actor_physical(g: "GemmaClient", state: "GameState", actor: "Actor") -> str:
-    """Ask the model to describe how the NPC looks right now."""
-    try:
-        plan = state.blueprint.acts[state.act.index]
-        location = state.location_desc or "current scene"
-        prompt = (
-            "In one or two sentences, describe the character's physical appearance. "
-            "Avoid camera jargon; keep the tone grounded in the world."
-            f"\nName: {actor.name}\nKind/Role: {actor.kind}/{actor.role}\n"
-            f"Context: {state.scenario_label} at {location}. Act goal: {plan.goal}."
-        )
-        description = g.text(prompt, tag="PortraitDesc", max_chars=260).strip()
-        if description:
-            actor.desc = sanitize_prose(description)
-        return actor.desc
-    except Exception:
-        # If anything fails we simply return whatever description we already had.
-        return actor.desc
-
-
-def make_actor_portrait_prompt(actor: "Actor") -> str:
-    """Build a short text prompt so the portrait generator knows the subject."""
-    from RP_GPT import image_style_prefix  # Local import avoids circular import at module load.
-
-    base = actor.desc.strip() if actor.desc else f"{actor.name}, a {actor.kind} ({actor.role})"
-    return f"Close-up portrait of {base}. {image_style_prefix()}."
-
-
-def make_combat_image_prompt(state: "GameState", enemy: "Actor") -> str:
-    """Describe the combat scene for the image queue."""
-    from RP_GPT import image_style_prefix
-
-    environment = state.location_desc or "the immediate area"
-    return (
-        f"Battle scene in {environment}. Player {state.player.name} vs {enemy.name} the {enemy.kind}. "
-        f"Cinematic motion that fits {state.scenario_label}. {image_style_prefix()}."
-    )
-
-
-
-# =============================
-# ------ INTERACTIONS ---------
-# =============================
-
 def pick_actor(state: "GameState") -> Optional["Actor"]:
     """Let the player choose which discovered actor to engage with."""
     available = [a for a in state.act.actors if a.discovered and a.alive]
@@ -89,14 +41,6 @@ def pick_actor(state: "GameState") -> Optional["Actor"]:
         print("Pick a valid index.")
 
 
-
-
-# =============================
-# ------ TALK -----------------
-# =============================
-
-
-
 def talk_loop(state: "GameState", actor: "Actor", g: "GemmaClient") -> None:
     """Handle the back-and-forth conversation flow with an NPC."""
     from RP_GPT import (
@@ -105,25 +49,33 @@ def talk_loop(state: "GameState", actor: "Actor", g: "GemmaClient") -> None:
         calc_dc,
         check,
         evolve_situation,
+        describe_actor_physical,
         queue_image_event,
+        make_actor_portrait_prompt,
+        ensure_character_profile,
         talk_reply_prompt,
         try_advance,
     )
 
     print(f"\nTalking to {actor.name} — disposition {actor.disposition}")
     state.last_actor = actor
-    if not actor.desc:
-        describe_actor_physical(g, state, actor)
     try:
-        queue_image_event(
-            state,
-            "portrait",
-            make_actor_portrait_prompt(actor),
-            actors=[actor.name],
-            extra={"mode": "TALK"},
-        )
+        ensure_character_profile(actor)
     except Exception:
         pass
+    if not actor.desc:
+        describe_actor_physical(g, state, actor)
+    if not getattr(actor, "portrait_path", None):
+        try:
+            queue_image_event(
+                state,
+                "portrait",
+                make_actor_portrait_prompt(actor),
+                actors=[actor.name],
+                extra={"mode": "TALK", "role": actor.role},
+            )
+        except Exception:
+            pass
 
     conversation_log: list[str] = []
     exchanges = 0
@@ -199,7 +151,6 @@ def talk_loop(state: "GameState", actor: "Actor", g: "GemmaClient") -> None:
                 return
 
 
-
 def post_talk_outcomes(state: "GameState", actor: "Actor") -> None:
     """Grant small rewards after a good conversation."""
     from RP_GPT import Item, try_advance
@@ -212,13 +163,6 @@ def post_talk_outcomes(state: "GameState", actor: "Actor") -> None:
         state.player.add_item(reward)
         state.act.goal_progress = min(100, state.act.goal_progress + reward.goal_delta)
         print(f"{actor.name} offers a {reward.name}. (+{reward.goal_delta} act goal)")
-
-
-
-
-# =============================
-# ------ COMBAT ---------------
-# =============================
 
 
 def remove_if_dead(state: "GameState", actor: "Actor") -> None:
@@ -275,7 +219,16 @@ def combat_parley(state: "GameState", enemy: "Actor", g: "GemmaClient", goal_loc
 
 def combat_turn(state: "GameState", enemy: "Actor", g: "GemmaClient", goal_lock: bool) -> bool:
     """Play out a single combat menu selection."""
-    from RP_GPT import TurnMode, calc_dc, check, combat_observe_prompt, evolve_situation, queue_image_event, try_advance
+    from RP_GPT import (
+        TurnMode,
+        calc_dc,
+        check,
+        combat_observe_prompt,
+        evolve_situation,
+        make_combat_image_prompt,
+        queue_image_event,
+        try_advance,
+    )
 
     player = state.player
     state.last_actor = enemy
@@ -363,11 +316,6 @@ def combat_turn(state: "GameState", enemy: "Actor", g: "GemmaClient", goal_lock:
     return True
 
 
-
-# =============================
-# --------- ITEMS -------------
-# =============================
-
 def use_item(state: "GameState") -> str:
     """Handle the shared item-usage flow so both talk and combat can call it."""
     inventory = state.player.inventory
@@ -411,9 +359,6 @@ def use_item(state: "GameState") -> str:
 
 
 __all__ = [
-    "describe_actor_physical",
-    "make_actor_portrait_prompt",
-    "make_combat_image_prompt",
     "pick_actor",
     "talk_loop",
     "post_talk_outcomes",

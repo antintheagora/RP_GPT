@@ -1,0 +1,18 @@
+{
+  "name": "iguana",
+  "role": "npc",
+  "kind": "creature",
+  "hp": 14,
+  "attack": 3,
+  "updated_at": 1762814770.645028,
+  "last_seen": 1762814770.645028,
+  "encounters": 86,
+  "personality": "healthy",
+  "personality_archetype": "inquisitive",
+  "species": "human",
+  "comm_style": "speech",
+  "portrait": "portrait.jpg",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

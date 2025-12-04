@@ -1,0 +1,17 @@
+{
+  "name": "Super Mutants",
+  "role": "enemy",
+  "kind": "creature",
+  "hp": 18,
+  "attack": 4,
+  "updated_at": 1762028169.3744426,
+  "last_seen": 1762028169.374443,
+  "encounters": 1,
+  "personality": "aggressive",
+  "personality_archetype": "zealous",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

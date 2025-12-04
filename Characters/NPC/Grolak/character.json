@@ -1,0 +1,18 @@
+{
+  "name": "Grolak",
+  "role": "npc",
+  "kind": "Orc",
+  "hp": 25,
+  "attack": 6,
+  "updated_at": 1762100007.8784604,
+  "last_seen": 1762100007.8784606,
+  "encounters": 1,
+  "desc": "Brutish, opportunistic",
+  "personality": "Brutish, opportunistic",
+  "personality_archetype": "inquisitive",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

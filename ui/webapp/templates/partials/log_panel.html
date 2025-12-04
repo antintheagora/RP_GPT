@@ -1,0 +1,37 @@
+<div class="ninebox" style="--img: url('{{ url_for('static', filename='ui/nine_slice.png') }}'); --slice: 128px; --gap: 12px;">
+  <div class="nf tl"></div><div class="nf t"></div><div class="nf tr"></div>
+  <div class="nf l"></div><div class="nf c"></div><div class="nf r"></div>
+  <div class="nf bl"></div><div class="nf b"></div><div class="nf br"></div>
+  <div class="nine-content p-6 space-y-6">
+  <div>
+    <div class="flex items-center justify-between mb-2">
+      <h3 class="text-lg font-semibold">Recent events</h3>
+      <p class="text-xs text-slate-500">Turn {{ payload.turn }}</p>
+    </div>
+    {% if events %}
+      <div class="space-y-4 max-h-[32rem] overflow-y-auto pr-2 scroll-fade">
+        {% for event in events|reverse %}
+          <article class="rounded-xl border border-slate-700/70 bg-night/80 px-4 py-3 shadow-lg">
+            <p class="text-xs text-slate-500">Turn {{ event.turn }}</p>
+            <p class="mt-1 whitespace-pre-line leading-relaxed">{{ event.text }}</p>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="text-slate-400 text-sm">Take your first action to see RP-GPT's narration log.</p>
+    {% endif %}
+  </div>
+  <div>
+    <h3 class="text-lg font-semibold mb-2">World journal</h3>
+    {% if payload.journal_tail %}
+      <ul class="space-y-2 text-sm text-slate-300">
+        {% for line in payload.journal_tail|reverse %}
+          <li class="border border-slate-700/60 rounded-lg px-3 py-2 bg-night/70">{{ line }}</li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="text-slate-500 text-sm">Journal entries will appear as the story unfolds.</p>
+    {% endif %}
+  </div>
+  </div>
+</div>

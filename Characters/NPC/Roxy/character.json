@@ -1,0 +1,18 @@
+{
+  "name": "Roxy",
+  "role": "npc",
+  "kind": "Scavenger",
+  "hp": 5,
+  "attack": 3,
+  "updated_at": 1762045963.6142802,
+  "last_seen": 1762045963.6142805,
+  "encounters": 1,
+  "desc": "Self-serving but potentially helpful for information",
+  "personality": "Self-serving but potentially helpful for information",
+  "personality_archetype": "anxious",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

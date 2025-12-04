@@ -1,0 +1,21 @@
+{
+  "name": "Antonius",
+  "sex": "Male",
+  "age": 31,
+  "appearance": "Samoan and white, long wavy hair",
+  "special": {
+    "STR": 5,
+    "PER": 5,
+    "END": 5,
+    "CHA": 7,
+    "INT": 7,
+    "AGI": 6,
+    "LUC": 5
+  },
+  "scenario_label": "Grimdark fantasy",
+  "created_at": 1762017860.5494409,
+  "portrait": "portrait.jpg",
+  "locked": true,
+  "updated_at": 1762814700.045748,
+  "clothing": ""
+}

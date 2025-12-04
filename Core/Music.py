@@ -10,7 +10,28 @@ except Exception:
     MUSIC_AVAILABLE = False
 
 _ROOT = Path(__file__).resolve().parent.parent
-MUSIC_PATH = str(_ROOT / "Assets" / "Music" / "title_theme.ogg")
+_MUSIC_CANDIDATES = (
+    _ROOT / "assets" / "Music" / "title_theme.ogg",
+    _ROOT / "assets" / "music" / "title_theme.ogg",
+    _ROOT / "Assets" / "Music" / "title_theme.ogg",
+)
+
+
+def resolve_music_path() -> Path:
+    """Pick a usable music file path, honoring overrides and platform casing."""
+    override = os.getenv("RP_GPT_MUSIC")
+    if override:
+        path = Path(override).expanduser()
+        if path.exists():
+            return path
+    for candidate in _MUSIC_CANDIDATES:
+        if candidate.exists():
+            return candidate
+    # Fall back to the first candidate even if missing; caller can warn.
+    return _MUSIC_CANDIDATES[0]
+
+
+MUSIC_PATH = resolve_music_path()
 
 
 def init_music():
@@ -20,10 +41,11 @@ def init_music():
         return
     try:
         pygame.mixer.init()
-        if not os.path.exists(MUSIC_PATH):
-            print(f"[Music] File not found: {MUSIC_PATH}")
+        path = resolve_music_path()
+        if not path.exists():
+            print(f"[Music] File not found: {path}")
             return
-        pygame.mixer.music.load(MUSIC_PATH)
+        pygame.mixer.music.load(str(path))
         pygame.mixer.music.play(-1)
         print("[Music] Playing title theme (looping).")
     except Exception as exc:

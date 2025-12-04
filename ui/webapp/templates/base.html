@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ title or "RP-GPT Web" }}</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              night: '#0f172a',
+              ember: '#f97316',
+              mist: '#cbd5f5'
+            },
+          }
+        }
+      }
+    </script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}" />
+    <script src="https://unpkg.com/htmx.org@1.9.10" defer></script>
+  </head>
+  <body class="bg-night text-slate-100 min-h-screen relative overflow-hidden">
+    <div class="fixed inset-0 -z-30 bg-cover bg-center opacity-90" style="background-image: url('{{ url_for('static', filename='ui/world_backdrop.png') }}');"></div>
+    <div class="fixed inset-0 -z-20 backdrop-overlay"></div>
+    <div class="fog-layer fixed inset-0 -z-10 bg-repeat opacity-40" style="background-image: url('{{ url_for('static', filename='ui/fog.png') }}');"></div>
+    <div class="max-w-6xl mx-auto px-4 py-8 relative z-10">
+      <header class="mb-8">
+        <div class="flex items-center justify-between">
+          <h1 class="text-3xl font-semibold tracking-tight">RP-GPT</h1>
+          <form method="post" action="{{ url_for('reset') }}" class="text-sm">
+            <button class="text-slate-400 hover:text-white transition" title="Reset session">
+              Reset
+            </button>
+          </form>
+        </div>
+        <p class="text-slate-400 mt-1">Choose-your-own-adventure, rebuilt for PyWebview + Flask + HTMX.</p>
+      </header>
+      {% block content %}{% endblock %}
+    </div>
+  </body>
+</html>

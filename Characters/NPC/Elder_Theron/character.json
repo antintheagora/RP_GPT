@@ -1,0 +1,18 @@
+{
+  "name": "Elder Theron",
+  "role": "npc",
+  "kind": "Human",
+  "hp": 10,
+  "attack": 1,
+  "updated_at": 1762246574.6187074,
+  "last_seen": 1762246574.618708,
+  "encounters": 2,
+  "desc": "Weary, knowledgeable, desperate to preserve history",
+  "personality": "Wise, burdened, desperate for hope",
+  "personality_archetype": "bitter",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

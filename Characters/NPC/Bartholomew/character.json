@@ -1,0 +1,18 @@
+{
+  "name": "Bartholomew",
+  "role": "npc",
+  "kind": "Scavenger",
+  "hp": 8,
+  "attack": 0,
+  "updated_at": 1762837234.5104074,
+  "last_seen": 1762837234.5104074,
+  "encounters": 2,
+  "desc": "Paranoid, desperate, easily manipulated",
+  "personality": "Paranoid and opportunistic; willing to trade information for safety.",
+  "personality_archetype": "aggressive",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

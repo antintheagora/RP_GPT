@@ -1,0 +1,18 @@
+{
+  "name": "Borin Stonehand",
+  "role": "npc",
+  "kind": "NPC",
+  "hp": 12,
+  "attack": 2,
+  "updated_at": 1762237383.8941677,
+  "last_seen": 1762237383.894168,
+  "encounters": 1,
+  "desc": "Grizzled, pragmatic leader of Greypeak.",
+  "personality": "Grizzled, pragmatic leader of Greypeak.",
+  "personality_archetype": "aggressive",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

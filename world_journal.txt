@@ -36,3 +36,1175 @@
 [Act 1 T1] Act 1 begins: Investigate the initial reports of strange occurrences at Blackwood Manor and identify a potential source of the haunting.
 [Act 1 T1] The unsettling echo intensified as the party approached the music box, suggesting a connection between the artifact and the manor's spectral disturbances.
 [Act 1 T2] The lingering despair within the library seemed to cling to the ancient tomes, intensifying the unsettling feeling of a forgotten tragedy.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Act 1 begins: Locate and secure a functional pre-Collapse survey team’s data cache revealing the ASA's existence and approximate location.
+[Act 1 T1] The team cautiously entered, aware that the sudden reactivation of dormant systems could trigger unforeseen consequences.
+[Act 1 T2] The tremor that accompanied their successful LUC check reverberated through the tunnels, loosening dust from the ceiling above the reinforced steel door.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Act 1 begins: Locate and secure the 'Navigation Beacon', a device required to pinpoint the Hope Engine’s location within The Blight's chaotic weather patterns.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+[Act 1 T1] Act 1 begins: Survive the initial chaos, secure a relatively safe haven, and establish contact with other survivor groups.
+[Act 1 T1] Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+[Act 1 T1] Act 1 begins: Establish initial contact with the 'Hope's Bloom' settlement, secure a small plot of uncontaminated land, and identify the nature of 'The Rust'.
+[Act 1 T1] The shadow of The Rust lingered heavily, its chilling effect palpable as the community retreated further into guarded isolation.
+[Act 1 T1] Act 1 begins: Investigate the unsettling phenomena plaguing the isolated village of Oakhaven and discover the source of the encroaching corruption.
+[Act 1 T1] Act 1 begins: Locate the first fragment of the Celestial Shard, rumored to be hidden within the Blighted Marshes, and learn about the Shadow King’s history.
+[Act 1 T1] Encountered raven. creature/npc. Archetype: bitter.
+[Act 1 T1] The oppressive silence of the Blighted Marshes deepened as the party cautiously began their trek, knowing the Void Corruption had already begun to twist the very land itself.
+[Act 1 T1] Act 1 begins: Investigate the sudden surge of corruption in the village of Oakhaven and identify the source.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] Act 1 begins: Investigate the source of the unusual sickness plaguing the village of Oakhaven and uncover the connection to the Whispering Peaks.
+[Act 1 T1] Act 1 begins: Investigate the source of a localized Bleed in the village of Oakhaven and identify a key connection to the Nightmare Realm.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] Act 1 begins: Discover the nature of the disturbances plaguing the valley of Silverstream and the connection to the Obsidian Peaks.
+[Act 1 T1] The villagers’ growing unease deepened as their cherished recollections began to subtly fade, leaving them disoriented and fearful of what they were losing.
+[Act 1 T2] The discovery of the abruptly halted journal suggested the writer had been silenced, perhaps by the very Shadow Blight they sought to understand.
+[Act 1 T1] Act 1 begins: Investigate the initial reports of paranormal activity at Blackwood Manor and establish contact with the trapped spirits.
+[Act 1 T1] Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] Act 1 begins: Discover the initial corruption point of the Blight within the isolated village of Oakhaven and identify a key figure connected to it.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] Act 1 begins: Locate the Primary Relay Station and establish basic communication with Central Command.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] Act 1 begins: Investigate the unusual decay afflicting the village of Oakhaven and identify the source of the spreading blight.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] Act 1 begins: Investigate initial spectral activity at Blackwood Manor and identify a recurring pattern or focal point.
+[Act 1 T1] Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Act 1 begins: Secure a functional Radio Relay Tower and establish rudimentary contact with one nearby settlement.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] Act 1 begins: Establish a base of operations and identify the initial fragmented communication nodes, uncovering the nature of the Mycelial Bloom.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] Act 1 begins: Establish the couples, introduce the premise, and explore initial reactions and insecurities.
+[Act 1 T1] Act 1 begins: Investigate the unsettling disturbances plaguing the village of Oakhaven and discover the source of the growing corruption.
+[Act 1 T1] Encountered Silas. npc/npc. Archetype: bitter.
+[Act 1 T1] The villagers’ escalating paranoia tragically fractured their community, as accusations and violence erupted across the settlement.
+[Act 1 T2] The villagers’ silent despair deepened as Silas’s accusations severed their connection to the community, furthering the fear sown by the Abyssal Incursion.
+[Act 1 T3] Encountered elderly woman. human/npc. Archetype: cautious.
+[Act 1 T3] The escalating accusations and public unrest fractured the community's fragile peace, foreshadowing the deeper turmoil stemming from the Abyssal Incursion.
+[Act 1 T4] The unsettling pronouncements of the Council marked the formal beginning of the Abyssal Incursion, signaling a period of profound and terrifying change for the realm.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+[Act 1 T1] Act 1 begins: Investigate the initial reports of strange occurrences at Blackwood Manor and establish the source of the haunting.
+[Act 1 T1] Act 1 begins: Locate and secure the 'Whisperwind Engine' in the ruins of Old Meridian, establishing trust with a local faction and understanding the nature of the Engine’s power.
+[Act 1 T1] The unsettling silence that followed the gates’ closure was broken only by the whispering wind carrying particles of ash, a grim testament to the widespread devastation.
+[Act 1 T2] Encountered Meridian scouts. npc/npc. Archetype: amiable.
+[Act 1 T2] The scouts explained that the rhythmic pulse from the spire mirrored the faltering attempts to coax power from the nearby Harmony Engine.
+[Act 1 T3] The scouts cautiously unlocked the massive doors of the structure, revealing a cavernous chamber dominated by the colossal, dust-covered Whisperwind Engine, its intricate mechanisms still faintly glowing with residual en.
+[Act 1 T3] The scouts confirmed that the Whisperwind Engine’s residual power had subtly slowed the relentless advance of Ecosystem Decay within the city's immediate vicinity.
+[Act 1 T4] Encountered unnamed woman. human/npc. Archetype: anxious.
+[Act 1 T4] The scouts had previously managed to reroute a fractured ley line, providing a vital surge of power that allowed the Whisperwind Engine to flicker back to a fragile existence.
+[Act 1 T5] The unsettling hum emanating from the Whisperwind Engine grew stronger as the team began their ascent, vibrating through the precarious metal steps.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Act 1 begins: Locate a functional sub-station and establish a basic, temporary base of operations.
+[Act 1 T1] Encountered Power Watch. group/npc. Archetype: stoic.
+[Act 1 T1] The Power Watch group cautiously approached, their wary expressions softening slightly as they recognized the potential for aid in restoring the region’s vital infrastructure.
+[Act 1 T2] Encountered woman. npc/npc. Archetype: cautious.
+[Act 1 T2] The team cautiously proceeded toward the barricade, acutely aware of the ever-present danger posed by resource depletion and the lurking threat of raiders.
+[Act 1 T1] Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+[Act 1 T1] Act 1 begins: Establish contact with a rumored enclave possessing knowledge about the orbital defense system and understand the immediate crisis.
+[Act 1 T1] Encountered wary-looking individuals. group/npc. Archetype: aggressive.
+[Act 1 T1] The ominous rumble of incoming space debris intensified, a constant reminder of the desperate need to restore the orbital defenses.
+[Act 1 T2] Encountered Elara. npc/npc. Archetype: anxious.
+[Act 1 T2] The arrival of the rescue team offered a fragile hope amidst the escalating threat of the meteor shower.
+[Act 1 T3] The successful reactivation of the orbital defense system averted total devastation, though it drained the hydroponics farm's power supply for several crucial cycles.
+[Act 1 T4] Encountered intercom voice. voice/npc. Archetype: amiable.
+[Act 1 T4] The heavy blast door hissed open, exposing a cavernous chamber filled with rows of inactive server racks and the lingering scent of ozone.
+[Act 1 T5] Technicians cautiously began tracing the cable pathways, hoping to identify the source of the system integrity compromise.
+[Act 1 T6] The escalating system failures forced the team to abandon their initial approach and scramble for a manual override before the chamber became completely sealed.
+[Act 1 T7] Encountered Aegis. organization/npc. Archetype: amiable.
+[Act 1 T7] The facility’s sudden responsiveness indicated Aegis had anticipated the reactivation and perhaps even facilitated it, leaving a veiled invitation for those who dared to pursue.
+[Act 1 T8] The tremor intensified, revealing a previously concealed blast door sliding open to expose the central control nexus of the dormant defense network.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Act 1 begins: Locate and secure the 'Beacon', a key component needed to initiate the Genesis Engine's activation sequence.
+[Act 1 T1] The recovered schematic offered a crucial link to the Genesis Engine’s activation sequence, hinting at a forgotten network of relay stations scattered across the blighted landscape.
+[Act 1 T1] Act 1 begins: Locate and secure a functional atmospheric sensor array vital for initial network diagnostics.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Act 1 begins: Secure a functional radio transmitter and establish initial contact with at least one other settlement.
+[Act 1 T1] Encountered insectile mutations. creature/enemy. Archetype: aggressive.
+[Act 1 T1] The unsettling stillness emanating from the facility swallowed the scouts’ final transmission, deepening The Silence’s oppressive grip on the fractured lands.
+[Act 1 T2] The team cautiously navigated the darkened corridors, following the schematic’s fading lines towards the potential communications array, mindful of the lingering effects of The Silence.
+[Act 1 T3] The scouting party's findings offered a perilous, albeit potentially viable, path to reactivating the communications array.
+[Act 1 T1] Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+[Act 1 T1] Act 1 begins: Discover the cause of the global cooling and locate a prototype geothermal generator rumored to exist in the ruins of Denver.
+[Act 1 T1] Encountered Silas. npc/npc. Archetype: joyful.
+[Act 1 T1] The unsettling chill of The Deep Freeze tightened its grip as the team prepared for the perilous journey to find Silas.
+[Act 1 T2] Silas's recollection sparked a renewed hope, revealing a potential path toward reversing the Deep Freeze’s relentless advance.
+[Act 1 T1] Act 1 begins: Investigate the initial haunting and identify the primary spectral presence.
+[Act 1 T1] The unsettling quiet that followed their failed reconnaissance amplified the palpable sense of dread clinging to Blackwood Manor.
+[Act 1 T2] The key's unsettling imagery foreshadowed the oppressive dread that settled upon the group as they crossed the threshold into Blackwood Manor.
+[Act 1 T3] The oppressive spiritual decay within Blackwood Manor immediately intensified, making the air thick with palpable sorrow.
+[Act 1 T1] Act 1 begins: Discover the Hope Engine's location and secure a vital component needed for initial activation.
+[Act 1 T1] The oppressive scent of ozone intensified, confirming their descent into a region deeply affected by the Blight’s insidious reach.
+[Act 1 T2] The pervasive hum intensified as the team realized the fungi's luminescence mirrored the energy signature of the Blight itself.
+[Act 1 T1] Act 1 begins: Secure the 'Whisperwind' relay station, establish basic survival, and identify the Genesis network’s core architecture.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Act 1 begins: Discover the true nature of the Whispering Blight and locate a clue to its source within the isolated village of Oakhaven.
+[Act 1 T1] Encountered oak tree. creature/npc. Archetype: cautious.
+[Act 1 T1] The unnatural serenity of Oakhaven suggested the Blight’s influence had permeated not just the land, but the minds of its inhabitants.
+[Act 1 T1] Act 1 begins: Investigate the initial reports of strange occurrences at Blackwood Manor and identify a potential origin of the haunting.
+[Act 1 T1] Encountered unknown creature. creature/enemy. Archetype: serene.
+[Act 1 T1] The unnerving chill intensified, visibly frosting the players' breath and clinging to their clothing like a spectral embrace.
+[Act 1 T1] Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] Act 1 begins: Establish a foothold within Aethelburg and identify the source of the localized Blight anomaly.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] Act 1 begins: Locate and secure the map leading to the Atmospheric Stabilizer Array’s primary control hub.
+[Act 1 T1] The team cautiously began their trek eastward, knowing the remnants of Ashwood held not only the key to the Atmospheric Stabilizer Array but also a formidable gauntlet of perils.
+[Act 1 T2] The team cautiously descended into the service tunnels, acutely aware that the lingering energy signature pulsed with a rhythm suggesting deliberate concealment.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Act 1 begins: Discover the nature of the Whispering Blight and identify a path towards its source.
+[Act 1 T1] Act 1 begins: Establish a safe haven and identify the primary cause of grid failure.
+[Act 1 T1] Fearful residents began reinforcing their homes and stockpiling dwindling resources, anticipating a complete system collapse.
+[Act 1 T2] The unsettling silence of Oakhaven deepened as whispers of Elias’s discovery spread amongst the weary populace.
+[Act 1 T1] Act 1 begins: Investigate Blackwood Manor and identify the nature of the haunting.
+[Act 1 T1] The unsettling decay rapidly spread across the grounds, hinting at a far deeper corruption than initially suspected.
+[Act 1 T2] The oppressive silence of the gardens was broken only by the unsettling rustling of unseen things within the dense foliage.
+[Act 1 T1] Act 1 begins: Investigate the source of localized Void incursions plaguing the village of Oakhaven and identify a potential anchor point.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] Act 1 begins: Discover the Genesis Engine's location and secure a basic operational understanding, establishing initial faction allegiances (or animosities).
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] Act 1 begins: Investigate the unusual surge of corruption emanating from the Whispering Woods and identify its source.
+[Act 1 T1] The pervasive dread intensified as reports surfaced of animals within the Whispering Woods exhibiting bizarre, aggressive behaviors, further solidifying the notion that the Blight was twisting the natural world.
+[Act 1 T2] Encountered descendants of the forest's original inh. npc/npc. Archetype: amiable.
+[Act 1 T2] The unsettling tales of the forest folk deepened the party’s understanding of the Blight’s insidious reach, confirming their fears of a deliberate and horrifying consumption of Veridia’s natural order.
+[Act 1 T3] The air grew thick with a despairing stillness as they journeyed, a tangible manifestation of the Blight’s encroaching influence upon Veridia.
+[Act 1 T1] Act 1 begins: Investigate the source of unusual corruption in the border village of Oakhaven and report back to the Royal Council.
+[Act 1 T1] The unsettling pallor spreading amongst Oakhaven’s populace intensified fears that the Shadow Blight's influence was deeper than initially suspected.
+[Act 1 T1] Act 1 begins: Secure a reliable short-term water source and understand the cause of the purification system's failure.
+[Act 1 T1] Act 1 begins: Secure a safe, defensible location with viable resources and establish initial contact with potential allies.
+[Act 1 T1] The team reluctantly chose the maintenance tunnel, knowing the facility's automated defenses considered them a danger to its mission.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Act 1 begins: Secure a functional map of the surrounding territory and locate the initial components needed to understand the Sunseed's operating principles.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] Act 1 begins: Locate the abandoned 'Sunstone' research facility and ascertain the cause of its sudden shutdown.
+[Act 1 T1] The unsettling silence within the Sunstone facility hinted at a swift and decisive abandonment, leaving the secrets of Protocol Chimera undisturbed for decades.
+[Act 1 T1] The unsettling message loop suggested a desperate attempt to manage a crisis far greater than the current dust storm intensity.
+[Act 1 T2] The sudden system lockout signaled a deliberate obstruction to uncovering the true cause of the escalating Dust Storm Intensity.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Act 1 begins: Locate and secure the 'Locator Beacon,' a device signaling the location of the Aetherium Core.
+[Act 1 T1] Encountered chronomancer. character/npc. Archetype: serene.
+[Act 1 T1] The unsettling shimmer from the map intensified, subtly warping the light in the room as the echoes of fractured realities grew louder.
+[Act 1 T1] Act 1 begins: Locate and secure the 'Locator Beacon', a device needed to pinpoint Aetheria's hidden location.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Act 1 begins: Locate and secure the initial components needed to assess the Atmospheric Regulator's status – a diagnostic module and power source map – while establishing a tenuous alliance with a local faction.
+[Act 1 T1] [World Bible] The California wasteland of Fallout games.
+[Act 1 T1] Act 1 begins: Establish contact with NCR and identify initial super mutant threat.
+[Act 1 T1] Encountered super mutants. creature/enemy. Archetype: cautious.
+[Act 1 T1] The brutal assault confirmed widespread, coordinated super mutant activity across the Mojave, signaling a terrifying escalation of the encroaching threat.
+[Act 1 T2] The desperate struggle against the super mutants further strained the already fragile alliance between the NCR and the wasteland settlements.
+[Act 1 T3] Encountered scout. super mutant/enemy. Archetype: aggressive.
+[Act 1 T3] The patrol recognized the scout’s appearance signaled a larger, organized super mutant force had begun to coordinate its assault on NCR territory.
+[Act 1 T1] [World Bible] The California wasteland of Fallout games.
+[Act 1 T1] Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] Act 1 begins: Discover the source of increased super mutant activity and secure a vital NCR outpost.
+[Act 1 T1] Encountered NCR scout. npc/npc. Archetype: bitter.
+[Act 1 T1] The relentless advance of the super mutants threatened to overwhelm NCR defenses and fracture the tenuous peace across the Mojave.
+[Act 1 T1] [World Bible] The California wasteland of Fallout games.
+[Act 1 T1] Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+[Act 1 T1] Act 1 begins: Establish contact with NCR scouts and investigate the initial wave of super mutant activity.
+[Act 1 T1] The acrid scent of burnt metal and despair lingered heavily, a grim testament to the super mutants' brutal advance across the Californian plains.
+[Act 1 T1] [World Bible] The California wasteland of Fallout games.
+[Act 1 T1] Act 1 begins: Investigate early signs of a super mutant resurgence and determine the source of their increased activity.
+[Act 1 T1] Encountered something. creature/enemy. Archetype: inquisitive.
+[Act 1 T1] The Bakersfield outpost’s meager offering tasted like hope against the grim reality of super mutants relentlessly pushing deeper into the California wasteland.
+[Act 1 T2] The relentless advance of the super mutants continued to stretch NCR resources thin, demanding a desperate reallocation of troops and supplies across the desolate California landscape.
+[Act 1 T3] The super mutants’ relentless advance forced NCR patrols to abandon several outlying settlements, further straining already limited resources.
+[Act 1 T4] The discovery of the hidden canal tunnel sparked a tense debate among the NCR forces, as its potential benefit was weighed against the unsettling implications of its concealment within the ravaged landscape.
+[Act 1 T5] The unsettling pulse emanating from the tunnel hinted at a deeper, more coordinated threat than the usual scattered super mutant presence plaguing the NCR.
+[Act 1 T1] [World Bible] The California wasteland of Fallout games.
+[Act 1 T1] Act 1 begins: Establish contact with NCR forces and gain initial intelligence about the Super Mutant threat.
+[Act 1 T1] Encountered Super Mutants. creature/enemy. Archetype: zealous.
+[Act 1 T1] The stench of decay and feral rage hung heavy in the air, a grim testament to the Super Mutants’ brutal conquest of the once-hopeful settlement.
+[Act 1 T1] [World Bible] The California wasteland of Fallout games.
+[Act 1 T1] Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Act 1 begins: Assess the Super Mutant Threat & Secure Initial Intel
+[Act 1 T1] The relentless advance of the super mutants threatened to unravel the tenuous stability the NCR had established across the desolate California wasteland.
+[Act 1 T1] [World Bible] the player is a contenstant in wife swap, where they are a wife traded to another household.
+[Act 1 T1] Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Act 1 begins: Establish baseline understanding of the host family and perform well enough to avoid immediate elimination.
+[Act 1 T1] The unsettling familiarity of domestic disarray only deepened her anxieties about winning Audience Favor during this bizarre wife swap arrangement.
+[Act 1 T2] Encountered iguana. creature/npc. Archetype: inquisitive.
+[Act 1 T2] The peculiar tableau suggested a life far more complex than the carefully constructed image Brenda presented to the televised world.
+[Act 1 T3] Encountered Jasper. human/npc. Archetype: cautious.
+[Act 1 T3] The subtle awkwardness hung thick in the air as the traded wife realized cultivating Audience Favor would necessitate a more strategic approach than simple conversation.
+[Act 1 T1] [World Bible] The California wasteland of Fallout games.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Act 1 begins: Discover the Super Mutant Threat and Establish Initial Contact
+[Act 1 T1] The stench of decay permeated the air, confirming that the super mutants had indeed claimed Sutter’s Fort, leaving a grim testament to their relentless advance across the Mojave.
+[Act 1 T2] Encountered super mutant. creature/enemy. Archetype: stoic.
+[Act 1 T2] The abrupt departure from Sutter’s Fort suggested a desperate, widespread exodus across the ravaged Californian landscape.
+[Act 1 T1] [World Bible] The California wasteland of Fallout games.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] Act 1 begins: Locate a Super Mutant staging area and discover their immediate plans.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] The scouts confirmed the symbol marked a significant staging area for the super mutants, bolstering the NCR’s fears of a coordinated assault.
+[Act 1 T1] [World Bible] The California wasteland of Fallout games.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] Act 1 begins: Investigate initial Super Mutant incursions and discover their origin.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Nira Quickstep joined (companion). Bio: Knows forgotten byroads and prefers clever plans to loud ones. Values curiosity.
+[Act 1 T1] [World Bible] The California wasteland of Fallout games.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+[Act 1 T1] Act 1 begins: Investigate initial super mutant activity and report back to Vault.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Nira Quickstep joined (companion). Bio: Knows forgotten byroads and prefers clever plans to loud ones. Values curiosity.
+[Act 1 T1] [World Bible] The California wasteland of Fallout games.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+[Act 1 T1] Act 1 begins: Discover the extent of the Super Mutant threat and secure initial aid.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Nira Quickstep joined (companion). Bio: Knows forgotten byroads and prefers clever plans to loud ones. Values curiosity.
+[Act 1 T1] [World Bible] The California wasteland of Fallout games.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] Act 1 begins: Investigate the initial Super Mutant incursions and discover their origin.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Nira Quickstep joined (companion). Bio: Knows forgotten byroads and prefers clever plans to loud ones. Values curiosity.
+[Act 1 T1] [World Bible] The California wasteland of Fallout games.
+[Act 1 T1] Act 1 begins: Establish contact with NCR forces and investigate the initial Super Mutant incursions.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Nira Quickstep joined (companion). Bio: Knows forgotten byroads and prefers clever plans to loud ones. Values curiosity.
+[Act 1 T1] Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] [World Bible] The California wasteland of Fallout games.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Act 1 begins: Establish contact with NCR and investigate initial Super Mutant incursions.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Nira Quickstep joined (companion). Bio: Knows forgotten byroads and prefers clever plans to loud ones. Values curiosity.
+[Act 1 T1] Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] [World Bible] The California wasteland of Fallout games.
+[Act 1 T1] Act 1 begins: Investigate early Super Mutant activity and establish contact with NCR.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Nira Quickstep joined (companion). Bio: Knows forgotten byroads and prefers clever plans to loud ones. Values curiosity.
+[Act 1 T1] Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] [World Bible] The California wasteland of Fallout games.
+[Act 1 T1] Act 1 begins: Establish contact with NCR, assess initial super mutant threat, and secure basic supplies.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Nira Quickstep joined (companion). Bio: Knows forgotten byroads and prefers clever plans to loud ones. Values curiosity.
+[Act 1 T1] Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] [World Bible] The California wasteland of Fallout games.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] Act 1 begins: Assess the Super Mutant threat and establish contact with NCR forces.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Nira Quickstep joined (companion). Bio: Knows forgotten byroads and prefers clever plans to loud ones. Values curiosity.
+[Act 1 T1] Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] The NCR troopers relayed urgent reports of relentless super mutant incursions further west, confirming the escalating crisis that demanded immediate attention.
+[Act 1 T2] The grim report confirmed fears that the Super Mutant threat had evolved beyond simple aggression, now presenting a formidable and organized force within the ravaged landscape.
+[Act 1 T1] [World Bible] ## Aethelgard - Lore Bible
+[Act 1 T1] [World Bible] **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury.
+[Act 1 T1] [World Bible] **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts.
+[Act 1 T1] [World Bible] **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization?
+[Act 1 T1] [World Bible] **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+[Act 1 T1] Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+[Act 1 T1] Act 1 begins: Establish the threat of the rising darkness and introduce the player characters as potential catalysts for unity, amidst the kingdoms’ isolation.
+[Act 1 T1] The unsettling blight spread relentlessly, its tendrils seeming to pulse with an unnatural intelligence, deepening the fear that gripped Aethelgard.
+[Act 1 T1] [World Bible] The California wasteland of Fallout games.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Act 1 begins: Establish contact with NCR forces and discover the Super Mutant threat's origin.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Nira Quickstep joined (companion). Bio: Knows forgotten byroads and prefers clever plans to loud ones. Values curiosity.
+[Act 1 T1] Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] [World Bible] ## Aethelgard - Lore Bible
+[Act 1 T1] [World Bible] **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury.
+[Act 1 T1] [World Bible] **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts.
+[Act 1 T1] [World Bible] **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization?
+[Act 1 T1] [World Bible] **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Act 1 begins: Discover the nature of the encroaching darkness and establish initial contact with potential allies.
+[Act 1 T1] Nira Quickstep joined (companion). Bio: Knows forgotten byroads and prefers clever plans to loud ones. Values curiosity.
+[Act 1 T1] [World Bible] The California wasteland of Fallout games.
+[Act 1 T1] Act 1 begins: Locate and report on the source of the super mutant activity.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Nira Quickstep joined (companion). Bio: Knows forgotten byroads and prefers clever plans to loud ones. Values curiosity.
+[Act 1 T1] Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] [World Bible] ## Aethelgard - Lore Bible
+[Act 1 T1] [World Bible] **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury.
+[Act 1 T1] [World Bible] **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts.
+[Act 1 T1] [World Bible] **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization?
+[Act 1 T1] [World Bible] **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+[Act 1 T1] Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] Act 1 begins: Establish the threat and introduce the players to the fragmented kingdoms, beginning the quest to find a legendary artifact rumored to resist the Blight.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Nira Quickstep joined (companion). Bio: Knows forgotten byroads and prefers clever plans to loud ones. Values curiosity.
+[Act 1 T1] [World Bible] ## Aethelgard - Lore Bible
+[Act 1 T1] [World Bible] **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury.
+[Act 1 T1] [World Bible] **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts.
+[Act 1 T1] [World Bible] **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization?
+[Act 1 T1] [World Bible] **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+[Act 1 T1] Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+[Act 1 T1] Act 1 begins: Establish the threat, introduce key factions and NPCs, uncover initial clues about the Sundering & ancient Darkness.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Nira Quickstep joined (companion). Bio: Knows forgotten byroads and prefers clever plans to loud ones. Values curiosity.
+[Act 1 T1] [World Bible] ## Aethelgard - Lore Bible
+[Act 1 T1] [World Bible] **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury.
+[Act 1 T1] [World Bible] **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts.
+[Act 1 T1] [World Bible] **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization?
+[Act 1 T1] [World Bible] **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+[Act 1 T1] Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] Act 1 begins: Establish the threat and introduce the divided kingdoms, focusing on localized conflicts and a glimmer of hope.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Nira Quickstep joined (companion). Bio: Knows forgotten byroads and prefers clever plans to loud ones. Values curiosity.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] [World Bible] ## Aethelgard - Lore Bible
+[Act 1 T1] [World Bible] **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury.
+[Act 1 T1] [World Bible] **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts.
+[Act 1 T1] [World Bible] **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization?
+[Act 1 T1] [World Bible] **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+[Act 1 T1] Act 1 begins: Establish the threat and introduce key factions while securing initial allegiances.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Nira Quickstep joined (companion). Bio: Knows forgotten byroads and prefers clever plans to loud ones. Values curiosity.
+[Act 1 T1] Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] [World Bible] The California wasteland of Fallout games.
+[Act 1 T1] Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+[Act 1 T1] Act 1 begins: Establish contact with NCR forces and begin investigating the escalating Super Mutant threat.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] The relentless assault left the patrol decimated, their futile resistance swallowed by the encroaching Super Mutant horde.
+[Act 1 T1] [World Bible] ## Aethelgard - Lore Bible
+[Act 1 T1] [World Bible] **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury.
+[Act 1 T1] [World Bible] **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts.
+[Act 1 T1] [World Bible] **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization?
+[Act 1 T1] [World Bible] **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+[Act 1 T1] Act 1 begins: Discover the Blight's initial source and identify a single, willing kingdom to ally with.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Nira Quickstep joined (companion). Bio: Knows forgotten byroads and prefers clever plans to loud ones. Values curiosity.
+[Act 1 T1] Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] [World Bible] ## Aethelgard - Lore Bible
+[Act 1 T1] [World Bible] **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury.
+[Act 1 T1] [World Bible] **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts.
+[Act 1 T1] [World Bible] **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization?
+[Act 1 T1] [World Bible] **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+[Act 1 T1] Act 1 begins: Establish the threat and introduce key players, revealing the fractured state of Aethelgard and hinting at the Blight’s origins.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Nira Quickstep joined (companion). Bio: Knows forgotten byroads and prefers clever plans to loud ones. Values curiosity.
+[Act 1 T1] Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] [World Bible] ## Aethelgard - Lore Bible
+[Act 1 T1] [World Bible] **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury.
+[Act 1 T1] [World Bible] **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts.
+[Act 1 T1] [World Bible] **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization?
+[Act 1 T1] [World Bible] **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+[Act 1 T1] Act 1 begins: Establish contact with at least two Freeholds and uncover initial signs of The Scourge’s influence, demonstrating its growing threat.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Nira Quickstep joined (companion). Bio: Knows forgotten byroads and prefers clever plans to loud ones. Values curiosity.
+[Act 1 T1] Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] [World Bible] ## Aethelgard - Lore Bible
+[Act 1 T1] [World Bible] **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury.
+[Act 1 T1] [World Bible] **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts.
+[Act 1 T1] [World Bible] **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization?
+[Act 1 T1] [World Bible] **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+[Act 1 T1] Act 1 begins: Establish the fractured state, introduce the threat of the Blight, and set the PCs on a path to understand the ancient darkness.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Nira Quickstep joined (companion). Bio: Knows forgotten byroads and prefers clever plans to loud ones. Values curiosity.
+[Act 1 T1] Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] [World Bible] ## Aethelgard - Lore Bible
+[Act 1 T1] [World Bible] **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury.
+[Act 1 T1] [World Bible] **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts.
+[Act 1 T1] [World Bible] **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization?
+[Act 1 T1] [World Bible] **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+[Act 1 T1] Act 1 begins: Establish the threat and unite a single, strategically vital Freehold.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Nira Quickstep joined (companion). Bio: Knows forgotten byroads and prefers clever plans to loud ones. Values curiosity.
+[Act 1 T1] Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] [World Bible] ## Aethelgard - Lore Bible
+[Act 1 T1] [World Bible] **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury.
+[Act 1 T1] [World Bible] **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts.
+[Act 1 T1] [World Bible] **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization?
+[Act 1 T1] [World Bible] **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+[Act 1 T1] Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+[Act 1 T1] Act 1 begins: Establish the threat of the Blight and introduce key factions while uncovering a vital piece of information about its origin.
+[Act 1 T1] Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+[Act 1 T1] Nira Quickstep joined (companion). Bio: Knows forgotten byroads and prefers clever plans to loud ones. Values curiosity.
+[Act 1 T1] Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+[Act 1 T1] Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+[Act 1 T1] The encroaching blight revealed a previously unknown, obsidian monolith rising from the Mire's heart, radiating a palpable sense of dread.
+Entry 1
+World Bible: The California wasteland of Fallout games.
+Entry 2
+Act 1 begins: Establish contact with NCR and learn of the super mutant threat.
+Entry 3
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 4
+Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+Entry 3
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 4
+Act 1 begins: Establish the threat of the ancient darkness and introduce the fragmented kingdoms, laying groundwork for potential alliance.
+Entry 5
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 6
+Nira Quickstep joined (companion). Bio: Knows forgotten byroads and prefers clever plans to loud ones. Values curiosity.
+Entry 7
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 8
+Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+Entry 3
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 4
+Act 1 begins: Establish the threat of the Blight and initiate contact with representatives from key Freeholds.
+Entry 5
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 6
+Nira Quickstep joined (companion). Bio: Knows forgotten byroads and prefers clever plans to loud ones. Values curiosity.
+Entry 7
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 8
+Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Act 1 begins: Establish the threat of the Blight and introduce key factions vying for power within the Silverwood Freehold.
+Entry 3
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 4
+Nira Quickstep joined (companion). Bio: Knows forgotten byroads and prefers clever plans to loud ones. Values curiosity.
+Entry 5
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 6
+Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Act 1 begins: Establish the threat and identify potential allies amidst the fractured Freeholds.
+Entry 3
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 4
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Act 1 begins: Establish the fragmented state of Aethelgard, introduce key factions and players, and demonstrate the initial threat of the ancient darkness.
+Entry 3
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 4
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 3
+Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+Entry 4
+Act 1 begins: Establish the threat of the rising darkness and introduce initial factions vying for power, while planting seeds of potential alliances.
+Entry 5
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 6
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 3
+Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+Entry 4
+Act 1 begins: Establish the fractured state of Aethelgard and introduce the rising threat of the Blight, prompting a tentative alliance.
+Entry 5
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 6
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 3
+Act 1 begins: Establish the threat of the rising darkness and introduce the fractured nature of Aethelgard, prompting the players to investigate.
+Entry 4
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 5
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Act 1 begins: Establish the threat of the ancient darkness and secure a tenuous alliance between two Freeholds.
+Entry 3
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 4
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+Entry 3
+Act 1 begins: Establish the threat of the Blight and introduce the Guardians of Forgotten Lore to a nascent resistance.
+Entry 4
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 5
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+Entry 3
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 4
+Act 1 begins: Establish the threat of the Blight and introduce the initial factions vying for power; lay groundwork for inter-kingdom alliance.
+Entry 5
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 6
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Act 1 begins: Identify the immediate threat and secure a fragile alliance between two Freeholds.
+Entry 3
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 4
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: The California wasteland of Fallout games.
+Entry 2
+Act 1 begins: Investigate initial Super Mutant activity and establish contact with NCR forces.
+Entry 3
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 4
+Nira Quickstep joined (companion). Bio: Knows forgotten byroads and prefers clever plans to loud ones. Values curiosity.
+Entry 5
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 6
+Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Act 1 begins: Establish the threat of the rising darkness and initiate contact with the first of several fractured kingdoms.
+Entry 3
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 4
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+Entry 3
+Act 1 begins: Secure a tenuous alliance between two Freeholds, revealing the initial threat of The Blight.
+Entry 4
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 5
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 3
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 4
+Act 1 begins: Investigate the initial outbreaks of The Blight and secure a fragile alliance between two Freeholds.
+Entry 5
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 6
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 3
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 4
+Act 1 begins: Establish the threat of the Blight and the need for unity among disparate Freeholds.
+Entry 5
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 6
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 3
+Act 1 begins: Establish the fractured state of Aethelgard and introduce the initial signs of the rising darkness.
+Entry 4
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 5
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 3
+Act 1 begins: Establish the threat and introduce key factions – highlighting player’s role as lorekeepers.
+Entry 4
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 5
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+Entry 3
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 4
+Act 1 begins: Introduce the fractured kingdoms and the seeds of a shared threat, establishing initial alliances or conflicts.
+Entry 5
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 6
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 3
+Act 1 begins: Establish the threat of the ancient darkness and initiate contact with disparate factions, revealing the initial scope of the problem.
+Entry 4
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 5
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 3
+Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+Entry 4
+Act 1 begins: Discover the initial signs of the rising darkness and begin forging alliances with skeptical Freeholds.
+Entry 5
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 6
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 3
+Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+Entry 4
+Act 1 begins: Discover the first sign of the rising darkness and broker a tenuous alliance between two Freeholds.
+Entry 5
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 6
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 3
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 4
+Act 1 begins: Establish the threat and lay groundwork for alliance building within a single, contested Freehold.
+Entry 5
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 6
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+Entry 3
+Act 1 begins: Gather evidence of the encroaching darkness and forge initial alliances amongst disparate Freeholds.
+Entry 4
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 5
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 3
+Act 1 begins: Establish the threat, introduce key factions, and begin fostering alliances among disparate Freeholds.
+Entry 4
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 5
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Act 1 begins: Establish the fragmented world and introduce the initial threat while understanding the players' Guardian of forgotten lore role.
+Entry 3
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 4
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 3
+Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+Entry 4
+Act 1 begins: Discover the origins of the growing corruption and identify a potential first ally.
+Entry 5
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 6
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 3
+Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+Entry 4
+Act 1 begins: Establish the threat and initial alliances.
+Entry 5
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 6
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 3
+Act 1 begins: Establish contact with at least two fractured Freeholds and uncover initial clues about the ancient darkness’s return.
+Entry 4
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 5
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+Entry 3
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 4
+Act 1 begins: Discover the nature of the encroaching darkness and identify potential allies.
+Entry 5
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 6
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Act 1 begins: Establish contact with at least two Freeholds and uncover the initial signs of the rising darkness.
+Entry 3
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 4
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Act 1 begins: Establish the fractured world, introduce the threat, and ignite a fragile alliance.
+Entry 3
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 4
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 3
+Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+Entry 4
+Act 1 begins: Identify the source of growing unrest and begin forging tentative alliances between disparate Freeholds.
+Entry 5
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 6
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 3
+Act 1 begins: Establish the threat of the Blight and the existence of scattered Freeholds, while introducing the player as a Guardian of forgotten lore.
+Entry 4
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 5
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+Entry 3
+Act 1 begins: Discover the initial signs of the rising darkness and establish contact with key factions, revealing the initial scope of the problem.
+Entry 4
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 5
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 3
+Act 1 begins: Discover the origins of localized Blight outbreaks and gain audience with key Freehold leaders to forge initial alliances.
+Entry 4
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 5
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+Entry 3
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 4
+Act 1 begins: Discover the true nature of the growing darkness and establish contact with at least one potential ally.
+Entry 5
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 6
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+Entry 3
+Act 1 begins: Establish the threat of the rising darkness, introduce key factions, and demonstrate the urgency of uniting fractured kingdoms.
+Entry 4
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 5
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Act 1 begins: Establish a fragile alliance between two Freeholds, revealing the initial threat of The Blight.
+Entry 3
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 4
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Act 1 begins: Investigate initial Blight outbreaks and identify a common thread connecting them, proving the threat’s reality to skeptical rulers.
+Entry 3
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 4
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 3
+Act 1 begins: Discover the initial signs of the Blight and gain the trust of a key Freehold leader.
+Entry 4
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 5
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 3
+Act 1 begins: Establish the threat and begin forging alliances between the fragmented Freeholds, revealing the existence of the rising darkness.
+Entry 4
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 5
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Act 1 begins: Establish the fractured kingdoms and introduce the initial signs of the rising darkness.
+Entry 3
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 4
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+Entry 3
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 4
+Act 1 begins: Introduce the fractured world and the initial threat, establishing the need for unity.
+Entry 5
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 6
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Act 1 begins: Establish the threat of the ancient darkness and initiate contact with a fractured Freehold.
+Entry 3
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 4
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+Entry 3
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 4
+Act 1 begins: Establish contact with two Freehold leaders and uncover initial signs of The Scourge's influence.
+Entry 5
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 6
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 3
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 4
+Act 1 begins: Discover the Blight's origins and forge initial alliances within a single, strategically vital Freehold.
+Entry 5
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 6
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 3
+Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+Entry 4
+Act 1 begins: Establish the fractured landscape and introduce the initial threat; secure a small, vital alliance.
+Entry 5
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 6
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+Entry 3
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 4
+Act 1 begins: Establish the dire situation, introduce key factions, and initiate contact with potential allies.
+Entry 5
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 6
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 3
+Act 1 begins: Discover the origin of the encroaching Blight and secure a tenuous alliance between two Freeholds.
+Entry 4
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 5
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Act 1 begins: Establish the threat, introduce key factions, and begin fostering fragile alliances.
+Entry 3
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 4
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Act 1 begins: Discover the first signs of the rising darkness and establish initial contact with a key faction willing to collaborate.
+Entry 3
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 4
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 3
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 4
+Act 1 begins: Identify the immediate threat and establish a fragile alliance between two Freeholds.
+Entry 5
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 6
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 3
+Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+Entry 4
+Act 1 begins: Establish the threat of the ancient darkness and unite a single, small Freehold against it.
+Entry 5
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 6
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Act 1 begins: Establish the threat and initiate contact with key factions.
+Entry 3
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 4
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Act 1 begins: Establish the threat of the Blight and foster tentative alliances between disparate Freeholds.
+Entry 3
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 4
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 3
+Act 1 begins: Establish the threat of the Blight and the political fragmentation of Aethelgard, introducing initial allies and enemies.
+Entry 4
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 5
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+Entry 3
+Act 1 begins: Establish the threat and introduce the player characters, showing the fractured state of Aethelgard and the initial signs of the rising darkness.
+Entry 4
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 5
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Act 1 begins: Introduce the fractured world, the Blight’s initial effects, and a compelling reason for the player characters to investigate the threat and seek out potential allies.
+Entry 3
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 4
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 3
+Act 1 begins: Discover the initial signs of the rising darkness and establish initial contacts with potential allies.
+Entry 4
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 5
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 3
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 4
+Act 1 begins: Introduce the fractured world, the initial threat, and establish the player’s connection to the campaign’s core objective - a fragile alliance.
+Entry 5
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 6
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Act 1 begins: Discover the nature of the rising darkness and gain the trust of a key Freehold leader.
+Entry 3
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 4
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 3
+Act 1 begins: Discover the nature of the encroaching darkness and gain the trust of a single, crucial Freehold.
+Entry 4
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 5
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Act 1 begins: Establish the threat and the need for unity, revealing a critical piece of lore.
+Entry 3
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 4
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+Entry 3
+Act 1 begins: Establish the threat and initiate contact with key factions.
+Entry 4
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 5
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+Entry 3
+Act 1 begins: Establish the threat and introduce key players; reveal early signs of The Blight’s influence.
+Entry 4
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 5
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 3
+Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+Entry 4
+Act 1 begins: Identify the source of increased Blight activity and establish contact with a key Freehold leader.
+Entry 5
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 6
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+Entry 3
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 4
+Act 1 begins: Discover the initial signs of the encroaching darkness and establish a fledgling alliance between two Freeholds.
+Entry 5
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 6
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 7
+The oppressive gloom of the Whispering Fen seemed to amplify the growing sense that the ancient darkness had already begun its insidious work.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 3
+Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+Entry 4
+Act 1 begins: Introduce the fractured world and establish the immediate threat, demonstrating the initial spread of The Blight and sparking the quest to unite kingdoms.
+Entry 5
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 6
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 7
+The sudden acceleration of the Blight suggested a deliberate manipulation, hinting at a power actively working against Aethelgard’s already fragile defenses.
+Entry 1
+Act 1 begins: Investigate the source of localized corruption near Oakhaven and identify potential connections to the wider Leyline network.
+Entry 1
+Act 1 begins: Locate and secure the first Keystone – the Heartstone of Regret – from the ruined city of Aethelgard, now infested with shadow creatures.
+Entry 1
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 2
+Act 1 begins: Investigate the initial Rift appearance in the village of Oakhaven and identify a preliminary cause.
+Entry 1
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 2
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 3
+Act 1 begins: Investigate the sudden increase in Blight activity near the border town of Oakhaven and identify its source.
+Entry 4
+Encountered black butterflies. creature/enemy. Archetype: amiable.
+Entry 5
+The unsettling hum intensified, confirming the Shadow Blight's return was inextricably linked to the unnatural emergence of the black butterflies.
+Entry 6
+The grateful villagers offered a simple meal of stewed roots and dried berries as thanks for the party’s assistance following the unsettling reports from Whisperwind Glade.

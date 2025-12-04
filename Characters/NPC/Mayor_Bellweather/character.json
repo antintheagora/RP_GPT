@@ -1,0 +1,18 @@
+{
+  "name": "Mayor Bellweather",
+  "role": "npc",
+  "kind": "Human",
+  "hp": 14,
+  "attack": 2,
+  "updated_at": 1762040724.365225,
+  "last_seen": 1762040724.3652253,
+  "encounters": 1,
+  "desc": "Pragmatic and desperate, focused on survival of New Hope.",
+  "personality": "Pragmatic and desperate, focused on survival of New Hope.",
+  "personality_archetype": "cautious",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

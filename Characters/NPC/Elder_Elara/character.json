@@ -1,0 +1,18 @@
+{
+  "name": "Elder Elara",
+  "role": "npc",
+  "kind": "Guardian",
+  "hp": 18,
+  "attack": 0,
+  "updated_at": 1762246185.2003791,
+  "last_seen": 1762246185.2003794,
+  "encounters": 5,
+  "desc": "Wise, cautious, burdened by knowledge",
+  "personality": "Wise, cautious, burdened by responsibility",
+  "personality_archetype": "inquisitive",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

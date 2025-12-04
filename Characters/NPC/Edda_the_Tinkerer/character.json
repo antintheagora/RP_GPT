@@ -1,0 +1,19 @@
+{
+  "name": "Edda the Tinkerer",
+  "role": "npc",
+  "kind": "engineer",
+  "desc": "A grease-smudged tinkerer with a belt full of rattling tools.",
+  "bio": "Keeps settlements running by rebuilding scavenged tech. Wants reliable allies more than caps.",
+  "personality": "curious, pragmatic",
+  "personality_archetype": "inquisitive",
+  "species": "human",
+  "hp": 14,
+  "attack": 2,
+  "encounters": 0,
+  "portrait": null,
+  "created_at": 1762028093.4027045,
+  "updated_at": 1762028093.4027047,
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

@@ -1,0 +1,18 @@
+{
+  "name": "Grimstone",
+  "role": "enemy",
+  "kind": "Bandit Leader",
+  "hp": 16,
+  "attack": 6,
+  "updated_at": 1762239110.6535733,
+  "last_seen": 1762239110.6535735,
+  "encounters": 1,
+  "desc": "Ruthless opportunist, motivated by greed.",
+  "personality": "Ruthless opportunist, motivated by greed.",
+  "personality_archetype": "inquisitive",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

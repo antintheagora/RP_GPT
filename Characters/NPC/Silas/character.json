@@ -1,0 +1,18 @@
+{
+  "name": "Silas",
+  "role": "npc",
+  "kind": "Hermit",
+  "hp": 8,
+  "attack": 5,
+  "updated_at": 1762235998.3786411,
+  "last_seen": 1762235998.3786414,
+  "encounters": 2,
+  "desc": "Guarded and cryptic, speaks in riddles.",
+  "personality": "Evasive, wise, cryptic",
+  "personality_archetype": "inquisitive",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

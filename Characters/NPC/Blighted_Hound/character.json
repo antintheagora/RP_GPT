@@ -1,0 +1,18 @@
+{
+  "name": "Blighted Hound",
+  "role": "npc",
+  "kind": "Creature",
+  "hp": 10,
+  "attack": 4,
+  "updated_at": 1762235055.3091283,
+  "last_seen": 1762235055.3091288,
+  "encounters": 1,
+  "desc": "Driven by hunger and corrupted instinct.",
+  "personality": "Driven by hunger and corrupted instinct.",
+  "personality_archetype": "cautious",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

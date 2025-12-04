@@ -1,0 +1,18 @@
+{
+  "name": "Kaelen Thorne",
+  "role": "npc",
+  "kind": "Freehold Scout",
+  "hp": 14,
+  "attack": 3,
+  "updated_at": 1762218885.422777,
+  "last_seen": 1762218885.4227774,
+  "encounters": 1,
+  "desc": "Loyal, weary, driven by duty.",
+  "personality": "Loyal, weary, driven by duty.",
+  "personality_archetype": "serene",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

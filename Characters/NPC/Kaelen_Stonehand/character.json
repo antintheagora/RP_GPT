@@ -1,0 +1,18 @@
+{
+  "name": "Kaelen Stonehand",
+  "role": "npc",
+  "kind": "Freehold Guard",
+  "hp": 16,
+  "attack": 3,
+  "updated_at": 1762221507.2258933,
+  "last_seen": 1762221507.225894,
+  "encounters": 1,
+  "desc": "Duty-bound, gruff, suspicious",
+  "personality": "Duty-bound, gruff, suspicious",
+  "personality_archetype": "anxious",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

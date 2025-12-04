@@ -1,0 +1,18 @@
+{
+  "name": "Maeve",
+  "role": "npc",
+  "kind": "Elder",
+  "hp": 10,
+  "attack": 1,
+  "updated_at": 1762231539.261514,
+  "last_seen": 1762231539.2615144,
+  "encounters": 1,
+  "desc": "Weary, compassionate, pragmatic",
+  "personality": "Weary, compassionate, pragmatic",
+  "personality_archetype": "cautious",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

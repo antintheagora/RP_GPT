@@ -1,0 +1,18 @@
+{
+  "name": "‘Scrapper’ Jim",
+  "role": "enemy",
+  "kind": "Raider",
+  "hp": 16,
+  "attack": 4,
+  "updated_at": 1762219744.7865543,
+  "last_seen": 1762219744.7865548,
+  "encounters": 1,
+  "desc": "Greedy, cowardly, opportunistic",
+  "personality": "Greedy, cowardly, opportunistic",
+  "personality_archetype": "inquisitive",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

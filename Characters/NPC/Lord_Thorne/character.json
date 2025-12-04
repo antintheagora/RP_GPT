@@ -1,0 +1,18 @@
+{
+  "name": "Lord Thorne",
+  "role": "npc",
+  "kind": "Freehold Leader",
+  "hp": 16,
+  "attack": 5,
+  "updated_at": 1762246292.1118922,
+  "last_seen": 1762246292.1118925,
+  "encounters": 1,
+  "desc": "Paranoid, ruthless, pragmatic; hides vulnerabilities",
+  "personality": "Paranoid, ruthless, pragmatic; hides vulnerabilities",
+  "personality_archetype": "stoic",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

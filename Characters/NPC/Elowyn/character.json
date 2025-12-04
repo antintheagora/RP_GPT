@@ -1,0 +1,18 @@
+{
+  "name": "Elowyn",
+  "role": "npc",
+  "kind": "Freehold Leader",
+  "hp": 14,
+  "attack": 2,
+  "updated_at": 1762235998.3771322,
+  "last_seen": 1762235998.377133,
+  "encounters": 1,
+  "desc": "Weary but determined, prioritizes her people's survival.",
+  "personality": "Weary but determined, prioritizes her people's survival.",
+  "personality_archetype": "bitter",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

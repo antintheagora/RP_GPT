@@ -1,0 +1,18 @@
+{
+  "name": "Thane Elara",
+  "role": "npc",
+  "kind": "Human",
+  "hp": 18,
+  "attack": 2,
+  "updated_at": 1762230917.2764778,
+  "last_seen": 1762230917.276478,
+  "encounters": 1,
+  "desc": "Cautious, pragmatic, deeply concerned for her people",
+  "personality": "Cautious, pragmatic, deeply concerned for her people",
+  "personality_archetype": "bitter",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

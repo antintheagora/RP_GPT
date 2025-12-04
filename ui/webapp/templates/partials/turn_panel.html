@@ -1,0 +1,109 @@
+{% set player = payload.player %}
+<div class="ninebox" style="--img: url('{{ url_for('static', filename='ui/nine_slice.png') }}'); --slice: 128px; --gap: 12px;">
+  <div class="nf tl"></div><div class="nf t"></div><div class="nf tr"></div>
+  <div class="nf l"></div><div class="nf c"></div><div class="nf r"></div>
+  <div class="nf bl"></div><div class="nf b"></div><div class="nf br"></div>
+  <div class="nine-content p-6 space-y-5">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <p class="text-sm text-slate-400">Act {{ payload.act_index }} • Turn {{ payload.turn }} / {{ payload.turn_cap }}</p>
+      <h2 class="text-2xl font-semibold text-white">{{ payload.act_goal }}</h2>
+    </div>
+    <div class="text-right">
+      <p class="text-sm text-slate-400">{{ payload.pressure_name }}</p>
+      <p class="text-lg font-semibold">{{ payload.pressure }} / 100</p>
+    </div>
+  </div>
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl bg-night/80 border border-slate-700/80 p-4">
+      <p class="text-xs uppercase tracking-wide text-slate-400">Adventurer</p>
+      <p class="text-lg font-semibold">{{ player.name }}</p>
+      <p class="text-sm text-slate-400">HP {{ player.hp }} • ATK {{ player.attack }}</p>
+    </div>
+    <div class="rounded-xl bg-night/80 border border-slate-700/80 p-4">
+      <p class="text-xs uppercase tracking-wide text-slate-400">Goal progress</p>
+      <div class="mt-2 h-2 w-full rounded bg-slate-800">
+        <div class="h-full rounded bg-emerald-400" style="width: {{ payload.goal_progress }}%"></div>
+      </div>
+      <p class="text-sm mt-1">{{ payload.goal_progress }} / 100</p>
+    </div>
+  </div>
+  <div class="rounded-xl bg-night/80 border border-slate-700/80 p-4 space-y-2">
+    <p class="text-xs uppercase tracking-wide text-slate-400">Situation</p>
+    <p class="text-slate-100 leading-relaxed">{{ payload.situation or 'Waiting for the first spark of adventure.' }}</p>
+  </div>
+  <div>
+    <p class="text-xs uppercase tracking-wide text-slate-400 mb-2">SPECIAL spread</p>
+    <div class="grid grid-cols-7 gap-2 text-center text-sm">
+      {% for code, stat in [('STR', player.stats.STR), ('PER', player.stats.PER), ('END', player.stats.END), ('CHA', player.stats.CHA), ('INT', player.stats.INT), ('AGI', player.stats.AGI), ('LUC', player.stats.LUC)] %}
+        <div class="rounded-lg bg-slate-900 border border-slate-700/80 py-2">
+          <p class="text-xs text-slate-400">{{ code }}</p>
+          <p class="text-lg font-semibold">{{ stat }}</p>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+  <div>
+    <div class="flex items-center justify-between mb-2">
+      <p class="text-xs uppercase tracking-wide text-slate-400">Action palette</p>
+      <p class="text-xs text-slate-500">Talk / combat coming in the next pass.</p>
+    </div>
+    <div class="space-y-3">
+      {% for option in payload.options %}
+        <form hx-post="{{ url_for('handle_action') }}" hx-target="#log-panel" hx-swap="outerHTML" class="rounded-xl border border-slate-700/80 bg-night/80 hover:border-ember/80 transition">
+          <input type="hidden" name="action" value="special" />
+          <input type="hidden" name="choice" value="{{ option.code }}" />
+          <button type="submit" class="w-full text-left px-4 py-3">
+            <p class="text-sm text-slate-400">{{ option.stat }}</p>
+            <p class="text-lg font-semibold">{{ option.label }}</p>
+            {% if option.hint %}<p class="text-sm text-slate-300 mt-1">{{ option.hint }}</p>{% endif %}
+          </button>
+        </form>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="grid gap-3 sm:grid-cols-3">
+    <form hx-post="{{ url_for('handle_action') }}" hx-target="#log-panel" hx-swap="outerHTML">
+      <input type="hidden" name="action" value="observe" />
+      <button class="w-full rounded-xl bg-slate-800/80 px-4 py-3 font-semibold hover:bg-slate-700 transition">Observe</button>
+    </form>
+    <form hx-post="{{ url_for('handle_action') }}" hx-target="#log-panel" hx-swap="outerHTML">
+      <input type="hidden" name="action" value="rest" />
+      <button class="w-full rounded-xl bg-slate-800 px-4 py-3 font-semibold hover:bg-slate-700 transition">Camp + Rest</button>
+    </form>
+    <form hx-post="{{ url_for('handle_action') }}" hx-target="#log-panel" hx-swap="outerHTML">
+      <input type="hidden" name="action" value="journal" />
+      <button class="w-full rounded-xl bg-slate-800 px-4 py-3 font-semibold hover:bg-slate-700 transition">Read Journal</button>
+    </form>
+  </div>
+  <div class="rounded-xl border border-slate-700/80 bg-night/80 p-4">
+    <details>
+      <summary class="cursor-pointer text-sm font-semibold">Custom move ({{ 'available' if payload.custom_available else 'spent' }})</summary>
+      {% if payload.custom_available %}
+        <form hx-post="{{ url_for('handle_action') }}" hx-target="#log-panel" hx-swap="outerHTML" class="mt-3 space-y-3 text-sm">
+          <input type="hidden" name="action" value="custom" />
+          <label class="block">SPECIAL focus
+            <select name="custom_stat" class="mt-1 w-full rounded-md bg-slate-800 border-slate-700">
+              {% for code in ['STR','PER','END','CHA','INT','AGI','LUC'] %}
+                <option value="{{ code }}">{{ code }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label class="block">Intent
+            <textarea name="custom_intent" rows="2" class="mt-1 w-full rounded-md bg-slate-800 border-slate-700" placeholder="Describe what you attempt."></textarea>
+          </label>
+          <button class="w-full rounded-lg bg-ember/90 text-night font-semibold py-2 button-glow">Roll it</button>
+        </form>
+      {% else %}
+        <p class="mt-3 text-sm text-slate-400">All custom charges spent this act.</p>
+      {% endif %}
+    </details>
+  </div>
+  {% if payload.game_over %}
+    <div class="rounded-xl border border-red-500/60 bg-red-500/10 p-4">
+      <p class="text-lg font-semibold text-red-200">{{ payload.game_over_text }}</p>
+    </div>
+  {% endif %}
+  </div>
+</div>
+</div>

@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block content %}
+  <section class="grid gap-6 lg:grid-cols-2">
+    <div class="space-y-4">
+      <h2 class="text-2xl font-semibold">Start a fresh run</h2>
+      {% if error %}
+        <div class="bg-red-500/10 border border-red-500 text-red-200 rounded px-4 py-3">{{ error }}</div>
+      {% endif %}
+      <div class="ninebox" style="--img: url('{{ url_for('static', filename='ui/nine_slice.png') }}'); --slice: 128px; --gap: 12px;">
+        <div class="nf tl"></div><div class="nf t"></div><div class="nf tr"></div>
+        <div class="nf l"></div><div class="nf c"></div><div class="nf r"></div>
+        <div class="nf bl"></div><div class="nf b"></div><div class="nf br"></div>
+        <div class="nine-content">
+        <form method="post" action="{{ url_for('start_game') }}" class="space-y-6 p-5">
+        <div>
+          <label class="block text-sm font-medium text-slate-300">Scenario</label>
+          <div class="mt-2 grid grid-cols-2 gap-3 text-sm">
+            {% set current = previous.get('scenario') if previous else 'apocalypse' %}
+            {% for value, label in [('apocalypse', 'Apocalypse'), ('dark_fantasy', 'Dark Fantasy'), ('haunted_house', 'Haunted House'), ('custom', 'Custom World')] %}
+              <label class="flex items-center gap-2 rounded-lg border border-slate-700/60 px-3 py-2 cursor-pointer hover:border-ember transition">
+                <input type="radio" name="scenario" value="{{ value }}" {% if current == value %}checked{% endif %} class="text-ember focus:ring-ember" />
+                <span>{{ label }}</span>
+              </label>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label class="block text-sm">Campaign label</label>
+            <input type="text" name="custom_label" value="{{ previous.get('custom_label') if previous else '' }}" placeholder="Sky Citadel" class="mt-1 w-full rounded-md border-slate-600 bg-slate-800 text-white" />
+          </div>
+          <div>
+            <label class="block text-sm">Gemma / Ollama model</label>
+            <input type="text" name="model" value="{{ previous.get('model') if previous else 'gemma3:12b' }}" class="mt-1 w-full rounded-md border-slate-600 bg-slate-800 text-white" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm">Ollama host (optional)</label>
+          <input type="text" name="ollama_host" value="{{ previous.get('ollama_host') if previous else '' }}" placeholder="http://127.0.0.1:11434" class="mt-1 w-full rounded-md border-slate-600 bg-slate-800 text-white" />
+        </div>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label class="block text-sm">Player name</label>
+            <input type="text" name="player_name" value="{{ previous.get('player_name') if previous else '' }}" class="mt-1 w-full rounded-md border-slate-600 bg-slate-800 text-white" />
+          </div>
+          <div>
+            <label class="block text-sm">Age</label>
+            <input type="number" name="player_age" value="{{ previous.get('player_age') if previous else '' }}" class="mt-1 w-full rounded-md border-slate-600 bg-slate-800 text-white" />
+          </div>
+        </div>
+        <div class="grid gap-4 sm:grid-cols-3">
+          <div>
+            <label class="block text-sm">Pronouns / Sex</label>
+            <input type="text" name="player_sex" value="{{ previous.get('player_sex') if previous else '' }}" class="mt-1 w-full rounded-md border-slate-600 bg-slate-800 text-white" />
+          </div>
+          <div>
+            <label class="block text-sm">Hair</label>
+            <input type="text" name="player_hair" value="{{ previous.get('player_hair') if previous else '' }}" class="mt-1 w-full rounded-md border-slate-600 bg-slate-800 text-white" />
+          </div>
+          <div>
+            <label class="block text-sm">Clothing</label>
+            <input type="text" name="player_clothing" value="{{ previous.get('player_clothing') if previous else '' }}" class="mt-1 w-full rounded-md border-slate-600 bg-slate-800 text-white" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm">Appearance details</label>
+          <input type="text" name="player_appearance" value="{{ previous.get('player_appearance') if previous else '' }}" class="mt-1 w-full rounded-md border-slate-600 bg-slate-800 text-white" />
+        </div>
+        <div>
+          <label class="block text-sm">World bible / notes</label>
+          <textarea name="world_notes" rows="4" class="mt-1 w-full rounded-md border-slate-600 bg-slate-800 text-white">{{ previous.get('world_notes') if previous else '' }}</textarea>
+        </div>
+        <button type="submit" class="w-full rounded-lg bg-ember/80 py-3 text-center font-semibold tracking-wide text-night hover:bg-ember transition button-glow">Launch campaign</button>
+        </form>
+        </div>
+      </div>
+    </div>
+    <div class="space-y-6">
+      <div class="ninebox" style="--img: url('{{ url_for('static', filename='ui/nine_slice.png') }}'); --slice: 128px; --gap: 12px;">
+        <div class="nf tl"></div><div class="nf t"></div><div class="nf tr"></div>
+        <div class="nf l"></div><div class="nf c"></div><div class="nf r"></div>
+        <div class="nf bl"></div><div class="nf b"></div><div class="nf br"></div>
+        <div class="nine-content p-6">
+          <h3 class="text-xl font-semibold">About this build</h3>
+          <ul class="mt-4 space-y-3 text-sm text-slate-300">
+            <li>• Flask + HTMX front-end rendered in a PyWebview shell.</li>
+            <li>• Tailwind CSS + Daisy-esque cards for quick theming.</li>
+            <li>• Shared engine + Gemma prompts from the core RP-GPT stack.</li>
+            <li>• Desktop now, web deployment later with the same code.</li>
+          </ul>
+        </div>
+      </div>
+      {% if has_active %}
+        <div class="ninebox" style="--img: url('{{ url_for('static', filename='ui/nine_slice.png') }}'); --slice: 128px; --gap: 12px;">
+          <div class="nf tl"></div><div class="nf t"></div><div class="nf tr"></div>
+          <div class="nf l"></div><div class="nf c"></div><div class="nf r"></div>
+          <div class="nf bl"></div><div class="nf b"></div><div class="nf br"></div>
+          <div class="nine-content p-6">
+            <p class="text-slate-200 mb-3">You have an active session. Jump back in?</p>
+            <a href="{{ url_for('play') }}" class="inline-flex items-center gap-2 rounded-lg bg-emerald-500/80 px-5 py-2 font-semibold text-night hover:bg-emerald-400 transition button-glow">Resume adventure →</a>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+{% endblock %}

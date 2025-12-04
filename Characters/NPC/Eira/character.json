@@ -1,0 +1,18 @@
+{
+  "name": "Eira",
+  "role": "npc",
+  "kind": "Human",
+  "hp": 14,
+  "attack": 3,
+  "updated_at": 1762241322.1596143,
+  "last_seen": 1762241322.1596148,
+  "encounters": 1,
+  "desc": "Stern, pragmatic leader of Oakhaven. Reluctant to trust outsiders.",
+  "personality": "Stern, pragmatic leader of Oakhaven. Reluctant to trust outsiders.",
+  "personality_archetype": "inquisitive",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

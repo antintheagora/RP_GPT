@@ -1,0 +1,18 @@
+{
+  "name": "Maria 'Sparky' Reyes",
+  "role": "npc",
+  "kind": "Mechanic",
+  "hp": 12,
+  "attack": 2,
+  "updated_at": 1762052118.509114,
+  "last_seen": 1762052118.5091143,
+  "encounters": 1,
+  "desc": "Energetic, resourceful, optimistic despite the bleak surroundings",
+  "personality": "Energetic, resourceful, optimistic despite the bleak surroundings",
+  "personality_archetype": "serene",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

@@ -1,0 +1,13 @@
+{
+  "name": "wife swap reality show",
+  "lore_bible": "the player is a contenstant in wife swap, where they are a wife traded to another household.",
+  "campaign_goal": "win the show",
+  "pressure_name": "Audience Favor",
+  "player_role": "",
+  "acts": 3,
+  "turns_per_act": 10,
+  "created_at": 1762036540.7616878,
+  "portrait": "portrait.jpg",
+  "portrait_path": "Worlds\\wife_swap_reality_show\\portrait.jpg",
+  "updated_at": 1762036660.7367435
+}

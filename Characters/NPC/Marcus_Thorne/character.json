@@ -1,0 +1,18 @@
+{
+  "name": "Marcus Thorne",
+  "role": "npc",
+  "kind": "NCR Scout",
+  "hp": 14,
+  "attack": 3,
+  "updated_at": 1762047768.105825,
+  "last_seen": 1762047768.1058254,
+  "encounters": 1,
+  "desc": "Weary but determined, loyal to the NCR.",
+  "personality": "Weary but determined, loyal to the NCR.",
+  "personality_archetype": "inquisitive",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

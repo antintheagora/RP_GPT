@@ -1,0 +1,18 @@
+{
+  "name": "Captain Marius Volkov",
+  "role": "enemy",
+  "kind": "Dominion Soldier",
+  "hp": 26,
+  "attack": 3,
+  "updated_at": 1762218100.5398538,
+  "last_seen": 1762218100.539854,
+  "encounters": 1,
+  "desc": "Ruthless, duty-bound, believing in Dominion order",
+  "personality": "Ruthless, duty-bound, believing in Dominion order",
+  "personality_archetype": "zealous",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

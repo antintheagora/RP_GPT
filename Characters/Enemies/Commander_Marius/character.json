@@ -1,0 +1,18 @@
+{
+  "name": "Commander Marius",
+  "role": "enemy",
+  "kind": "Ironclad Soldier",
+  "hp": 18,
+  "attack": 4,
+  "updated_at": 1762229346.2504773,
+  "last_seen": 1762229346.2504778,
+  "encounters": 1,
+  "desc": "Duty-bound, cynical, skeptical of magic.",
+  "personality": "Duty-bound, cynical, skeptical of magic.",
+  "personality_archetype": "cautious",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

@@ -1,0 +1,21 @@
+{
+  "name": "Ghoul",
+  "role": "enemy",
+  "kind": "monster",
+  "desc": "a Fallout style ghoul. Zombie face.",
+  "bio": "",
+  "personality": "",
+  "personality_archetype": "",
+  "species": "human",
+  "hp": 14,
+  "attack": 3,
+  "encounters": 84,
+  "portrait": "portrait.jpg",
+  "created_at": 1762043185.1752586,
+  "updated_at": 1762814770.645548,
+  "last_seen": 1762814770.645548,
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

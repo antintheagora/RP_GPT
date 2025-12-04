@@ -1,0 +1,18 @@
+{
+  "name": "Captain Vorlag",
+  "role": "npc",
+  "kind": "Human (Ironclad)",
+  "hp": 22,
+  "attack": 3,
+  "updated_at": 1762289172.2845929,
+  "last_seen": 1762289172.2845929,
+  "encounters": 2,
+  "desc": "Ruthless, duty-bound, disillusioned",
+  "personality": "Ruthless, disciplined, ambitious",
+  "personality_archetype": "bitter",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

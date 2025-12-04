@@ -1,0 +1,18 @@
+{
+  "name": "Elara Meadowlight",
+  "role": "npc",
+  "kind": "Freehold Scout",
+  "hp": 18,
+  "attack": 2,
+  "updated_at": 1762229926.7317657,
+  "last_seen": 1762229926.731766,
+  "encounters": 4,
+  "desc": "Wise, pragmatic, wary",
+  "personality": "Cautious, resourceful, hopeful",
+  "personality_archetype": "anxious",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

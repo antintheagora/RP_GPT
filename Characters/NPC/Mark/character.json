@@ -1,0 +1,18 @@
+{
+  "name": "Mark",
+  "role": "npc",
+  "kind": "host_husband",
+  "hp": 12,
+  "attack": 4,
+  "updated_at": 1762036660.7385676,
+  "last_seen": 1762036660.7385683,
+  "encounters": 1,
+  "desc": "Supportive, a bit overwhelmed, struggles to assert authority",
+  "personality": "Supportive, a bit overwhelmed, struggles to assert authority",
+  "personality_archetype": "anxious",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

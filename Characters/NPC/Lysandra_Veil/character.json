@@ -1,0 +1,18 @@
+{
+  "name": "Lysandra Veil",
+  "role": "npc",
+  "kind": "Coven Initiate",
+  "hp": 10,
+  "attack": 2,
+  "updated_at": 1762217932.6785047,
+  "last_seen": 1762217932.678505,
+  "encounters": 1,
+  "desc": "Enigmatic and detached, seeking knowledge at any cost.",
+  "personality": "Enigmatic and detached, seeking knowledge at any cost.",
+  "personality_archetype": "aggressive",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

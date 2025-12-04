@@ -1,0 +1,21 @@
+{
+  "name": "Explorer",
+  "sex": "dragon, bipedal, human-shaped head",
+  "age": 32,
+  "appearance": "reptilian, bipedal, giant wings, scales",
+  "clothing": "scaly skin",
+  "special": {
+    "STR": 5,
+    "PER": 5,
+    "END": 5,
+    "CHA": 5,
+    "INT": 5,
+    "AGI": 5,
+    "LUC": 5
+  },
+  "scenario_label": "Grimdark fantasy",
+  "created_at": 1762049048.179172,
+  "portrait": "portrait.jpg",
+  "locked": true,
+  "updated_at": 1762052761.038896
+}

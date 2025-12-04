@@ -1,0 +1,18 @@
+{
+  "name": "Elder Lyra",
+  "role": "npc",
+  "kind": "NPC",
+  "hp": 10,
+  "attack": 0,
+  "updated_at": 1762814770.6391602,
+  "last_seen": 1762814770.6391602,
+  "encounters": 5,
+  "desc": "Cautious, wise, fiercely protective of Silverstream’s traditions",
+  "personality": "Wise, weary, desperate",
+  "personality_archetype": "cautious",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

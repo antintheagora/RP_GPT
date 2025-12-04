@@ -136,13 +136,15 @@ def journal_add(state: "GameState", entry: str) -> None:
     # Ignore empty strings so we do not clutter the journal.
     if not entry:
         return
-    # Stamp each line with act and turn numbers so the log reads clearly later.
-    stamp = f"[Act {state.act.index} T{state.act.turns_taken}] {entry}"
-    state.journal.append(stamp)
+    # Give each entry a simple sequential heading instead of turn stamps.
+    counter = getattr(state, "journal_entry_count", 0) + 1
+    setattr(state, "journal_entry_count", counter)
+    formatted = f"Entry {counter}\n{entry}"
+    state.journal.append(formatted)
     try:
         # Append to the world journal file so players can browse the history.
         with open("world_journal.txt", "a", encoding="utf-8") as handle:
-            handle.write(stamp + "\n")
+            handle.write(formatted + "\n")
     except Exception:
         # Silent failure keeps the game running even if the disk blocks writes.
         pass

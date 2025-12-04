@@ -1,0 +1,18 @@
+{
+  "name": "Elara Vane",
+  "role": "npc",
+  "kind": "Human",
+  "hp": 20,
+  "attack": 3,
+  "updated_at": 1762241534.621041,
+  "last_seen": 1762241534.6210413,
+  "encounters": 1,
+  "desc": "Determined, weary, but hopeful.",
+  "personality": "Determined, weary, but hopeful.",
+  "personality_archetype": "cautious",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

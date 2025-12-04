@@ -1,0 +1,18 @@
+{
+  "name": "Elder Brynjar",
+  "role": "npc",
+  "kind": "Human (Elder)",
+  "hp": 18,
+  "attack": 1,
+  "updated_at": 1762049892.4603968,
+  "last_seen": 1762049892.4603972,
+  "encounters": 1,
+  "desc": "Wise, weary, burdened by responsibility.",
+  "personality": "Wise, weary, burdened by responsibility.",
+  "personality_archetype": "stoic",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

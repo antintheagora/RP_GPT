@@ -1,0 +1,28 @@
+{
+  "name": "Grimdark fantasy",
+  "lore_bible": "## Aethelgard - Lore Bible\n\n**Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury.\n\n**Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts.\n\n**Key Mysteries:** What caused the Sundering? Are the fragmented memories of the \"Before-Time\" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? \n\n**Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.",
+  "campaign_goal": "Unite fractured kingdoms against a rising, ancient darkness threatening to consume all.",
+  "pressure_name": "Here are a few options, keeping it to 1-3 words an",
+  "player_role": "Here are a few options for a player's role, within that word count:\n\n1. **Guardian of forgotten lore, seeking to restore balance in a fractured world.** (11 wor",
+  "acts": 3,
+  "turns_per_act": 10,
+  "created_at": 1762049821.1587803,
+  "selected_companions": [
+    "Brutus",
+    "Sable"
+  ],
+  "selected_npcs": [
+    "Eira Meadowlight",
+    "Jasper",
+    "iguana"
+  ],
+  "selected_enemies": [
+    "Ghoul",
+    "Sergeant Miller",
+    "super mutant"
+  ],
+  "allow_random_characters": true,
+  "portrait": "portrait.jpg",
+  "portrait_path": "Worlds/Grimdark_fantasy/portrait.jpg",
+  "updated_at": 1762814770.635984
+}

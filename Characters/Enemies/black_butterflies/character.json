@@ -1,0 +1,14 @@
+{
+  "name": "black butterflies",
+  "role": "enemy",
+  "kind": "creature",
+  "hp": 18,
+  "attack": 4,
+  "updated_at": 1762837269.594205,
+  "last_seen": 1762837269.594205,
+  "encounters": 1,
+  "personality": "unknown",
+  "personality_archetype": "amiable",
+  "species": "human",
+  "comm_style": "speech"
+}
