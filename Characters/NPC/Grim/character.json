@@ -11,5 +11,8 @@
   "personality": "Grumbling, loyal, skilled craftsman",
   "personality_archetype": "cautious",
   "species": "human",
-  "comm_style": "speech"
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
 }

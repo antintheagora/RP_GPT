@@ -1,0 +1,18 @@
+{
+  "name": "Old Man Hemlock",
+  "role": "npc",
+  "kind": "NPC",
+  "hp": 5,
+  "attack": 0,
+  "updated_at": 1764914078.596769,
+  "last_seen": 1764914078.596769,
+  "encounters": 1,
+  "desc": "Grizzled, secretive, skeptical",
+  "personality": "Grizzled, secretive, skeptical",
+  "personality_archetype": "anxious",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

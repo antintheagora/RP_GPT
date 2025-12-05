@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="roster-grid">
+  <div class="ninebox u-box roster-panel">
+    <div class="nf tl"></div>
+    <div class="nf t"></div>
+    <div class="nf tr"></div>
+    <div class="nf l"></div>
+    <div class="nf c"></div>
+    <div class="nf r"></div>
+    <div class="nf bl"></div>
+    <div class="nf b"></div>
+    <div class="nf br"></div>
+    <div class="nine-content u-box-content">
+      <div class="panel-heading">
+        <div>
+          <p class="panel-overline">World roster</p>
+          <h2 class="panel-title">{{ world.title }}</h2>
+        </div>
+        <a href="{{ url_for('landing') }}" class="text-xs uppercase tracking-wide text-slate-400 hover:text-white">Back to worlds</a>
+      </div>
+      <p class="panel-subtle">Toggle who travels with this world. Pick at least one companion to continue.</p>
+      <div class="roster-list u-scroll scroll-fade">
+        {% for role, label in sections %}
+        <p class="roster-heading">{{ label }}</p>
+        {% for entry in catalog[role] %}
+        <div class="roster-entry {% if char_param == role ~ ':' ~ entry.slug %}is-focused{% endif %}">
+          <form method="post" action="{{ url_for('toggle_roster_member', slug=world.slug) }}">
+            <input type="hidden" name="role" value="{{ role }}" />
+            <input type="hidden" name="character" value="{{ entry.slug }}" />
+            <input type="hidden" name="char" value="{{ char_param or '' }}" />
+            <button class="roster-toggle {% if entry.slug in selections[role] %}is-selected{% endif %}" type="submit"
+              title="{% if entry.slug in selections[role] %}Remove{% else %}Add{% endif %} {{ entry.name }}">
+              <span>{% if entry.slug in selections[role] %}×{% else %}+{% endif %}</span>
+            </button>
+          </form>
+          <a class="roster-body" href="{{ url_for('world_roster', slug=world.slug, char=role ~ ':' ~ entry.slug) }}">
+            <img src="{{ entry.portrait_url }}" alt="{{ entry.name }}" />
+            <div>
+              <p class="roster-name">{{ entry.name }}</p>
+              <p class="roster-meta">{{ entry.kind or entry.role }}</p>
+            </div>
+          </a>
+        </div>
+        {% else %}
+        <p class="text-xs text-slate-500">No {{ label|lower }} yet.</p>
+        {% endfor %}
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="ninebox u-box roster-panel">
+    <div class="nf tl"></div>
+    <div class="nf t"></div>
+    <div class="nf tr"></div>
+    <div class="nf l"></div>
+    <div class="nf c"></div>
+    <div class="nf r"></div>
+    <div class="nf bl"></div>
+    <div class="nf b"></div>
+    <div class="nf br"></div>
+    <div class="nine-content u-box-content">
+      <div class="panel-heading">
+        <div>
+          <p class="panel-overline">Preview</p>
+          <h2 class="panel-title">Portrait</h2>
+        </div>
+      </div>
+      {% if current %}
+      <div class="portrait-preview">
+        <div class="world-portrait-frame">
+          <img class="world-portrait" src="{{ current.portrait_url }}" alt="{{ current.name }}" />
+        </div>
+        <p class="world-preview-copy">{{ current.desc or 'Configure stats and bio on the right.' }}</p>
+      </div>
+      <div class="portrait-actions">
+        <button class="u-button outline" disabled title="Coming soon">Regenerate portrait</button>
+        <button class="u-button outline" disabled title="Coming soon">New character</button>
+      </div>
+      {% else %}
+      <p class="text-sm text-slate-400">No character selected. Add heroes via the desktop builder.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="ninebox u-box roster-panel">
+    <div class="nf tl"></div>
+    <div class="nf t"></div>
+    <div class="nf tr"></div>
+    <div class="nf l"></div>
+    <div class="nf c"></div>
+    <div class="nf r"></div>
+    <div class="nf bl"></div>
+    <div class="nf b"></div>
+    <div class="nf br"></div>
+    <div class="nine-content u-box-content">
+      <div class="panel-heading">
+        <div>
+          <p class="panel-overline">Character info</p>
+          <h2 class="panel-title">Customize details</h2>
+        </div>
+        <form method="post" action="{{ url_for('toggle_random_characters', slug=world.slug) }}">
+          <input type="hidden" name="allow_random" value="{% if world.allow_random %}0{% else %}1{% endif %}" />
+          <input type="hidden" name="char" value="{{ char_param or '' }}" />
+          <button class="u-button outline" type="submit">{% if world.allow_random %}Disable{% else %}Allow{% endif %} random roster</button>
+        </form>
+      </div>
+      {% if current %}
+      <form method="post" action="{{ url_for('update_character_profile', slug=world.slug, role=current.role, char_slug=current.slug) }}" class="character-form u-scroll scroll-fade">
+        <input type="hidden" name="char" value="{{ char_param or '' }}" />
+        <div>
+          <label class="block text-xs tracking-wide uppercase text-slate-400">Name</label>
+          <div class="mt-1 u-input-shell">
+            <input class="u-input" name="name" value="{{ current.name }}" />
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs tracking-wide uppercase text-slate-400">Role</label>
+            <div class="mt-1 u-input-shell">
+              <input class="u-input" value="{{ current.role }}" readonly />
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs tracking-wide uppercase text-slate-400">Kind</label>
+            <div class="mt-1 u-input-shell">
+              <input class="u-input" name="kind" value="{{ current.kind }}" />
+            </div>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs tracking-wide uppercase text-slate-400">Sex</label>
+            <div class="mt-1 u-input-shell">
+              <input class="u-input" name="sex" value="{{ current.sex }}" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs tracking-wide uppercase text-slate-400">Species</label>
+            <div class="mt-1 u-input-shell">
+              <input class="u-input" name="species" value="{{ current.species }}" />
+            </div>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs tracking-wide uppercase text-slate-400">Short description</label>
+          <div class="mt-1 u-input-shell">
+            <input class="u-input" name="desc" value="{{ current.desc }}" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs tracking-wide uppercase text-slate-400">Bio</label>
+          <div class="mt-1 u-input-shell">
+            <textarea class="u-input" name="bio" rows="4">{{ current.bio }}</textarea>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs tracking-wide uppercase text-slate-400">Personality</label>
+          <div class="mt-1 u-input-shell">
+            <input class="u-input" name="personality" value="{{ current.personality }}" />
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs tracking-wide uppercase text-slate-400">HP</label>
+            <div class="mt-1 u-input-shell">
+              <input class="u-input" type="number" name="hp" value="{{ current.hp }}" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs tracking-wide uppercase text-slate-400">Attack</label>
+            <div class="mt-1 u-input-shell">
+              <input class="u-input" type="number" name="attack" value="{{ current.attack }}" />
+            </div>
+          </div>
+        </div>
+        <button class="u-button w-full mt-4" type="submit">Save character</button>
+      </form>
+      {% else %}
+      <p class="text-sm text-slate-400">Select someone from the left column to edit their profile.</p>
+      {% endif %}
+      <form method="get" action="{{ url_for('world_characters', slug=world.slug) }}" class="mt-6">
+        <button class="u-button w-full" type="submit" {% if not can_continue %}disabled title="Select at least one companion"{% endif %}>Continue</button>
+      </form>
+    </div>
+  </div>
+</section>
+{% endblock %}

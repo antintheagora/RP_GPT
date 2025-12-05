@@ -9,6 +9,7 @@
   "created_at": 1762049821.1587803,
   "selected_companions": [
     "Brutus",
+    "Scout",
     "Sable"
   ],
   "selected_npcs": [
@@ -23,6 +24,6 @@
   ],
   "allow_random_characters": true,
   "portrait": "portrait.jpg",
-  "portrait_path": "Worlds/Grimdark_fantasy/portrait.jpg",
-  "updated_at": 1762814770.635984
+  "portrait_path": "Worlds\\Grimdark_fantasy\\portrait.jpg",
+  "updated_at": 1764914442.7976356
 }

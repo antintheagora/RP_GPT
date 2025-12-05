@@ -1,0 +1,18 @@
+{
+  "name": "Mayor Harding",
+  "role": "npc",
+  "kind": "NPC",
+  "hp": 8,
+  "attack": 0,
+  "updated_at": 1764914078.5953834,
+  "last_seen": 1764914078.5953834,
+  "encounters": 1,
+  "desc": "Worried, desperate, subtly manipulative",
+  "personality": "Worried, desperate, subtly manipulative",
+  "personality_archetype": "joyful",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

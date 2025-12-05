@@ -1208,3 +1208,25 @@ Entry 5
 The unsettling hum intensified, confirming the Shadow Blight's return was inextricably linked to the unnatural emergence of the black butterflies.
 Entry 6
 The grateful villagers offered a simple meal of stewed roots and dried berries as thanks for the party’s assistance following the unsettling reports from Whisperwind Glade.
+Entry 1
+Act 1 begins: Secure a safe haven and establish initial contact with other survivors.
+Entry 1
+Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+Entry 2
+Act 1 begins: Investigate initial disturbances at Blackwood Manor and identify a potential link to Eliza Blackwood's death.
+Entry 1
+Act 1 begins: Establish a foothold in Greenhaven and assess the immediate threat of the fungal bloom.
+Entry 1
+World Bible: ## Aethelgard - Lore Bible **Tone:** Grimdark fantasy with pockets of hopeful resilience. Aethelgard is a fractured land, scarred by a cataclysm known as the Sundering. Magic is volatile, resources scarce, and trust a forgotten luxury. **Factions:** The *Ironclad Dominion* (ruthless military regime), the *Whispering Coven* (shadowy magic users), & scattered Freeholds striving for independence. Each seeks to control dwindling power & ancient artifacts. **Key Mysteries:** What caused the Sundering? Are the fragmented memories of the "Before-Time" real? What secrets lie within the corrupted *Sunken Cities* – remnants of the lost civilization? **Hope:** Despite the darkness, communities endure, clinging to ancient traditions and seeking a path toward a new dawn.
+Entry 2
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 3
+Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.
+Entry 4
+Act 1 begins: Discover the initial signs of the rising darkness and establish contact with the first potential ally.
+Entry 5
+Brutus joined (companion). Bio: A loyal dog; communicates with posture, growls, and barks.
+Entry 6
+Sable joined (companion). Bio: A quick-handed rogue who values leverage over loyalty.
+Entry 7
+Scout joined (companion). Bio: A wary scout who watches the ridgelines and rarely wastes words.

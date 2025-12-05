@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="creator-grid">
+  <div class="ninebox u-box creator-panel">
+    <div class="nf tl"></div>
+    <div class="nf t"></div>
+    <div class="nf tr"></div>
+    <div class="nf l"></div>
+    <div class="nf c"></div>
+    <div class="nf r"></div>
+    <div class="nf bl"></div>
+    <div class="nf b"></div>
+    <div class="nf br"></div>
+    <div class="nine-content u-box-content">
+      <div class="panel-heading">
+        <div>
+          <p class="panel-overline">Playable heroes</p>
+          <h2 class="panel-title">Select a protagonist</h2>
+        </div>
+        <a href="{{ url_for('world_roster', slug=world.slug) }}" class="text-xs uppercase tracking-wide text-slate-400 hover:text-white">Back to roster</a>
+      </div>
+      <p class="panel-subtle">Use an existing hero or craft a new one (builder coming soon).</p>
+      <div class="pc-actions">
+        <button class="u-button outline" type="button" disabled title="Hero builder coming soon">+ New character</button>
+      </div>
+      <div class="pc-list u-scroll scroll-fade">
+        {% for player in players %}
+        <a class="pc-entry {% if selected_slug == player.slug %}is-active{% endif %}" href="{{ url_for('world_characters', slug=world.slug, player=player.slug) }}">
+          <img src="{{ player.portrait_url }}" alt="{{ player.name }}" />
+          <div>
+            <p class="pc-name">{{ player.name }}</p>
+            <p class="pc-meta">{{ player.sex or 'Unknown' }}{% if player.age %}, {{ player.age }}{% endif %}</p>
+          </div>
+        </a>
+        {% else %}
+        <p class="text-xs text-slate-500">No player profiles found. Create one in Characters/Player_Character.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="ninebox u-box creator-panel">
+    <div class="nf tl"></div>
+    <div class="nf t"></div>
+    <div class="nf tr"></div>
+    <div class="nf l"></div>
+    <div class="nf c"></div>
+    <div class="nf r"></div>
+    <div class="nf bl"></div>
+    <div class="nf b"></div>
+    <div class="nf br"></div>
+    <div class="nine-content u-box-content">
+      <div class="panel-heading">
+        <div>
+          <p class="panel-overline">Portrait</p>
+          <h2 class="panel-title">Your visage</h2>
+        </div>
+      </div>
+      {% if selected %}
+      <div class="portrait-preview">
+        <div class="world-portrait-frame">
+          <img class="world-portrait" src="{{ selected.portrait_url }}" alt="{{ selected.name }}" />
+        </div>
+        <p class="world-preview-copy">{{ selected.appearance or 'Describe your hero in the form on the right.' }}</p>
+      </div>
+      <div class="portrait-actions">
+        <form method="post" action="{{ url_for('begin_with_player', slug=world.slug, player_slug=selected.slug) }}" class="flex-1 min-w-[180px]">
+          <button class="u-button w-full" type="submit">Begin your journey</button>
+        </form>
+        <button class="u-button outline flex-1 min-w-[180px]" type="button" disabled title="Portrait regen coming soon">Regenerate portrait</button>
+      </div>
+      {% else %}
+      <p class="text-sm text-slate-400">Select a hero to preview their portrait.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="ninebox u-box creator-panel">
+    <div class="nf tl"></div>
+    <div class="nf t"></div>
+    <div class="nf tr"></div>
+    <div class="nf l"></div>
+    <div class="nf c"></div>
+    <div class="nf r"></div>
+    <div class="nf bl"></div>
+    <div class="nf b"></div>
+    <div class="nf br"></div>
+    <div class="nine-content u-box-content">
+      <div class="panel-heading">
+        <div>
+          <p class="panel-overline">Hero sheet</p>
+          <h2 class="panel-title">Character details</h2>
+        </div>
+      </div>
+      {% if selected %}
+      <form method="post" action="{{ url_for('update_player_profile', slug=world.slug, player_slug=selected.slug) }}" class="creator-form u-scroll scroll-fade">
+        <input type="hidden" name="player" value="{{ selected.slug }}" />
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs tracking-wide uppercase text-slate-400">Name</label>
+            <div class="mt-1 u-input-shell">
+              <input class="u-input" name="name" value="{{ selected.name }}" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs tracking-wide uppercase text-slate-400">Scenario label</label>
+            <div class="mt-1 u-input-shell">
+              <input class="u-input" name="scenario_label" value="{{ selected.scenario_label }}" />
+            </div>
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs tracking-wide uppercase text-slate-400">Sex</label>
+            <div class="mt-1 u-input-shell">
+              <input class="u-input" name="sex" value="{{ selected.sex }}" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs tracking-wide uppercase text-slate-400">Age</label>
+            <div class="mt-1 u-input-shell">
+              <input class="u-input" type="number" name="age" value="{{ selected.age }}" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs tracking-wide uppercase text-slate-400">Clothing</label>
+            <div class="mt-1 u-input-shell">
+              <input class="u-input" name="clothing" value="{{ selected.clothing }}" />
+            </div>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs tracking-wide uppercase text-slate-400">Appearance</label>
+          <div class="mt-1 u-input-shell">
+            <textarea class="u-input" rows="3" name="appearance">{{ selected.appearance }}</textarea>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs tracking-wide uppercase text-slate-400">SPECIAL stats</label>
+          <div class="stat-grid">
+            {% for stat in special_keys %}
+            <label>
+              <span>{{ stat }}</span>
+              <div class="mt-1 u-input-shell">
+                <input class="u-input" type="number" name="special_{{ stat }}" value="{{ selected.special[stat] }}" />
+              </div>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+        <button class="u-button w-full" type="submit">Save hero</button>
+      </form>
+      {% else %}
+      <p class="text-sm text-slate-400">Select a hero on the left to edit their profile.</p>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}

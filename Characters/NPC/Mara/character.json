@@ -1,0 +1,18 @@
+{
+  "name": "Mara",
+  "role": "npc",
+  "kind": "Human",
+  "hp": 10,
+  "attack": 2,
+  "updated_at": 1764914307.7631946,
+  "last_seen": 1764914307.7631946,
+  "encounters": 1,
+  "desc": "Optimistic, skilled herbalist",
+  "personality": "Optimistic, skilled herbalist",
+  "personality_archetype": "stoic",
+  "species": "human",
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
+}

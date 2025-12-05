@@ -11,5 +11,8 @@
   "personality": "Worried, wise, and desperate.",
   "personality_archetype": "aggressive",
   "species": "human",
-  "comm_style": "speech"
+  "comm_style": "speech",
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral"
 }

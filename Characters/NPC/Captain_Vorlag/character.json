@@ -4,7 +4,7 @@
   "kind": "Human (Ironclad)",
   "hp": 22,
   "attack": 3,
-  "updated_at": 1762289172.2845929,
+  "updated_at": 1764917121.2096174,
   "last_seen": 1762289172.2845929,
   "encounters": 2,
   "desc": "Ruthless, duty-bound, disillusioned",
@@ -14,5 +14,6 @@
   "comm_style": "speech",
   "sex": "other",
   "familiarity": "stranger",
-  "alignment": "neutral"
+  "alignment": "neutral",
+  "bio": ""
 }
