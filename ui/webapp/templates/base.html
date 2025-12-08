@@ -30,21 +30,35 @@
     style="background-image: url('{{ url_for('static', filename='ui/world_backdrop.png') }}');"></div>
   <div class="fixed inset-0 -z-20 backdrop-overlay"></div>
   <div class="game-frame-shell" aria-hidden="true"></div>
-  <div class="max-w-7xl mx-auto px-4 py-8 relative z-10 app-shell">
-    <header class="mb-8">
-      <div class="flex items-center justify-between">
-        <h1 class="text-3xl font-semibold tracking-tight">RP-GPT</h1>
-        <form method="post" action="{{ url_for('reset') }}" class="text-sm">
-          <button class="text-slate-400 hover:text-white transition" title="Reset session">
-            Reset
-          </button>
-        </form>
-      </div>
-      <p class="text-slate-400 mt-1">Choose-your-own-adventure, rebuilt for PyWebview + Flask + HTMX.</p>
-    </header>
+
+  <!-- Settings Overlay (ESC to toggle) -->
+  <div id="settings-overlay" class="settings-overlay hidden">
+    <div class="settings-panel">
+      <h2 class="settings-title">Settings</h2>
+      <form method="post" action="{{ url_for('reset') }}" class="settings-form">
+        <button type="submit" class="u-button settings-btn">Reset Game</button>
+      </form>
+      <button id="settings-close" class="settings-close">Press ESC to close</button>
+    </div>
+  </div>
+
+  <!-- Main Content (centered within frame) -->
+  <div class="app-content">
     {% block content %}{% endblock %}
   </div>
-  <!-- Dynamic fog enabled via fog.js -->
+
+  <script>
+    // ESC key toggles settings overlay
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        const overlay = document.getElementById('settings-overlay');
+        overlay.classList.toggle('hidden');
+      }
+    });
+    document.getElementById('settings-close')?.addEventListener('click', function () {
+      document.getElementById('settings-overlay').classList.add('hidden');
+    });
+  </script>
 </body>
 
 </html>

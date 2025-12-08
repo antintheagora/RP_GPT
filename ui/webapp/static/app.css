@@ -1,5 +1,6 @@
 :root {
   --frame-image: url('/static/ui/nine_slice.png');
+  --image-frame: url('/static/ui/Image_Frame.png');
   --slice: 1;
   --frame-w: 14px;
   --frame-out: 0px;
@@ -39,31 +40,92 @@
   --button-image: url('/static/ui/buttons.png');
   --button-slice: 256;
   --button-width: 22px;
-  --button-padding-y: 0.9rem;
+  --button-padding-y: 0.1rem;
   --button-padding-x: 2.1rem;
-  --button-text: #2f1400;
+  --button-text: #c3c08d;
   --button-text-shadow: rgba(255, 255, 255, 0.35);
 
   /* Full-screen frame */
   --game-frame-image: url('/static/ui/Game_Frame.png');
-  --game-frame-side: 310;
-  --game-frame-top: 505;
-  --game-frame-bottom: 300;
-  --game-frame-thickness: clamp(60px, 6vw, 120px);
+  --game-frame-side: 490;
+  --game-frame-top: 680;
+  --game-frame-bottom: 600;
+  --game-frame-thickness: clamp(150px, 6vw, 150px);
 
+  /* Image frame (portraits) - simple 9-slice */
+  --image-frame-slice: 350;
+  --image-frame-width: 80px;
 }
 
-body {
-  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-}
-
-.app-shell {
+/* Main content area - centered within game frame */
+.app-content {
+  position: relative;
+  z-index: 10;
+  /* Fill available width within frame */
+  width: 100%;
+  margin: 0 auto;
+  /* Account for game frame thickness */
+  padding-left: calc(var(--game-frame-thickness) + 0.5rem);
+  padding-right: calc(var(--game-frame-thickness) + 0.5rem);
+  padding-top: calc(var(--game-frame-thickness) + 1rem);
+  padding-bottom: calc(var(--game-frame-thickness) + 1rem);
+  min-height: 100vh;
+  box-sizing: border-box;
   transition: opacity 120ms ease, filter 120ms ease;
 }
 
-.htmx-request .app-shell {
+.htmx-request .app-content {
   opacity: 0.7;
   filter: blur(0.5px);
+}
+
+/* Settings Overlay */
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-overlay.hidden {
+  display: none;
+}
+
+.settings-panel {
+  background: rgba(15, 20, 30, 0.95);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 2.5rem 3rem;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.settings-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  letter-spacing: 0.05em;
+}
+
+.settings-form {
+  margin-bottom: 1.5rem;
+}
+
+.settings-close {
+  background: transparent;
+  border: none;
+  color: rgba(226, 232, 240, 0.5);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.settings-close:hover {
+  color: rgba(226, 232, 240, 0.8);
 }
 
 .ninebox {
@@ -351,22 +413,22 @@ textarea.u-input {
   transition: filter 0.2s ease, box-shadow 0.2s ease;
 }
 
-.scenario-card input:focus-visible + .scenario-face::before {
+.scenario-card input:focus-visible+.scenario-face::before {
   box-shadow:
     inset 0 0 30px rgba(0, 0, 0, 0.4),
     0 0 0 2px rgba(255, 255, 255, 0.4);
 }
 
-.scenario-card input:checked + .scenario-face {
+.scenario-card input:checked+.scenario-face {
   color: var(--selector-text);
   transform: translateY(-2px);
 }
 
-.scenario-card input:checked + .scenario-face::before {
+.scenario-card input:checked+.scenario-face::before {
   filter: drop-shadow(0 0 16px var(--selector-glow));
 }
 
-.scenario-card input:not(:checked):hover + .scenario-face::before {
+.scenario-card input:not(:checked):hover+.scenario-face::before {
   filter: brightness(1.1);
 }
 
@@ -377,8 +439,7 @@ textarea.u-input {
   align-items: center;
   justify-content: center;
   isolation: isolate;
-  padding: calc(var(--button-padding-y) + var(--button-width) / 2)
-    calc(var(--button-padding-x) + var(--button-width));
+  padding: calc(var(--button-padding-y) + var(--button-width) / 2) calc(var(--button-padding-x) + var(--button-width));
   color: var(--button-text);
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -441,17 +502,37 @@ textarea.u-input {
 /* Worlds layout */
 .worlds-grid {
   display: grid;
-  gap: 1.5rem;
+  gap: 1rem;
 }
 
 @media (min-width: 1024px) {
   .worlds-grid {
-    grid-template-columns: 1.1fr 1fr 1.3fr;
+    grid-template-columns: 1fr 1fr 1.2fr;
   }
 }
 
 .world-panel {
-  min-height: clamp(480px, 70vh, 640px);
+  max-height: calc(100vh - var(--game-frame-thickness) * 2 - 2rem);
+  overflow-y: auto;
+}
+
+.world-panel::-webkit-scrollbar,
+.roster-panel::-webkit-scrollbar,
+.creator-panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+.world-panel::-webkit-scrollbar-thumb,
+.roster-panel::-webkit-scrollbar-thumb,
+.creator-panel::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+}
+
+.world-panel::-webkit-scrollbar-track,
+.roster-panel::-webkit-scrollbar-track,
+.creator-panel::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
 }
 
 .panel-heading {
@@ -551,16 +632,24 @@ textarea.u-input {
 }
 
 .world-portrait-frame {
+  position: relative;
   margin: 0 auto 1rem auto;
   max-width: 280px;
-  border: var(--frame-w) solid rgba(0, 0, 0, 0.65);
-  border-image-source: var(--frame-image);
-  border-image-slice: 256 fill;
-  border-image-width: var(--frame-w);
+}
+
+.world-portrait-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-style: solid;
+  border-color: transparent;
+  border-width: var(--image-frame-width);
+  border-image-source: var(--image-frame);
+  border-image-slice: var(--image-frame-slice) fill;
+  border-image-width: var(--image-frame-width);
   border-image-repeat: stretch;
-  box-shadow:
-    inset 0 0 20px rgba(0, 0, 0, 0.5),
-    0 10px 24px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  z-index: 1;
 }
 
 .world-portrait {
@@ -624,17 +713,18 @@ textarea.u-input {
 /* Roster layout */
 .roster-grid {
   display: grid;
-  gap: 1.5rem;
+  gap: 1rem;
 }
 
 @media (min-width: 1024px) {
   .roster-grid {
-    grid-template-columns: 1.1fr 1fr 1.2fr;
+    grid-template-columns: 1fr 1fr 1.2fr;
   }
 }
 
 .roster-panel {
-  min-height: clamp(520px, 75vh, 700px);
+  max-height: calc(100vh - var(--game-frame-thickness) * 2 - 2rem);
+  overflow-y: auto;
 }
 
 .roster-list {
@@ -769,17 +859,18 @@ textarea.u-input {
 /* Character creator */
 .creator-grid {
   display: grid;
-  gap: 1.5rem;
+  gap: 1rem;
 }
 
 @media (min-width: 1024px) {
   .creator-grid {
-    grid-template-columns: 1fr 1fr 1.1fr;
+    grid-template-columns: 1fr 1fr 1.2fr;
   }
 }
 
 .creator-panel {
-  min-height: clamp(520px, 75vh, 720px);
+  max-height: calc(100vh - var(--game-frame-thickness) * 2 - 2rem);
+  overflow-y: auto;
 }
 
 .pc-actions {
