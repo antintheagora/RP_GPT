@@ -2,7 +2,7 @@
   "name": "Ant",
   "sex": "Male",
   "age": 31,
-  "appearance": "blue valut jumpsuit",
+  "appearance": "blue valut",
   "special": {
     "STR": 5,
     "PER": 7,
@@ -16,6 +16,6 @@
   "created_at": 1762022193.6205037,
   "portrait": "portrait.jpg",
   "locked": true,
-  "updated_at": 1765054647.1419337,
+  "updated_at": 1765182171.0346925,
   "clothing": ""
 }

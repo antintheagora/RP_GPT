@@ -1,70 +1,159 @@
+/* ==========================================================================
+   RP-GPT MAIN STYLESHEET
+   ==========================================================================
+   This file controls all the visual styling for the RP-GPT web interface.
+   
+   HOW THIS FILE IS ORGANIZED:
+   1. Global Variables (:root) - Adjust these to change colors, sizes, textures
+   2. Layout - Main content area, settings overlay
+   3. 9-Slice Frame System - Creates ornate borders from texture images
+   4. Form Elements - Input fields, buttons, selectors
+   5. Page Layouts - World selection, roster, character creator screens
+   6. Game Frame - The decorative border around the entire screen
+   
+   TIP: To customize colors or sizes, start by editing the variables in :root.
+   ========================================================================== */
+
+
+/* ==========================================================================
+   GLOBAL VARIABLES
+   ==========================================================================
+   These variables control the appearance of UI elements throughout the app.
+   Change a value here, and it updates everywhere that element appears.
+   
+   FORMAT: --variable-name: value;
+   USAGE: var(--variable-name) elsewhere in the CSS
+   ========================================================================== */
+
 :root {
+  /* --- UNIVERSAL BOX SETTINGS ---
+     Controls the default padding and spacing for content boxes/panels.
+     The ninebox system creates ornate frames from 9-slice textures.
+  */
   --frame-image: url('/static/ui/nine_slice.png');
-  --image-frame: url('/static/ui/Image_Frame.png');
-  --slice: 1;
-  --frame-w: 14px;
-  --frame-out: 0px;
-  --tile-gap: 12px;
-
-  /* Universal Box Settings */
-  --box-slice: 12px;
+  /* Texture for ninebox panels */
+  --box-slice: 50px;
+  /* Corner slice size for boxes */
   --box-gap: 4px;
+  /* Gap inside box frame */
   --box-padding: 2rem;
-  /* p-4 equivalent */
+  /* Padding around content inside boxes (2rem = 32px) */
 
-  /* Universal Input Settings */
-  --input-image: url('/static/ui/input_forms.png');
+  /* --- INPUT FIELD SETTINGS ---
+     Controls how text input fields and text areas look.
+     Used for: character name input, description fields, etc.
+  */
+  --input-image: url('/static/ui/Input_Forms3.png');
+  /* 9-slice texture for inputs */
   --input-py: 0.5rem;
+  /* Vertical padding inside input (top/bottom) */
   --input-px: 1rem;
+  /* Horizontal padding inside input (left/right) */
   --input-slice: 256;
-  /* Raw pixels from the source texture for the border-image slices */
-  --input-width: 18px;
-  /* Thickness of the border */
+  /* Pixels from source image for corners */
+  --input-width: 10px;
+  /* Thickness of the input border */
   --input-gap: 6px;
   /* Extra breathing room inside the frame */
   --input-overlay: rgba(0, 0, 0, 0.15);
-  /* Optional center tint layered on top of the texture */
+  /* Dark tint over input background */
   --input-text: #e2e8f0;
+  /* Color of text in inputs (light gray) */
 
-  /* Scenario selector textures */
+  /* --- SCENARIO SELECTOR SETTINGS ---
+     Controls the clickable "cards" used for selecting scenarios/worlds.
+     These have a highlighted glow effect when selected.
+  */
   --selector-image: url('/static/ui/input_forms3.png');
+  /* 9-slice texture for selectors */
   --selector-slice: 256;
+  /* Corner slice size */
   --selector-width: 20px;
+  /* Border thickness */
   --selector-gap: 10px;
+  /* Internal padding */
   --selector-overlay: rgba(20, 10, 2, 0.65);
+  /* Dark brownish tint */
   --selector-text: #fdf5e4;
+  /* Text color when selected (warm white) */
   --selector-muted: rgba(253, 245, 228, 0.75);
+  /* Text color when not selected */
   --selector-glow: rgba(255, 179, 97, 0.65);
+  /* Orange glow when selected */
 
-  /* Button textures */
-  --button-image: url('/static/ui/buttons.png');
+  /* --- BUTTON SETTINGS ---
+     Controls the appearance of action buttons (e.g., "Begin Journey", "Create").
+  */
+  --button-image: url('/static/ui/Buttons.png');
+  /* 9-slice texture for buttons */
   --button-slice: 256;
+  /* Corner slice size */
   --button-width: 22px;
-  --button-padding-y: 0.1rem;
-  --button-padding-x: 2.1rem;
+  /* Border thickness */
+  --button-padding-y: 1rem;
+  /* Vertical padding inside button */
+  --button-padding-x: .5rem;
+  /* Horizontal padding inside button */
   --button-text: #c3c08d;
-  --button-text-shadow: rgba(255, 255, 255, 0.35);
+  /* Button text color (muted gold) */
+  --button-text-shadow: rgb(255, 0, 0);
+  /* Subtle highlight under text */
 
-  /* Full-screen frame */
+  /* --- GAME FRAME SETTINGS ---
+     The decorative border that surrounds the ENTIRE screen.
+     This is the big stone/fantasy frame you see around the edges.
+     
+     The slice values control which parts of the texture are corners vs edges:
+     - Higher slice = larger corners (prevents stretching of decorations)
+     - The candle and gargoyle decorations need large slices to avoid distortion
+  */
   --game-frame-image: url('/static/ui/Game_Frame.png');
+  /* The main frame texture */
   --game-frame-side: 490;
+  /* Pixels for left/right edges */
   --game-frame-top: 680;
+  /* Pixels for top edge (larger for gargoyle) */
   --game-frame-bottom: 600;
+  /* Pixels for bottom edge (larger for candle) */
   --game-frame-thickness: clamp(150px, 6vw, 150px);
+  /* How thick the frame appears on screen */
 
-  /* Image frame (portraits) - simple 9-slice */
+  /* --- IMAGE FRAME SETTINGS ---
+     The decorative frame around character and world portrait images.
+     Uses 9-slice to create an ornate picture frame effect.
+     
+     - slice: How many pixels are "corner" (don't stretch)
+     - width: How thick the frame border appears
+  */
+  --image-frame: url('/static/ui/Image_Frame.png');
+  /* Portrait frame texture */
   --image-frame-slice: 350;
-  --image-frame-width: 80px;
+  /* Corner protection (prevents candle from stretching) */
+  --image-frame-width: 60px;
+  /* Rendered thickness of portrait frame */
 }
 
-/* Main content area - centered within game frame */
+
+/* ==========================================================================
+   MAIN LAYOUT
+   ==========================================================================
+   These styles control where content appears on screen and how it's
+   positioned relative to the decorative game frame.
+   ========================================================================== */
+
+/* Main Content Area
+   This is the container for all page content (world selection, roster, etc.)
+   It's positioned inside the game frame with padding to prevent overlap.
+   
+   NOTE: The padding values are calculated from --game-frame-thickness
+   so content automatically stays inside the decorative border.
+*/
 .app-content {
   position: relative;
   z-index: 10;
-  /* Fill available width within frame */
   width: 100%;
   margin: 0 auto;
-  /* Account for game frame thickness */
+  /* These paddings keep content away from the ornate frame edges */
   padding-left: calc(var(--game-frame-thickness) + 0.5rem);
   padding-right: calc(var(--game-frame-thickness) + 0.5rem);
   padding-top: calc(var(--game-frame-thickness) + 1rem);
@@ -74,12 +163,21 @@
   transition: opacity 120ms ease, filter 120ms ease;
 }
 
+/* Loading State: Content fades slightly when HTMX is fetching new content */
 .htmx-request .app-content {
   opacity: 0.7;
   filter: blur(0.5px);
 }
 
-/* Settings Overlay */
+
+/* ==========================================================================
+   SETTINGS OVERLAY
+   ==========================================================================
+   A popup panel that appears when you press ESC.
+   Contains reset button and other settings options.
+   ========================================================================== */
+
+/* Dark backdrop that covers the entire screen */
 .settings-overlay {
   position: fixed;
   inset: 0;
@@ -91,10 +189,12 @@
   justify-content: center;
 }
 
+/* Hidden state - completely removes the overlay from display */
 .settings-overlay.hidden {
   display: none;
 }
 
+/* The actual panel box in the center */
 .settings-panel {
   background: rgba(15, 20, 30, 0.95);
   border: 2px solid rgba(255, 255, 255, 0.1);
@@ -104,6 +204,7 @@
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
 }
 
+/* Settings panel title */
 .settings-title {
   font-size: 1.5rem;
   font-weight: 600;
@@ -128,22 +229,48 @@
   color: rgba(226, 232, 240, 0.8);
 }
 
+
+/* ==========================================================================
+   9-SLICE FRAME SYSTEM ("NINEBOX")
+   ==========================================================================
+   This system creates ornate borders by cutting a single texture image 
+   into 9 pieces: 4 corners, 4 edges, and 1 center.
+   
+   The corners never stretch (maintaining detail like carvings).
+   The edges stretch only in one direction (horizontally or vertically).
+   The center stretches to fill the remaining space.
+   
+   This allows one texture to work for any size container!
+   
+   CLASSES:
+   - .ninebox = The container
+   - .nf = Frame piece (positioned absolutely)
+   - .tl, .tr, .bl, .br = Corner pieces (top-left, top-right, bottom-left, bottom-right)
+   - .t, .b, .l, .r = Edge pieces (top, bottom, left, right)
+   - .c = Center piece
+   ========================================================================== */
+
 .ninebox {
   --img: var(--frame-image);
+  /* Which texture to use */
   --slice: 256px;
+  /* Size of corner pieces */
   --gap: 14px;
+  /* Padding inside the frame */
   position: relative;
   padding: var(--gap);
 }
 
+/* Base style for all frame pieces */
 .ninebox .nf {
   position: absolute;
   background-image: var(--img);
   background-repeat: no-repeat;
   background-size: 300% 300%;
-  /* 3x3 grid */
+  /* 3x3 grid to show 1/9th of image */
   image-rendering: auto;
   pointer-events: none;
+  /* Allow clicks to pass through */
   z-index: 1;
 }
 
@@ -499,21 +626,38 @@ textarea.u-input {
   cursor: not-allowed;
 }
 
-/* Worlds layout */
+
+/* ==========================================================================
+   PAGE LAYOUTS
+   ==========================================================================
+   Styles for the main screens/pages: World Selection, Roster, Character Creator.
+   These control how panels are arranged and how content flows within them.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   WORLD SELECTION PAGE
+   The first page you see - shows available worlds to play in.
+   Three-column layout: World list | Preview | World Details
+   -------------------------------------------------------------------------- */
+
 .worlds-grid {
   display: grid;
   gap: 1rem;
 }
 
+/* On larger screens (1024px+), switch to 3 columns */
 @media (min-width: 1024px) {
   .worlds-grid {
     grid-template-columns: 1fr 1fr 1.2fr;
+    /* Last column slightly wider */
   }
 }
 
+/* Individual panel height - calculated to fit within the game frame */
 .world-panel {
   max-height: calc(100vh - var(--game-frame-thickness) * 2 - 2rem);
   overflow-y: auto;
+  /* Allows scrolling if content is too tall */
 }
 
 .world-panel::-webkit-scrollbar,
@@ -627,7 +771,7 @@ textarea.u-input {
 }
 
 .world-preview {
-  margin-top: 0.5rem;
+  margin-top: .5rem;
   text-align: center;
 }
 
@@ -640,7 +784,7 @@ textarea.u-input {
 .world-portrait-frame::after {
   content: "";
   position: absolute;
-  inset: 0;
+  inset: -30px;
   border-style: solid;
   border-color: transparent;
   border-width: var(--image-frame-width);
@@ -835,21 +979,47 @@ textarea.u-input {
   overflow-y: auto;
 }
 
+
+/* ==========================================================================
+   THE GAME FRAME
+   ==========================================================================
+   This is the ornate decorative border that surrounds the ENTIRE screen.
+   It's the big fantasy stone frame with gargoyles, candles, and carvings.
+   
+   HOW IT WORKS:
+   - Uses CSS border-image with 9-slice to stretch a texture
+   - Positioned as "fixed" so it stays in place even when scrolling
+   - The slice values protect the corner decorations from stretching
+   - Content area has matching padding to stay inside the frame
+   
+   TO ADJUST:
+   - Change --game-frame-thickness in :root to make frame thicker/thinner
+   - Slice values control which parts are "corners" (don't stretch)
+   - If decorations look stretched, increase the corresponding slice value
+   ========================================================================== */
+
 .game-frame-shell {
   position: fixed;
   inset: 0;
+  /* Cover entire viewport */
   border-style: solid;
   border-color: transparent;
   border-width: var(--game-frame-thickness);
+  /* How thick the frame is */
   border-image-source: var(--game-frame-image);
+  /* The frame texture image */
+  /* The slice values: top | right | bottom | left */
   border-image-slice: var(--game-frame-top) var(--game-frame-side) var(--game-frame-bottom) var(--game-frame-side);
   border-image-width: 1;
   border-image-repeat: stretch;
   pointer-events: none;
+  /* Allow clicks to pass through the frame */
   z-index: 40;
+  /* Sits above most content but below modals */
   mix-blend-mode: normal;
 }
 
+/* On mobile: make the frame thinner to save screen space */
 @media (max-width: 768px) {
   .game-frame-shell {
     border-width: clamp(40px, 12vw, 70px);
