@@ -79,13 +79,21 @@ def test_engine_does_not_import_ui_or_web_modules():
 
 
 def test_engine_modules_contain_no_print_calls():
-    """Rules code must emit through the caller, not straight to stdout."""
+    """Rules code must emit through the bus, not straight to stdout.
+
+    events.py is the one exemption: it *is* the output boundary, and its
+    single print is the deliberate fallback that keeps the terminal path
+    working when no collector is active. It runs at call time, never at
+    import time, so the stdout-closed invariant still holds.
+    """
     import ast
     from pathlib import Path
 
     engine_dir = Path(__file__).resolve().parent.parent / "engine"
     offenders = []
     for path in engine_dir.glob("*.py"):
+        if path.name == "events.py":
+            continue
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
             if (

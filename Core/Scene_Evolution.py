@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from engine import events as _ev
+
 from Core.Logging import get_logger
 
 _log = get_logger("scene_evolution")
@@ -252,13 +254,13 @@ def evolve_situation(state, g: GemmaClient, outcome: str, intent: Optional[str] 
     ) or ""
     narration_para = sanitize_prose(narration_para)
     # Print unified (we never reprint the action_text here to avoid duplication)
-    print()
+    _ev.prose("")
     if situation_txt:
-        print(wrap(situation_txt))
-        print()
+        _ev.prose(wrap(situation_txt))
+        _ev.prose("")
     if narration_para:
-        print(wrap(narration_para))
-        print()
+        _ev.prose(wrap(narration_para))
+        _ev.prose("")
 
     # 5) Update last-turn flags and add one lore line to the journal
     state.last_result_para = action_text or ""

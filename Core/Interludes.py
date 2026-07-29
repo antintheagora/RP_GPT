@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from engine import events as _ev
+
 from Core.Logging import get_logger
 
 _log = get_logger("interludes")
@@ -65,9 +67,9 @@ def maybe_celebrate(state, g: GemmaClient, action_text: str):
         )
         beat = sanitize_prose(g.text(prompt, tag="Celebrate", max_chars=240))
         if beat:
-            print("\n" + wrap(beat))
+            _ev.prose("\n" + wrap(beat))
         # Offer Rest immediately
-        print("\nTake a breather? [R]est now  [C]ontinue")
+        _ev.prose("\nTake a breather? [R]est now  [C]ontinue")
         ans = (input("> ").strip().lower() or "c")
         if ans.startswith("r"):
             do_rest(state, g)
@@ -97,17 +99,17 @@ def celebrate_break(state, g: GemmaClient) -> bool:
     if random.random() > 0.30:  # ~30% chance
         return False
 
-    print("\n— A moment to breathe —")
+    _ev.prose("\n— A moment to breathe —")
     try:
         line = g.text(celebration_flavor_prompt(state), tag="Celebrate", max_chars=300)
         line = sanitize_prose(line)
         if line:
-            print(wrap(line))
+            _ev.prose(wrap(line))
     except Exception:
         _log.debug("suppressed error in Interludes", exc_info=True)
 
     # Offer an immediate rest interlude
-    print("\nTake a brief celebration rest?\n  [y] Yes (camp interlude)\n  [n] No (continue)")
+    _ev.prose("\nTake a brief celebration rest?\n  [y] Yes (camp interlude)\n  [n] No (continue)")
     ans = (input("> ").strip().lower() or "n")
     if ans != "y":
         return False
@@ -127,7 +129,7 @@ def maybe_companion_camp_line(state, g: GemmaClient):
     comp = random.choice(state.companions)
     try:
         line = g.text(talk_reply_prompt(state, comp, "Campfire pause"), tag="Camp aside", max_chars=160)
-        print(wrap(f"{comp.name}: {sanitize_prose(line)}"))
+        _ev.prose(wrap(f"{comp.name}: {sanitize_prose(line)}"))
     except Exception:
         _log.debug("suppressed error in Interludes", exc_info=True)
 
@@ -139,16 +141,16 @@ def camp_interlude(state, g: GemmaClient):
     """
     TurnMode = _core().TurnMode
 
-    print("\n— Camp Interlude —")
+    _ev.prose("\n— Camp Interlude —")
     while True:
-        print("  [1] Journal (read recent)")
-        print("  [2] Talk to someone nearby")
-        print("  [3] Observe (settle your thoughts)")
-        print("  [4] Think (quiet reflection)")
-        print("  [Enter] Continue on")
+        _ev.system("  [1] Journal (read recent)")
+        _ev.system("  [2] Talk to someone nearby")
+        _ev.prose("  [3] Observe (settle your thoughts)")
+        _ev.prose("  [4] Think (quiet reflection)")
+        _ev.prose("  [Enter] Continue on")
         sel = input("> ").strip()
         if sel == "":
-            print("[Camp] You douse the embers and move on.\n")
+            _ev.system("[Camp] You douse the embers and move on.\n")
             break
         if sel == "1":
             open_journal(state)
@@ -160,11 +162,11 @@ def camp_interlude(state, g: GemmaClient):
                 talk_loop(state, t, g)
                 state.mode = prev_mode
             else:
-                print("No one to talk to.\n")
+                _ev.prose("No one to talk to.\n")
         elif sel == "3":
             goal_lock = goal_lock_active(state, state.last_turn_success)
             line = g.text(observe_prompt(state, goal_lock), tag="Camp observe", max_chars=200)
-            print(wrap("You take stock: " + sanitize_prose(line or "The silence says nothing back.") + "\n"))
+            _ev.prose(wrap("You take stock: " + sanitize_prose(line or "The silence says nothing back.") + "\n"))
         elif sel == "4":
             # Quiet reflection produces a small, non-mechanical line. No meters.
             try:
@@ -174,9 +176,9 @@ def camp_interlude(state, g: GemmaClient):
                     tag="Camp think",
                     max_chars=160,
                 )
-                print(wrap(sanitize_prose(reflect)) + "\n")
+                _ev.prose(wrap(sanitize_prose(reflect)) + "\n")
             except Exception:
-                print("Your thoughts drift.\n")
+                _ev.prose("Your thoughts drift.\n")
         else:
-            print("Pick 1–4 or press Enter to continue.\n")
+            _ev.system("Pick 1–4 or press Enter to continue.\n")
 

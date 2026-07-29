@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from engine import events as _ev
+
 from Core.Logging import get_logger
 
 _log = get_logger("turn_and_act_flow")
@@ -84,7 +86,7 @@ def begin_act(state, idx: int):
         if not available:
             raise ValueError("Blueprint has no acts")
         clamped = min(available, key=lambda k: (abs(k - idx), k))
-        print(f"[Act] act {idx} is not in the blueprint (has {available}); using act {clamped}.")
+        _ev.system(f"[Act] act {idx} is not in the blueprint (has {available}); using act {clamped}.")
         idx = clamped
 
     # --- carry the world across the act boundary (B15) ---------------------
@@ -250,7 +252,7 @@ def end_of_turn(state, g: GemmaClient):
         b.duration_turns -= 1
         if b.duration_turns <= 0:
             state.player.buffs.remove(b)
-            print(f"[Buff fades] {b.name}")
+            _ev.prose(f"[Buff fades] {b.name}")
     state.turn_narrative_cache = None
     generate_turn_image(state, queue_image_event)
     # reset per-turn flags
@@ -276,9 +278,9 @@ def recap_and_transition(state, g: GemmaClient, reason: str):
     recap = g.text(recap_prompt(state, ok), tag="Recap", max_chars=900)
     recap_clean = sanitize_prose(recap) if recap else ""
     if recap_clean:
-        print("\n" + "=" * 78)
-        print(wrap(recap_clean))
-        print("=" * 78 + "\n")
+        _ev.prose("\n" + "=" * 78)
+        _ev.prose(wrap(recap_clean))
+        _ev.prose("=" * 78 + "\n")
     if ok:
         state.player.hp = min(100, state.player.hp + 10)
         state.pressure = max(0, state.pressure - 8)
@@ -293,7 +295,7 @@ def recap_and_transition(state, g: GemmaClient, reason: str):
                 ]
             )
             state.player.buffs.append(deb)
-            print(f"[Debuff] {deb.name} clings to you for {deb.duration_turns} turns.")
+            _ev.prose(f"[Debuff] {deb.name} clings to you for {deb.duration_turns} turns.")
     state.history.append(f"Act {state.act.index} {'success' if ok else 'fail'} ({reason})")
     if recap_clean:
         state.player_bio_entries.append(f"Act {state.act.index} recap: {recap_clean}")
@@ -310,12 +312,12 @@ def recap_and_transition(state, g: GemmaClient, reason: str):
         except Exception:
             _log.debug("suppressed error in Turn_And_Act_Flow", exc_info=True)
         if ok:
-            print(wrap("Finale: The line holds. Choices converge; the world loosens its grip."))
+            _ev.prose(wrap("Finale: The line holds. Choices converge; the world loosens its grip."))
         else:
             if last_chance_local(state):
-                print(wrap("Finale: Against the grain, a path opens."))
+                _ev.prose(wrap("Finale: Against the grain, a path opens."))
             else:
-                print(wrap("Finale: The coil tightens. The world keeps what it has taken."))
+                _ev.prose(wrap("Finale: The coil tightens. The world keeps what it has taken."))
         state.running = False
         return
     state.act.index += 1
@@ -329,9 +331,9 @@ def try_advance(state, reason: str = "milestone"):
     core = _core()
     _GEMMA = getattr(core, "_GEMMA", None)
     if state.act.goal_progress >= 60 and state.act.index < state.act_count:
-        print(f"[Milestone] Momentum shifts ({reason}).")
+        _ev.prose(f"[Milestone] Momentum shifts ({reason}).")
         if _GEMMA is None:
-            print("[Warn] Gemma client not set; skipping milestone transition.")
+            _ev.system("[Warn] Gemma client not set; skipping milestone transition.")
             return
         recap_and_transition(state, _GEMMA, "milestone")
 
@@ -342,11 +344,11 @@ def last_chance(state) -> bool:
     SPECIAL_KEYS = core.SPECIAL_KEYS
     check = core.check
 
-    print("\n-- Last Chance --")
+    _ev.prose("\n-- Last Chance --")
     picks = random.sample(SPECIAL_KEYS, 3)
     for i, k in enumerate(picks, 1):
-        print(f"  [{i}] Trust your {k}")
-    print("  [4] Custom (your SPECIAL)\n  [0] Yield")
+        _ev.prose(f"  [{i}] Trust your {k}")
+    _ev.system("  [4] Custom (your SPECIAL)\n  [0] Yield")
     # Bounded on purpose. This is the most likely ending path in the game, and
     # an unbounded input() loop here hung the web server permanently. The limit
     # sits below InputFeeder.MAX_BLANK_READS so this yields gracefully rather
@@ -361,16 +363,16 @@ def last_chance(state) -> bool:
         if s in {"1", "2", "3"}:
             stat = picks[int(s) - 1]
             ok, total = check(state, stat, 14)
-            print(f"{stat} {total} vs 14 -> {'SUCCESS' if ok else 'FAIL'}")
+            _ev.roll(f"{stat} {total} vs 14 -> {'SUCCESS' if ok else 'FAIL'}")
             return ok
         if s == "4":
             stat = ensure_custom_stat_per_turn(state)
             ok, total = check(state, stat, 14)
-            print(f"{stat} {total} vs 14 -> {'SUCCESS' if ok else 'FAIL'}")
+            _ev.roll(f"{stat} {total} vs 14 -> {'SUCCESS' if ok else 'FAIL'}")
             return ok
         if s:
-            print("Pick 1–4 or 0.")
-    print("No answer given — you yield.")
+            _ev.system("Pick 1–4 or 0.")
+    _ev.prose("No answer given — you yield.")
     return False
 
 
@@ -387,9 +389,9 @@ def game_loop(state, g: GemmaClient):
         header()
         hud(state)
         if state.act.turns_taken == 1:
-            print("\n-- Situation --")
-            print(wrap(state.act.situation))
-            print()
+            _ev.prose("\n-- Situation --")
+            _ev.prose(wrap(state.act.situation))
+            _ev.prose("")
         goal_lock = goal_lock_active(state, state.last_turn_success)
 
         if state.mode == TurnMode.EXPLORE:
@@ -449,7 +451,7 @@ def game_loop(state, g: GemmaClient):
 
         endmsg = state.is_game_over()
         if endmsg:
-            print("\n" + endmsg)
+            _ev.prose("\n" + endmsg)
             if state.player.hp <= 0:
-                print("\n" + wrap("Finale: The coil tightens. The world keeps what it has taken."))
+                _ev.prose("\n" + wrap("Finale: The coil tightens. The world keeps what it has taken."))
             state.running = False

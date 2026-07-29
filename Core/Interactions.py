@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from engine import events as _ev
+
 from Core.Logging import get_logger
 
 _log = get_logger("interactions")
@@ -20,20 +22,20 @@ def pick_actor(state: "GameState") -> Optional["Actor"]:
     """Let the player choose which discovered actor to engage with."""
     available = [a for a in state.act.actors if a.discovered and a.alive]
     if not available:
-        print("No one to interact with (yet).")
+        _ev.chapter("No one to interact with (yet).")
         return None
     if len(available) == 1:
         only = available[0]
-        print(f"Only {only.name} is here. Engage? [Y/n]")
+        _ev.prose(f"Only {only.name} is here. Engage? [Y/n]")
         answer = input("> ").strip().lower() or "y"
         if answer != "n":
             state.last_actor = only
             return only
         return None
-    print("Choose a target:")
+    _ev.system("Choose a target:")
     for idx, actor in enumerate(available, start=1):
-        print(f"  [{idx}] {actor.name} ({actor.kind}/{actor.role}) — disp {actor.disposition} hp:{actor.hp}")
-    print("  [0] Cancel")
+        _ev.harm(f"  [{idx}] {actor.name} ({actor.kind}/{actor.role}) — disp {actor.disposition} hp:{actor.hp}")
+    _ev.system("  [0] Cancel")
     while True:
         choice = input("> ").strip()
         if choice == "0":
@@ -42,7 +44,7 @@ def pick_actor(state: "GameState") -> Optional["Actor"]:
             picked = available[int(choice) - 1]
             state.last_actor = picked
             return picked
-        print("Pick a valid index.")
+        _ev.system("Pick a valid index.")
 
 
 def talk_loop(state: "GameState", actor: "Actor", g: "GemmaClient") -> None:
@@ -62,7 +64,7 @@ def talk_loop(state: "GameState", actor: "Actor", g: "GemmaClient") -> None:
         try_advance,
     )
 
-    print(f"\nTalking to {actor.name} — disposition {actor.disposition}")
+    _ev.prose(f"\nTalking to {actor.name} — disposition {actor.disposition}")
     state.last_actor = actor
     try:
         ensure_character_profile(actor)
@@ -88,21 +90,21 @@ def talk_loop(state: "GameState", actor: "Actor", g: "GemmaClient") -> None:
     while True:
         choices = [key for key in SPECIAL_KEYS if key != "CHA"]
         option_two, option_three = random.sample(choices, 2)
-        print("  [1] Appeal (CHA)")
-        print(f"  [2] {option_two}")
-        print(f"  [3] {option_three}")
-        print("  [4] Say something (free-form)")
-        print("  [0] End conversation")
+        _ev.system("  [1] Appeal (CHA)")
+        _ev.system(f"  [2] {option_two}")
+        _ev.prose(f"  [3] {option_three}")
+        _ev.prose("  [4] Say something (free-form)")
+        _ev.system("  [0] End conversation")
         selection = input("> ").strip()
 
         if selection == "0" or exchanges >= max_exchanges:
             if exchanges >= max_exchanges:
-                print("[Talk] You’ve said enough for now.")
+                _ev.system("[Talk] You’ve said enough for now.")
             post_talk_outcomes(state, actor)
             state.history.append(f"Talked to {actor.name}")
             outcome = "success" if actor.disposition >= 20 else "fail"
             result_line = f"You finish talking to {actor.name}. Current disposition: {actor.disposition}."
-            print(wrap(result_line))
+            _ev.prose(wrap(result_line))
             evolve_situation(state, g, outcome, f"talk with {actor.name}", result_line)
             state.mode = TurnMode.EXPLORE
             return
@@ -120,7 +122,7 @@ def talk_loop(state: "GameState", actor: "Actor", g: "GemmaClient") -> None:
             mood_shift += (state.player.effective_stat("CHA") - 5) // 2
             actor.disposition = max(-100, min(100, actor.disposition + mood_shift))
             reply = g.text(talk_reply_prompt(state, actor, player_line), tag="Talk", max_chars=220)
-            print(wrap(f"{actor.name}: {sanitize_prose(reply)} (Disposition {('+' if mood_shift >= 0 else '')}{mood_shift})"))
+            _ev.prose(wrap(f"{actor.name}: {sanitize_prose(reply)} (Disposition {('+' if mood_shift >= 0 else '')}{mood_shift})"))
             conversation_log.append(f"said:{player_line[:40]} reply:{(reply or '')[:40]}")
             exchanges += 1
             continue
@@ -132,15 +134,15 @@ def talk_loop(state: "GameState", actor: "Actor", g: "GemmaClient") -> None:
             if success:
                 gain = 12 if chosen_stat == "CHA" else 8
                 actor.disposition = min(100, actor.disposition + gain)
-                print(wrap(f"Success ({chosen_stat} {total} vs DC {dc}). {actor.name} softens (+{gain} disp)."))
+                _ev.roll(wrap(f"Success ({chosen_stat} {total} vs DC {dc}). {actor.name} softens (+{gain} disp)."))
             else:
                 loss = 8 if chosen_stat == "CHA" else 6
                 actor.disposition = max(-100, actor.disposition - loss)
-                print(wrap(f"Fail ({chosen_stat} {total} vs DC {dc}). {actor.name} bristles (-{loss} disp)."))
+                _ev.roll(wrap(f"Fail ({chosen_stat} {total} vs DC {dc}). {actor.name} bristles (-{loss} disp)."))
             conversation_log.append(f"{chosen_stat}:{'OK' if success else 'FAIL'} (disp {actor.disposition})")
             exchanges += 1
             if actor.disposition <= -30 and random.random() < 0.35:
-                print(f"{actor.name} lashes out!")
+                _ev.prose(f"{actor.name} lashes out!")
                 state.last_enemy = actor
                 state.mode = TurnMode.COMBAT
                 try:
@@ -161,13 +163,13 @@ def post_talk_outcomes(state: "GameState", actor: "Actor") -> None:
     from RP_GPT import Item, try_advance
 
     if actor.disposition >= 50 and random.random() < 0.4:
-        print(f"{actor.name} clears the way ahead.")
+        _ev.prose(f"{actor.name} clears the way ahead.")
         try_advance(state, "talk-cleared-path")
     if actor.disposition >= 30 and random.random() < 0.5:
         reward = Item("Small Favor", ["boon"], goal_delta=5, notes="A timely edge")
         state.player.add_item(reward)
         state.act.goal_progress = min(100, state.act.goal_progress + reward.goal_delta)
-        print(f"{actor.name} offers a {reward.name}. (+{reward.goal_delta} act goal)")
+        _ev.chapter(f"{actor.name} offers a {reward.name}. (+{reward.goal_delta} act goal)")
 
 
 def remove_if_dead(state: "GameState", actor: "Actor") -> None:
@@ -184,18 +186,18 @@ def enemy_attack(state: "GameState", enemy: "Actor") -> None:
     evade = (state.player.effective_stat("PER") + state.player.effective_stat("AGI")) / 2
     roll = random.randint(1, 20)
     if roll + enemy.attack <= 10 + int(evade / 2):
-        print(f"{enemy.name} misses.")
+        _ev.prose(f"{enemy.name} misses.")
         return
     damage = max(1, enemy.attack + random.randint(1, 4) + (state.act.index - 1))
     state.player.hp -= damage
-    print(f"{enemy.name} hits you for {damage}. (HP {state.player.hp})")
+    _ev.harm(f"{enemy.name} hits you for {damage}. (HP {state.player.hp})")
 
 
 def combat_parley(state: "GameState", enemy: "Actor", g: "GemmaClient", goal_lock: bool) -> bool:
     """Let the player try to talk down an enemy mid-combat."""
     from RP_GPT import TurnMode, calc_dc, check, evolve_situation, talk_reply_prompt
 
-    print("Parley — say something:")
+    _ev.prose("Parley — say something:")
     line = input("You: ")
     dc = calc_dc(state, base=12)
     success, _ = check(state, "CHA", dc)
@@ -209,11 +211,11 @@ def combat_parley(state: "GameState", enemy: "Actor", g: "GemmaClient", goal_loc
         mood -= random.randint(6, 10)
     enemy.disposition = max(-100, min(100, enemy.disposition + mood))
     reply = g.text(talk_reply_prompt(state, enemy, line), tag="Combat Parley", max_chars=200)
-    print(wrap(f"{enemy.name}: {sanitize_prose(reply)} (Disposition {('+' if mood >= 0 else '')}{mood})"))
+    _ev.prose(wrap(f"{enemy.name}: {sanitize_prose(reply)} (Disposition {('+' if mood >= 0 else '')}{mood})"))
     if enemy.disposition >= 20:
         action_text = f"You sway {enemy.name}; combat ebbs."
         state.mode = TurnMode.EXPLORE
-        print(wrap(action_text))
+        _ev.prose(wrap(action_text))
         evolve_situation(state, g, "success", f"parley with {enemy.name}", action_text)
         return True
     if enemy.alive:
@@ -248,8 +250,8 @@ def combat_turn(state: "GameState", enemy: "Actor", g: "GemmaClient", goal_lock:
     except Exception:
         _log.debug("suppressed error in Interactions", exc_info=True)
 
-    print(f"\n-- COMBAT with {enemy.name} (HP {enemy.hp}, ATK {enemy.attack}) --")
-    print("  [1] Attack\n  [2] Use Item\n  [3] Parley (talk)\n  [4] Sneak away (AGI)\n  [5] Observe weakness\n  [0] Back")
+    _ev.harm(f"\n-- COMBAT with {enemy.name} (HP {enemy.hp}, ATK {enemy.attack}) --")
+    _ev.system("  [1] Attack\n  [2] Use Item\n  [3] Parley (talk)\n  [4] Sneak away (AGI)\n  [5] Observe weakness\n  [0] Back")
     selection = input("> ").strip()
 
     if selection == "1":
@@ -257,9 +259,9 @@ def combat_turn(state: "GameState", enemy: "Actor", g: "GemmaClient", goal_lock:
         damage = max(1, player.attack + bonus + random.randint(1, 4))
         enemy.hp -= damage
         action_text = f"You strike {enemy.name} for {damage}."
-        print(action_text)
+        _ev.prose(action_text)
         if enemy.hp <= 0:
-            print(f"{enemy.name} falls.")
+            _ev.prose(f"{enemy.name} falls.")
             action_text += f" {enemy.name} falls."
             enemy.alive = False
             state.act.goal_progress = min(100, state.act.goal_progress + 15)
@@ -292,12 +294,12 @@ def combat_turn(state: "GameState", enemy: "Actor", g: "GemmaClient", goal_lock:
         success, total = check(state, "AGI", dc)
         if success:
             action_text = "You slip away."
-            print(action_text)
+            _ev.prose(action_text)
             state.mode = TurnMode.EXPLORE
             evolve_situation(state, g, "success", "slip away", action_text)
         else:
             action_text = f"You stumble (AGI {total} vs DC {dc})."
-            print(action_text)
+            _ev.prose(action_text)
             enemy_attack(state, enemy)
             evolve_situation(state, g, "fail", "slip away", action_text)
         state.history.append(f"Sneak vs {enemy.name}: {'OK' if success else 'FAIL'}")
@@ -306,7 +308,7 @@ def combat_turn(state: "GameState", enemy: "Actor", g: "GemmaClient", goal_lock:
     if selection == "5":
         line = g.text(combat_observe_prompt(state, enemy, goal_lock), tag="Combat observe", max_chars=160)
         action_text = "You read their motion: " + sanitize_prose(line or "")
-        print(wrap(action_text))
+        _ev.prose(wrap(action_text))
         enemy.disposition = max(enemy.disposition, 55)
         enemy_attack(state, enemy)
         state.history.append(f"Observed {enemy.name}")
@@ -314,7 +316,7 @@ def combat_turn(state: "GameState", enemy: "Actor", g: "GemmaClient", goal_lock:
         return True
 
     action_text = "You hesitate."
-    print(action_text)
+    _ev.prose(action_text)
     enemy_attack(state, enemy)
     state.history.append(f"Hesitated vs {enemy.name}")
     evolve_situation(state, g, "fail", "hesitate", action_text)
@@ -326,10 +328,10 @@ def use_item(state: "GameState") -> str:
     inventory = state.player.inventory
     if not inventory:
         message = "Your pack is empty."
-        print(message)
+        _ev.prose(message)
         return message
 
-    print("Use which item?")
+    _ev.prose("Use which item?")
     for idx, item in enumerate(inventory, 1):
         mods = ", ".join([f"{key}{value:+d}" for key, value in item.special_mods.items()])
         print(
@@ -337,12 +339,12 @@ def use_item(state: "GameState") -> str:
             f"ActGoal{item.goal_delta:+d}, Press{item.pressure_delta:+d}"
             f"{'; ' + mods if mods else ''}) — {item.notes}"
         )
-    print("  [0] Cancel")
+    _ev.system("  [0] Cancel")
     selection = input("> ").strip()
     if selection == "0":
         return "You decide not to use anything."
     if not selection.isdigit() or not (1 <= int(selection) <= len(inventory)):
-        print("No effect.")
+        _ev.prose("No effect.")
         return "No effect."
 
     item = inventory[int(selection) - 1]
@@ -356,7 +358,7 @@ def use_item(state: "GameState") -> str:
     if item.pressure_delta:
         state.pressure = max(0, min(100, state.pressure + item.pressure_delta))
     message = f"You use {item.name}."
-    print(wrap(message))
+    _ev.prose(wrap(message))
     if item.consumable:
         inventory.pop(int(selection) - 1)
     state.history.append(f"Used {item.name}")

@@ -151,6 +151,8 @@ ___| :: |___   \\ `)/
 
 
 from __future__ import annotations
+
+from engine import events as _ev
 import json, random, re, sys
 from dataclasses import dataclass, field
 from enum import Enum, auto
@@ -315,7 +317,7 @@ _GEMMA: Optional[GemmaClient] = None
 # =============================
 
 def pick_scenario()->Tuple[Scenario,str]:
-    print("Select a scenario:\n  [1] Apocalypse\n  [2] Dark Fantasy\n  [3] Haunted House\n  [4] Custom")
+    _ev.system("Select a scenario:\n  [1] Apocalypse\n  [2] Dark Fantasy\n  [3] Haunted House\n  [4] Custom")
     while True:
         c=input("> ").strip()
         if c=="1": return Scenario.APOCALYPSE, Scenario.APOCALYPSE.value
@@ -324,13 +326,13 @@ def pick_scenario()->Tuple[Scenario,str]:
         if c=="4": 
             lbl=input("Custom label (e.g., Sky Citadel, Clockwork Noir): ").strip() or "Custom"
             return Scenario.CUSTOM, lbl
-        print("Please enter 1–4.")
+        _ev.prose("Please enter 1–4.")
 
 def prompt_extra_world_details()->str:
-    print("\nAdd long-form world details? (y/N)")
+    _ev.prose("\nAdd long-form world details? (y/N)")
     ans = (input("> ").strip().lower() or "n")
     if ans!="y": return ""
-    print("Paste world/campaign details (end with a blank line):")
+    _ev.prose("Paste world/campaign details (end with a blank line):")
     lines=[]
     while True:
         ln=input()
@@ -369,11 +371,11 @@ def get_blueprint_interactive(g:GemmaClient, label:str, overrides: Optional[Dict
                 ap=bp.acts[idx]
                 if not ap.goal or not ap.intro_paragraph:
                     raise GemmaError(f'Act {idx} missing goal/intro.')
-            print("[Gemma] Blueprint OK.")
+            _ev.system("[Gemma] Blueprint OK.")
             return bp
         except Exception as e:
-            print("\n[ERROR] Blueprint generation failed:")
-            print(f"  {e}")
+            _ev.system("\n[ERROR] Blueprint generation failed:")
+            _ev.prose(f"  {e}")
             sel=(input("Options: [R]etry  [C]hange model  [Q]uit > ").strip().lower() or "r")
             if sel=="q": sys.exit(1)
             if sel=="c": g.model=input("New model tag > ").strip() or g.model
@@ -432,7 +434,7 @@ def game_loop_legacy(state:GameState, g:GemmaClient):
     while state.running:
         header(); hud(state)
         if state.act.turns_taken == 1:
-            print("\n-- Situation --"); print(wrap(state.act.situation)); print()
+            _ev.prose("\n-- Situation --"); _ev.prose(wrap(state.act.situation)); _ev.prose("")
         goal_lock = goal_lock_active(state, state.last_turn_success)
 
         if state.mode==TurnMode.EXPLORE:
@@ -489,8 +491,8 @@ def game_loop_legacy(state:GameState, g:GemmaClient):
 
         endmsg=state.is_game_over()
         if endmsg:
-            print("\n"+endmsg)
-            if state.player.hp<=0: print("\n"+wrap("Finale: The coil tightens. The world keeps what it has taken."))
+            _ev.prose("\n"+endmsg)
+            if state.player.hp<=0: _ev.prose("\n"+wrap("Finale: The coil tightens. The world keeps what it has taken."))
             state.running=False
 
 
@@ -501,8 +503,8 @@ def game_loop_legacy(state:GameState, g:GemmaClient):
 
 def _run_terminal_game():
     global _GEMMA
-    print("[Mode] Starting terminal interface.")
-    print("="*78); print("RP-GPT6 — Gemma-Orchestrated RPG".center(78)); print("="*78)
+    _ev.system("[Mode] Starting terminal interface.")
+    _ev.prose("="*78); _ev.prose("RP-GPT6 — Gemma-Orchestrated RPG".center(78)); _ev.prose("="*78)
     sc,label=pick_scenario()
     extra_world = prompt_extra_world_details()
     if extra_world:
@@ -514,14 +516,14 @@ def _run_terminal_game():
     state=GameState(scenario=sc, scenario_label=label, player=player,
                     blueprint=bp, pressure_name=bp.pressure_name)
     begin_act(state,1)
-    print("\n--- Adventure Begins ---\n")
+    _ev.chapter("\n--- Adventure Begins ---\n")
     try:
         queue_image_event(state, "startup", make_startup_prompt(state), actors=[state.player.name], extra={"act":1})
         queue_image_event(state, "player_portrait", make_player_portrait_prompt(state.player), actors=[state.player.name], extra={"note":"initial portrait"})
     except Exception:
         pass
     game_loop(state,g)
-    print("\nThanks for playing RP-GPT6.")
+    _ev.system("\nThanks for playing RP-GPT6.")
 
 def main():
     # The pygame UI was removed: it could not import under this project's
@@ -535,7 +537,7 @@ if __name__=="__main__":
     try: 
         main()
     except KeyboardInterrupt: 
-        print("\nExiting RP-GPT6. Goodbye!")
+        _ev.prose("\nExiting RP-GPT6. Goodbye!")
 
 
 

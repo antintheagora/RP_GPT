@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from engine import events as _ev
+
 """
 Random_Encounters
 -----------------
@@ -146,15 +148,15 @@ def handle_post_turn_beat(state, g: GemmaClient):
             actor = try_discover_actor(state, g, related_bias)
             if not actor:
                 return
-            print(f"Encounter: {actor.name} ({actor.kind}/{actor.role}) appears.")
+            _ev.prose(f"Encounter: {actor.name} ({actor.kind}/{actor.role}) appears.")
             blurb = g.text(encounter_flavor_prompt(state, actor), tag="Encounter", max_chars=420)
-            print(wrap(sanitize_prose(blurb)))
-            print()
+            _ev.prose(wrap(sanitize_prose(blurb)))
+            _ev.prose("")
 
             # Awareness check — if they don't detect you, no dialogue; offer Talk/Attack/Leave later
             actor.aware = (random.random() < 0.6 if actor.role != "enemy" else random.random() < 0.75)
             if not actor.aware:
-                print(f"{actor.name} has not noticed you.")
+                _ev.prose(f"{actor.name} has not noticed you.")
                 actor.ephemeral = True
                 state.passive_bystanders.append(actor.name)
             else:
@@ -162,31 +164,31 @@ def handle_post_turn_beat(state, g: GemmaClient):
                 if actor.role == "enemy":
                     if random.random() < 0.35:
                         line = g.text(talk_reply_prompt(state, actor, "…"), tag="Enemy opener", max_chars=160)
-                        print(wrap(f"{actor.name}: {sanitize_prose(line)}"))
-                        print()
+                        _ev.prose(wrap(f"{actor.name}: {sanitize_prose(line)}"))
+                        _ev.prose("")
                     elif random.random() < 0.65:
-                        print(f"{actor.name} moves to strike!")
+                        _ev.prose(f"{actor.name} moves to strike!")
                         state.last_enemy = actor
                         state.mode = TurnMode.COMBAT
                     else:
-                        print(f"{actor.name} circles, measuring distance.")
+                        _ev.prose(f"{actor.name} circles, measuring distance.")
                 else:
                     line = g.text(talk_reply_prompt(state, actor, "Greetings."), tag="NPC opener", max_chars=180)
-                    print(wrap(f"{actor.name}: {sanitize_prose(line)}"))
-                    print()
+                    _ev.prose(wrap(f"{actor.name}: {sanitize_prose(line)}"))
+                    _ev.prose("")
         else:
             # Item/world discovery
-            print("Encounter: The world intrudes.")
+            _ev.prose("Encounter: The world intrudes.")
             blurb = g.text(encounter_flavor_prompt(state, None), tag="World vignette", max_chars=360)
-            print(wrap(sanitize_prose(blurb)))
-            print()
+            _ev.prose(wrap(sanitize_prose(blurb)))
+            _ev.prose("")
     elif choice_roll < 0.80 and state.companions:
         comp = random.choice(state.companions)
         line = g.text(talk_reply_prompt(state, comp, "Camp check-in"), tag="Companion aside", max_chars=160)
-        print(wrap(f"{comp.name}: {sanitize_prose(line)}"))
-        print()
+        _ev.prose(wrap(f"{comp.name}: {sanitize_prose(line)}"))
+        _ev.prose("")
     else:
         blurb = g.text(encounter_flavor_prompt(state, None), tag="World vignette", max_chars=340)
-        print(wrap(sanitize_prose(blurb)))
-        print()
+        _ev.prose(wrap(sanitize_prose(blurb)))
+        _ev.prose("")
 

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from engine import events as _ev
+
 """
 Choice_Handler
 ----------------
@@ -110,7 +112,7 @@ def make_explore_options(state: "GameState", g: GemmaClient, goal_lock: bool) ->
         micro = {k: (j.get(k, "") or "") for k in choices}
     except Exception as e:
         micro = {k: "" for k in choices}
-        print(f"[Gemma action plans error] {e}")
+        _ev.prose(f"[Gemma action plans error] {e}")
     return ExploreOptions(labels, micro)
 
 
@@ -120,20 +122,20 @@ def render_menu(state: "GameState", ex: ExploreOptions):
     Each of the first three options uses a SPECIAL stat. We also show the
     number of remaining Custom uses for clarity.
     """
-    print("\nChoose an action (all consume 1 turn):")
+    _ev.system("\nChoose an action (all consume 1 turn):")
     for i, (stat, _) in enumerate(ex.specials, 1):
         plan = ex.microplan.get(stat, "")
         suffix = f"— {plan}" if plan else ""
-        print(f"  [{i}] {stat} {suffix}")
-    print("  [4] Observe")
-    print("  [5] Attack (enter combat)")
-    print("  [6] Talk")
-    print("  [7] Use (inventory/environment)")
-    print(f"  [8] Custom (uses left: {max(0, 3 - state.act.custom_uses)})")
-    print("  [j] Journal")
-    print("  [0] Rest")
+        _ev.prose(f"  [{i}] {stat} {suffix}")
+    _ev.prose("  [4] Observe")
+    _ev.prose("  [5] Attack (enter combat)")
+    _ev.prose("  [6] Talk")
+    _ev.prose("  [7] Use (inventory/environment)")
+    _ev.prose(f"  [8] Custom (uses left: {max(0, 3 - state.act.custom_uses)})")
+    _ev.marginal("  [j] Journal")
+    _ev.system("  [0] Rest")
     if state.passive_bystanders:
-        print("  [9] Leave (slip past the bystander)")
+        _ev.prose("  [9] Leave (slip past the bystander)")
 
 
 # =============================
@@ -142,13 +144,13 @@ def render_menu(state: "GameState", ex: ExploreOptions):
 
 def open_journal(state: "GameState"):
     """Show the most recent world journal lines in a simple list."""
-    print("\n— World Journal (recent) —")
+    _ev.marginal("\n— World Journal (recent) —")
     if not state.journal:
-        print("  (empty)")
+        _ev.prose("  (empty)")
     else:
         for ln in state.journal[-18:]:
-            print("  " + wrap(ln))
-    print()
+            _ev.prose("  " + wrap(ln))
+    _ev.prose("")
 
 
 def build_action_text_from_microplan(stat: str, total: int, dc: int, ok: bool, micro: str) -> str:
@@ -170,8 +172,8 @@ def do_rest(state: "GameState", g: GemmaClient):
     before = state.player.hp
     state.player.hp = min(100, state.player.hp + heal)
     hp_gained = state.player.hp - before
-    print()
-    print(wrap(f"You set up camp for the night. Fire, canvas, and a watch plan. Regain {hp_gained} HP."))
+    _ev.prose("")
+    _ev.harm(wrap(f"You set up camp for the night. Fire, canvas, and a watch plan. Regain {hp_gained} HP."))
     state.history.append("Camped and rested")
     # Interlude is invoked by the caller (game loop or celebration flow).
 
@@ -185,9 +187,9 @@ def do_rest(state: "GameState", g: GemmaClient):
         tag="Dream",
         max_chars=380,
     )
-    print()
-    print(wrap(sanitize_prose(dream)))
-    print()
+    _ev.prose("")
+    _ev.prose(wrap(sanitize_prose(dream)))
+    _ev.prose("")
 
     # Journal lore note for rest
     journal_lore_line(state, g, get_extra_world_text(), seed="A quiet camp and fitful dreams.")
@@ -200,21 +202,21 @@ def ensure_custom_stat_per_turn(state: "GameState") -> str:
     Keeps the previous choice if the player just presses Enter.
     """
     keys = _get_special_keys()
-    print("Pick SPECIAL for Custom (Enter to keep current).")
+    _ev.system("Pick SPECIAL for Custom (Enter to keep current).")
     for i, k in enumerate(keys, 1):
-        print(f"  [{i}] {k}")
+        _ev.prose(f"  [{i}] {k}")
     sel = input("> ").strip()
     if sel == "" and state.custom_stat in keys:
-        print(f"[Custom] Using {state.custom_stat}.")
+        _ev.prose(f"[Custom] Using {state.custom_stat}.")
         return state.custom_stat
     if sel.isdigit() and 1 <= int(sel) <= len(keys):
         state.custom_stat = keys[int(sel) - 1]
-        print(f"[Custom] Set to {state.custom_stat}.")
+        _ev.prose(f"[Custom] Set to {state.custom_stat}.")
         return state.custom_stat
     if state.custom_stat in keys:
-        print(f"[Custom] Using {state.custom_stat}.")
+        _ev.prose(f"[Custom] Using {state.custom_stat}.")
         return state.custom_stat
-    print("Pick a valid index.")
+    _ev.system("Pick a valid index.")
     return ensure_custom_stat_per_turn(state)
 
 
@@ -238,7 +240,7 @@ def process_choice(state: "GameState", ch: str, ex: ExploreOptions, g: GemmaClie
         # Observe the environment for a small, flavorful beat
         line = g.text(observe_prompt(state, goal_lock), tag="Observe", max_chars=220)
         action_text = "Observation: " + sanitize_prose(line or "You notice little of use.")
-        print(wrap(action_text))
+        _ev.prose(wrap(action_text))
         state.history.append("Observed environment")
         evolve_situation(state, g, "fail", "observe", action_text)
         return True
@@ -276,7 +278,7 @@ def process_choice(state: "GameState", ch: str, ex: ExploreOptions, g: GemmaClie
         # Custom action with a chosen SPECIAL stat
         if state.act.custom_uses >= 3:
             action_text = "[Custom] No uses left this act."
-            print(action_text)
+            _ev.prose(action_text)
             state.history.append("Custom denied (no charges)")
             evolve_situation(state, g, "fail", "custom-locked", action_text)
             return True
@@ -296,7 +298,7 @@ def process_choice(state: "GameState", ch: str, ex: ExploreOptions, g: GemmaClie
                 f"[Custom {stat}] SUCCESS (+{delta} act goal). You "
                 f"{verbish_from_microplan(intent) or 'press your advantage'}."
             )
-            print(wrap(action_text))
+            _ev.prose(wrap(action_text))
             try_advance(state, "custom")
             evolve_situation(state, g, "success", intent, action_text)
             maybe_celebrate(state, g, action_text)
@@ -308,7 +310,7 @@ def process_choice(state: "GameState", ch: str, ex: ExploreOptions, g: GemmaClie
                 f"[Custom {stat}] FAIL (+{dp} pressure). Attempt to "
                 f"{verbish_from_microplan(intent).lower() if verbish_from_microplan(intent) else 'improvise'} falters."
             )
-            print(wrap(action_text))
+            _ev.prose(wrap(action_text))
             evolve_situation(state, g, "fail", intent, action_text)
 
         state.history.append(f"Custom {stat}: {'OK' if ok else 'FAIL'} — {intent[:40]}")
@@ -326,14 +328,14 @@ def process_choice(state: "GameState", ch: str, ex: ExploreOptions, g: GemmaClie
             gval = random.randint(10, 16) + (state.act.index - 1)
             state.act.goal_progress = min(100, state.act.goal_progress + gval)
             action_text += f" (+{gval} act goal)"
-            print(wrap(action_text))
+            _ev.prose(wrap(action_text))
             evolve_situation(state, g, "success", f"{stat} plan", action_text)
             maybe_celebrate(state, g, action_text)
         else:
             pval = random.randint(6, 12) + (state.act.index - 1)
             state.pressure = min(100, state.pressure + pval)
             action_text += f" (+{pval} pressure)"
-            print(wrap(action_text))
+            _ev.prose(wrap(action_text))
             evolve_situation(state, g, "fail", f"{stat} plan", action_text)
         state.history.append(f"Special {stat}: {'OK' if ok else 'FAIL'}")
         return True
@@ -363,16 +365,16 @@ def process_choice(state: "GameState", ch: str, ex: ExploreOptions, g: GemmaClie
         state.passive_bystanders = [n for n in state.passive_bystanders if n in keep]
         if removed:
             journal_add(state, "Left behind: " + ", ".join(removed))
-            print("You slip past: " + ", ".join(removed))
+            _ev.prose("You slip past: " + ", ".join(removed))
         else:
-            print("No one to leave behind.")
+            _ev.prose("No one to leave behind.")
         # counts as a small action (consume turn)
         evolve_situation(state, g, "fail", "leave", "You keep moving.")
         return True
 
     # Fallback: invalid choice still consumes the turn with a small penalty vibe
     action_text = "You fumble indecisively."
-    print(action_text)
+    _ev.prose(action_text)
     state.history.append("Invalid choice")
     evolve_situation(state, g, "fail", "invalid", action_text)
     return True

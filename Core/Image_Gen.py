@@ -11,6 +11,8 @@ Hardened for higher success rates while preserving detail:
 
 from __future__ import annotations
 
+from engine import events as _ev
+
 import base64
 import os
 import random
@@ -362,7 +364,7 @@ def iterm_inline_image(path: str, width: int = 0, height: int = 0) -> None:
 
 
 def kitty_inline_stub(path: str) -> None:
-    print(f"[Kitty] Image saved: {path}")
+    _ev.plate(f"[Kitty] Image saved: {path}")
 
 
 def show_image_in_terminal_or_fallback(
@@ -371,32 +373,32 @@ def show_image_in_terminal_or_fallback(
     width: int = 768,
     height: int = 432,
 ) -> None:
-    print()
+    _ev.prose("")
     if not _looks_like_image(path) or not _ok_file(path):
-        print(f"[Image fetch failed] Saved non-image payload from:\n{url}\n")
+        _ev.roll(f"[Image fetch failed] Saved non-image payload from:\n{url}\n")
         return
     if supports_iterm_inline():
         try:
             iterm_inline_image(path, width=width, height=height)
-            print("(image above)\n")
+            _ev.plate("(image above)\n")
             return
         except Exception as exc:  # pragma: no cover
-            print(f"[iTerm inline failed] {exc}")
+            _ev.roll(f"[iTerm inline failed] {exc}")
     if supports_kitty():
         try:
             kitty_inline_stub(path)
-            print()
+            _ev.prose("")
             return
         except Exception as exc:  # pragma: no cover
-            print(f"[Kitty inline failed] {exc}")
+            _ev.roll(f"[Kitty inline failed] {exc}")
     if sys.platform == "darwin" and shutil.which("open"):
         try:
             subprocess.Popen(["open", path])
-            print(f"[Opened in Preview] {path}\n{url}\n")
+            _ev.prose(f"[Opened in Preview] {path}\n{url}\n")
             return
         except Exception as exc:  # pragma: no cover
-            print(f"[open failed] {exc}")
-    print(f"[Saved image] {path}\n{url}\n")
+            _ev.roll(f"[open failed] {exc}")
+    _ev.plate(f"[Saved image] {path}\n{url}\n")
 
 
 # =============================
@@ -446,7 +448,7 @@ def generate_turn_image(
             },
         )
     except Exception as exc:
-        print(f"[Image queue error] {exc}")
+        _ev.plate(f"[Image queue error] {exc}")
 
 
 __all__ = [

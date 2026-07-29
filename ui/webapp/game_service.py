@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 import RP_GPT as core
+from engine.events import collecting
 from Core.AI_Dungeon_Master import (
     GemmaClient,
     GemmaError,
@@ -176,6 +177,7 @@ class GameSession:
         world_text: str,
     ):
         self.id = uuid.uuid4().hex
+        self._turn_events: List[Any] = []
         self.state = state
         self.client = client
         self.label = scenario_label
@@ -304,10 +306,13 @@ class GameSession:
                     self.state.custom_stat = stat
                 inputs.extend(["", intent or "improvise using SPECIAL"])
             consumed = False
-            output_text = ""
+            events: List[Any] = []
             blocked: Optional[str] = None
             try:
-                with intercepted_io(inputs) as capture:
+                # The engine emits typed events now. We no longer monkeypatch
+                # sys.stdout and scrape the buffer, so a mid-turn failure keeps
+                # everything already emitted and two sessions cannot cross-talk.
+                with collecting() as bus, intercepted_io(inputs):
                     try:
                         consumed = process_choice(self.state, code, self.ensure_options(), self.client)
                         if consumed:
@@ -318,12 +323,12 @@ class GameSession:
                             if end_act_needed(self.state):
                                 recap_and_transition(self.state, self.client, "turn/end")
                     finally:
-                        # Drain the buffer before unwinding. Reading it only on
-                        # the happy path threw away everything the DM had
-                        # already written whenever a turn failed part-way.
-                        output_text = clean_output(capture.getvalue())
+                        events = bus.events
             except TerminalInputRequired as exc:
                 blocked = str(exc)
+
+            output_text = "\n".join(e.text for e in events).strip()
+            self._turn_events = events
             if output_text:
                 self._append_event(output_text)
             if blocked:
