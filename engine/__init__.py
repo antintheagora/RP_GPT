@@ -13,6 +13,18 @@ from engine.blueprint import (
     json_to_actplan,
     role_from_kind,
 )
+from engine.character import (
+    Condition,
+    Scar,
+    Virtue,
+    WeaponWeight,
+    Wound,
+    WoundTrack,
+    damage_for,
+    earns_virtue,
+    max_hp,
+    wound_slots,
+)
 from engine.clocks import Clock, ClockBoard, ClockKind, ClockTick, opposing_segments_for
 from engine.dice import calc_dc, check, d20
 from engine.tides import Tide, TideBoard, TideMove
@@ -61,6 +73,8 @@ __all__ = [
     "PORTRAIT_IMG_WIDTH", "PORTRAIT_IMG_HEIGHT",
     "d20", "calc_dc", "check",
     "Clock", "ClockBoard", "ClockKind", "ClockTick", "opposing_segments_for",
+    "Condition", "Wound", "WoundTrack", "Scar", "Virtue", "WeaponWeight",
+    "damage_for", "earns_virtue", "max_hp", "wound_slots",
     "Tide", "TideBoard", "TideMove",
     "Bearing", "Position", "PositionFacts", "Consequence", "Bargain",
     "Assessment", "Resolution", "assessment_from_json",
