@@ -58,7 +58,7 @@ ROSTER_SECTIONS = [
 ]
 SPECIAL_STATS = ("STR", "PER", "END", "CHA", "INT", "AGI", "LUC")
 
-from .game_service import GemmaError, SessionStore
+from .game_service import GameSession, GemmaError, SessionStore
 
 
 def _world_dir(slug: str) -> Path:
@@ -367,6 +367,7 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
     @app.get("/")
     def landing():
         catalog = _load_world_catalog()
+        saved_runs = _saved_runs()
         virtual = {
             "slug": "__new__",
             "title": "Create New World",
@@ -395,7 +396,46 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
             worlds=worlds,
             selected=selected,
             has_active=bool(_current_session()),
+            saved_runs=saved_runs,
         )
+
+    def _saved_runs(limit: int = 6):
+        """Recent saves, newest first, for the Continue cards."""
+        from engine.persistence import list_runs
+
+        from Core.Paths import SAVES_DIR
+
+        out = []
+        for run in list_runs(SAVES_DIR)[:limit]:
+            summary = run.get("summary") or {}
+            out.append({
+                "path": run["path"],
+                "title": summary.get("scenario") or run.get("label") or "Campaign",
+                "player": summary.get("player", "Explorer"),
+                "act": summary.get("act", 1),
+                "act_count": summary.get("act_count", 1),
+                "turn": summary.get("turn", 1),
+                "last_line": summary.get("last_line", ""),
+                "saved_at": run.get("saved_at", 0),
+            })
+        return out
+
+    @app.post("/continue")
+    def continue_run():
+        """Resume a saved campaign."""
+        path = (request.form.get("path") or "").strip()
+        if not path:
+            abort(400, description="No save selected")
+        try:
+            session = GameSession.resume(path)
+        except Exception as exc:
+            _log.exception("could not resume %s", path)
+            return render_template("landing.html", worlds=[], selected=None,
+                                   has_active=False, saved_runs=_saved_runs(),
+                                   error=f"That save could not be loaded: {exc}"), 200
+        _store().adopt(session)
+        flask_session["session_id"] = session.id
+        return redirect(url_for("play"))
 
     @app.get("/worlds/<slug>/roster")
     def world_roster(slug: str):

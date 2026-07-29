@@ -16,6 +16,9 @@ from typing import Any, Dict, List, Optional
 
 import RP_GPT as core
 from engine.events import collecting
+from engine.persistence import list_runs, load_run, save_run
+from Core.Paths import SAVES_DIR
+from pathlib import Path
 from Core.AI_Dungeon_Master import (
     GemmaClient,
     GemmaError,
@@ -294,6 +297,49 @@ class GameSession:
         with self._lock:
             return list(self._events[-limit:])
 
+    # ---------------------------------------------------------- persistence
+
+    def save(self) -> Optional[str]:
+        """Write the run. Never let a save failure lose the turn that made it."""
+        try:
+            path = save_run(
+                self.state,
+                root=SAVES_DIR,
+                world=self.world_slug,
+                run_id=self.id,
+                label=self.label,
+            )
+            return str(path)
+        except Exception:
+            _log.exception("could not save run %s", self.id)
+            return None
+
+    @property
+    def world_slug(self) -> str:
+        return (getattr(self.state, "world_folder", None) or self.label or "default")
+
+    @classmethod
+    def resume(cls, path: str) -> "GameSession":
+        """Rebuild a session from a save. The client is reconnected, not stored."""
+        state = load_run(Path(path))
+        session = cls.__new__(cls)
+        session.id = Path(path).parent.name
+        session._turn_events = []
+        session.state = state
+        session.client = GemmaClient()
+        session.label = getattr(state, "scenario_label", "") or "Campaign"
+        session.world_text = ""
+        session.created_at = time.time()
+        session._options = None
+        session._events = []
+        session._lock = threading.RLock()
+        resumed = sanitize_prose(
+            getattr(state, "last_situation_para", "") or state.act.situation or "The story resumes."
+        )
+        if resumed:
+            session._append_event(resumed)
+        return session
+
     def apply_choice(self, code: str, payload: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         payload = payload or {}
         with self._lock:
@@ -333,6 +379,11 @@ class GameSession:
                 self._append_event(output_text)
             if blocked:
                 self._append_event(f"[This action could not be completed] {blocked}")
+
+            # Save at every turn boundary. Until now nothing was ever written,
+            # so closing the window -- or any uncaught exception -- destroyed
+            # the campaign outright.
+            self.save()
             if consumed:
                 self._options = None
             return {
@@ -350,6 +401,12 @@ class SessionStore:
 
     def create_session(self, config: Dict[str, Any]) -> GameSession:
         session = GameSession.from_config(config)
+        with self._lock:
+            self._sessions[session.id] = session
+        return session
+
+    def adopt(self, session: GameSession) -> GameSession:
+        """Register a session built elsewhere -- e.g. resumed from a save."""
         with self._lock:
             self._sessions[session.id] = session
         return session
