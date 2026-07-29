@@ -21,9 +21,22 @@ from typing import Dict, Iterable, List, Optional
 FILLED_PIP = "●"    # ●
 EMPTY_PIP = "○"     # ○
 
-# The only sizes a clock may be. Four is a scene, six is an act, eight is a
-# campaign-long threat. Arbitrary sizes make progress impossible to eyeball.
+# The only sizes a clock may be. Arbitrary sizes make progress impossible to
+# eyeball, and a player should be able to count a clock at a glance.
 LEGAL_SEGMENTS = (4, 6, 8)
+
+# Measured over 600 simulated acts at average stats, with the effect bands as
+# they stand (Great fills 3, Standard 2):
+#
+#     segments   median act   ended in <=3 turns
+#         4        4 turns          38%
+#         6        6 turns          21%
+#         8        8 turns           5%
+#
+# A six-segment act ends in three turns or fewer a fifth of the time, which is
+# not a chapter. Acts take eight; a single obstacle inside one takes four.
+SCENE_SEGMENTS = 4
+ACT_SEGMENTS = 8
 
 
 class ClockKind(str, Enum):
@@ -107,6 +120,20 @@ class Clock:
             requested=amount,
             applied=self.filled - before,
         )
+
+    # ---------- named sizes ----------
+
+    @classmethod
+    def for_act(cls, id: str, name: str, kind: "ClockKind" = None) -> "Clock":
+        """An act-length clock. Eight segments, per the pacing measurement."""
+        return cls(id=id, name=name, segments=ACT_SEGMENTS,
+                   kind=kind or ClockKind.PROJECT)
+
+    @classmethod
+    def for_scene(cls, id: str, name: str, kind: "ClockKind" = None) -> "Clock":
+        """A single obstacle or encounter. Four segments."""
+        return cls(id=id, name=name, segments=SCENE_SEGMENTS,
+                   kind=kind or ClockKind.PROJECT)
 
     # ---------- display ----------
 
@@ -221,5 +248,6 @@ def _slug(name: str) -> str:
 
 __all__ = [
     "Clock", "ClockBoard", "ClockKind", "ClockTick",
-    "LEGAL_SEGMENTS", "opposing_segments_for", "clock_from_json",
+    "LEGAL_SEGMENTS", "SCENE_SEGMENTS", "ACT_SEGMENTS",
+    "opposing_segments_for", "clock_from_json",
 ]

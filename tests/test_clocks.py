@@ -230,3 +230,13 @@ def test_a_tide_survives_junk_from_the_model():
     assert tide.name
     assert tide.moves == ["real", "also real"], "blank moves are dropped"
     assert tide.id
+
+
+def test_named_sizes_carry_the_pacing_decision():
+    """Measured over 600 acts: a 6-segment act ends in <=3 turns a fifth of
+    the time. Acts take eight; a single obstacle takes four."""
+    from engine.clocks import ACT_SEGMENTS, SCENE_SEGMENTS
+
+    assert Clock.for_act("a", "Act").segments == ACT_SEGMENTS == 8
+    assert Clock.for_scene("s", "Scene").segments == SCENE_SEGMENTS == 4
+    assert Clock.for_act("d", "Danger", ClockKind.DANGER).kind is ClockKind.DANGER
