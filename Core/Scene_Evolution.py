@@ -70,10 +70,40 @@ _NAME_NOISE = {
 }
 
 
+def _singular(word: str) -> str:
+    """Only the plural endings a proper name never has.
+
+    A plain trailing 's' is deliberately NOT stripped here. This game is full
+    of Latin-style names -- Marius, Valerius, Varus, Silas -- and stripping it
+    folded Marius into Mariu, which broke matching against Marius Thorne.
+    """
+    if len(word) > 5 and word.endswith("ies"):
+        return word[:-3] + "y"
+    if len(word) > 4 and word.endswith("es") and word[-3] in "sxzh":
+        return word[:-2]
+    return word
+
+
 def _name_key(name: str) -> str:
     """Normalised form of a character name, for comparison only."""
-    s = re.sub(r"[^a-z0-9 ]+", " ", (name or "").lower())
-    return " ".join(w for w in s.split() if w not in _NAME_NOISE)
+    lowered = re.sub(r"[^a-z0-9 ]+", " ", (name or "").lower())
+    return " ".join(_singular(w) for w in lowered.split() if w not in _NAME_NOISE)
+
+
+def _depluralised_phrase(key: str) -> str:
+    """Strip a trailing 's' from a *multi-word* key only.
+
+    "security drones" and "dock guards" are group nouns the model uses
+    interchangeably with their singular. A single-word key is left alone,
+    because that is where the proper names live.
+    """
+    words = key.split()
+    if len(words) < 2:
+        return key
+    last = words[-1]
+    if len(last) > 3 and last.endswith("s") and not last.endswith("ss"):
+        words[-1] = last[:-1]
+    return " ".join(words)
 
 
 def same_person(a: str, b: str) -> bool:
@@ -82,6 +112,9 @@ def same_person(a: str, b: str) -> bool:
     if not ka or not kb:
         return False
     if ka == kb:
+        return True
+    # "security drones" vs "security drone" -- group nouns only.
+    if _depluralised_phrase(ka) == _depluralised_phrase(kb):
         return True
     wa, wb = set(ka.split()), set(kb.split())
     # "Marius" vs "Marius Thorne" -- one name's words contain the other's.

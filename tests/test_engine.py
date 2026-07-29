@@ -110,6 +110,23 @@ def test_same_person_matches_drifted_names(a, b):
 @pytest.mark.parametrize(
     "a,b",
     [
+        ("security drone", "security drones"),
+        ("dock guard", "dock guards"),
+        ("sentries", "Sentry Unit 04"),
+    ],
+)
+def test_same_person_matches_plural_group_nouns(a, b):
+    """Live play produced security_drone alongside security_drones."""
+    from Core.Scene_Evolution import same_person
+
+    assert same_person(a, b)
+
+
+@pytest.mark.parametrize(
+    "a,b",
+    [
+        ("Silas", "Sila"),
+        ("Bess", "Bes"),
         ("Captain Marius", "Captain Valeria"),
         ("Captain Varus", "Captain Vorlag"),
         ("Brother Silas", "Brother Calder"),
