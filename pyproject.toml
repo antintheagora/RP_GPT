@@ -1,0 +1,45 @@
+[project]
+name = "rp-gpt"
+version = "0.2.0"
+description = "A local-LLM roleplaying game with an AI dungeon master."
+readme = "README_WEB_UI.md"
+requires-python = ">=3.11,<3.15"
+
+# Derived by parsing every import in the tree and subtracting the standard
+# library, not by hand. requirements-web.txt listed only flask and pywebview,
+# so a fresh clone failed on first run.
+dependencies = [
+    "flask>=3.0",       # ui/webapp/server.py
+    "werkzeug>=3.0",    # desktop/run_webview.py imports it directly
+    "pywebview>=4.4",   # desktop/run_webview.py, imported as `webview`
+    "certifi>=2024.0",  # Core/Image_Gen.py, stricter TLS on image fetches
+]
+
+[project.optional-dependencies]
+# The pygame UI is scheduled for deletion; it cannot import under this venv's
+# Python anyway (its binaries are cp311, the venv is 3.14). Kept declared only
+# so the legacy stack is installable until it is removed.
+legacy = ["pygame>=2.5"]
+
+dev = [
+    "pytest>=8.0",
+]
+
+[project.scripts]
+rp-gpt = "desktop.run_webview:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["Core", "ui", "ui.webapp"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Tests must never reach for a GPU, an Ollama host, or the network.
+env = [
+    "RP_GPT_NONINTERACTIVE=1",
+    "RP_GPT_DISABLE_SPINNER=1",
+]
+filterwarnings = ["error::SyntaxWarning"]

@@ -30,17 +30,15 @@ try:  # noqa: SIM105
 except Exception:  # pragma: no cover - optional dependency
     certifi = None  # type: ignore
 
-# Prefer to reuse style + builder from AI_Dungeon_Master if present
-try:
-    from AI_Dungeon_Master import (
-        default_image_style_prefix as _default_style,
-        image_prompt_from_state as _image_prompt_from_state,
-        compress_and_sanitize as _compress_and_sanitize,
-    )
-except Exception:  # fallback to local implementations
-    _default_style = None
-    _image_prompt_from_state = None
-    _compress_and_sanitize = None
+# Reuse the style + builder from AI_Dungeon_Master. This import was missing the
+# `Core.` prefix, so it raised ModuleNotFoundError on every run and silently
+# fell through to the local duplicates below -- which then diverged from the
+# canonical versions without anyone noticing.
+from Core.AI_Dungeon_Master import (
+    default_image_style_prefix as _default_style,
+    image_prompt_from_state as _image_prompt_from_state,
+    compress_and_sanitize as _compress_and_sanitize,
+)
 
 if TYPE_CHECKING:
     # Import only for type hints to avoid circular imports at runtime.
