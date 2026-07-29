@@ -291,8 +291,15 @@ def last_chance(state) -> bool:
     for i, k in enumerate(picks, 1):
         print(f"  [{i}] Trust your {k}")
     print("  [4] Custom (your SPECIAL)\n  [0] Yield")
-    while True:
-        s = input("> ").strip()
+    # Bounded on purpose. This is the most likely ending path in the game, and
+    # an unbounded input() loop here hung the web server permanently. The limit
+    # sits below InputFeeder.MAX_BLANK_READS so this yields gracefully rather
+    # than tripping the web layer's backstop exception.
+    for _ in range(6):
+        try:
+            s = input("> ").strip()
+        except (EOFError, OSError):
+            s = ""
         if s == "0":
             return False
         if s in {"1", "2", "3"}:
@@ -305,7 +312,10 @@ def last_chance(state) -> bool:
             ok, total = check(state, stat, 14)
             print(f"{stat} {total} vs 14 -> {'SUCCESS' if ok else 'FAIL'}")
             return ok
-        print("Pick 1–4 or 0.")
+        if s:
+            print("Pick 1–4 or 0.")
+    print("No answer given — you yield.")
+    return False
 
 
 # =============================

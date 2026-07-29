@@ -50,7 +50,7 @@
     </div>
     <div class="space-y-3">
       {% for option in payload.options %}
-        <form hx-post="{{ url_for('handle_action') }}" hx-target="#log-panel" hx-swap="outerHTML" class="rounded-xl border border-slate-700/80 bg-night/80 hover:border-ember/80 transition">
+        <form hx-post="{{ url_for('handle_action') }}" hx-swap="none" class="rounded-xl border border-slate-700/80 bg-night/80 hover:border-ember/80 transition">
           <input type="hidden" name="action" value="special" />
           <input type="hidden" name="choice" value="{{ option.code }}" />
           <button type="submit" class="w-full text-left px-4 py-3">
@@ -63,15 +63,15 @@
     </div>
   </div>
   <div class="grid gap-3 sm:grid-cols-3">
-    <form hx-post="{{ url_for('handle_action') }}" hx-target="#log-panel" hx-swap="outerHTML">
+    <form hx-post="{{ url_for('handle_action') }}" hx-swap="none">
       <input type="hidden" name="action" value="observe" />
       <button class="w-full rounded-xl bg-slate-800/80 px-4 py-3 font-semibold hover:bg-slate-700 transition">Observe</button>
     </form>
-    <form hx-post="{{ url_for('handle_action') }}" hx-target="#log-panel" hx-swap="outerHTML">
+    <form hx-post="{{ url_for('handle_action') }}" hx-swap="none">
       <input type="hidden" name="action" value="rest" />
       <button class="w-full rounded-xl bg-slate-800 px-4 py-3 font-semibold hover:bg-slate-700 transition">Camp + Rest</button>
     </form>
-    <form hx-post="{{ url_for('handle_action') }}" hx-target="#log-panel" hx-swap="outerHTML">
+    <form hx-post="{{ url_for('handle_action') }}" hx-swap="none">
       <input type="hidden" name="action" value="journal" />
       <button class="w-full rounded-xl bg-slate-800 px-4 py-3 font-semibold hover:bg-slate-700 transition">Read Journal</button>
     </form>
@@ -80,7 +80,7 @@
     <details>
       <summary class="cursor-pointer text-sm font-semibold">Custom move ({{ 'available' if payload.custom_available else 'spent' }})</summary>
       {% if payload.custom_available %}
-        <form hx-post="{{ url_for('handle_action') }}" hx-target="#log-panel" hx-swap="outerHTML" class="mt-3 space-y-3 text-sm">
+        <form hx-post="{{ url_for('handle_action') }}" hx-swap="none" class="mt-3 space-y-3 text-sm">
           <input type="hidden" name="action" value="custom" />
           <label class="block">SPECIAL focus
             <select name="custom_stat" class="mt-1 w-full rounded-md bg-slate-800 border-slate-700">

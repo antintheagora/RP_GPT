@@ -52,6 +52,7 @@ def talk_loop(state: "GameState", actor: "Actor", g: "GemmaClient") -> None:
         describe_actor_physical,
         queue_image_event,
         make_actor_portrait_prompt,
+        make_combat_image_prompt,
         ensure_character_profile,
         talk_reply_prompt,
         try_advance,

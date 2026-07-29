@@ -96,13 +96,36 @@ class Event:
     created_at: float
 
 
+class TerminalInputRequired(RuntimeError):
+    """Engine code asked for input the web UI cannot supply.
+
+    Raised instead of feeding endless empty strings. Several engine paths are
+    ``while True: input()`` loops that only exit on a recognised answer, so
+    returning "" forever spins the single-threaded server until it dies, while
+    the captured-output buffer grows without bound.
+    """
+
+
 class InputFeeder:
+    """Feeds scripted answers, then refuses rather than lying forever."""
+
+    # A few blank reads are legitimate -- several flows use a bare input() as a
+    # "press enter" beat. Past that, the caller is in a loop we cannot satisfy.
+    MAX_BLANK_READS = 8
+
     def __init__(self, responses: Optional[List[str]] = None):
         self._responses = list(responses or [])
+        self._blanks = 0
 
     def __call__(self, prompt: str = "") -> str:  # type: ignore[override]
         if self._responses:
             return str(self._responses.pop(0))
+        self._blanks += 1
+        if self._blanks > self.MAX_BLANK_READS:
+            raise TerminalInputRequired(
+                "This part of the game still needs the terminal UI and cannot "
+                f"be completed here yet (prompt: {prompt.strip()[:60]!r})."
+            )
         return ""
 
 
@@ -272,18 +295,31 @@ class GameSession:
                 if stat:
                     self.state.custom_stat = stat
                 inputs.extend(["", intent or "improvise using SPECIAL"])
-            with intercepted_io(inputs) as capture:
-                consumed = process_choice(self.state, code, self.ensure_options(), self.client)
-                if consumed:
-                    self.state.act.turns_taken += 1
-                    # Skip celebration + camp interludes for now (UI versions pending)
-                    end_of_turn(self.state, self.client)
-                    maybe_journal_lore(self.state, self.client)
-                    if end_act_needed(self.state):
-                        recap_and_transition(self.state, self.client, "turn/end")
-                output_text = clean_output(capture.getvalue())
+            consumed = False
+            output_text = ""
+            blocked: Optional[str] = None
+            try:
+                with intercepted_io(inputs) as capture:
+                    try:
+                        consumed = process_choice(self.state, code, self.ensure_options(), self.client)
+                        if consumed:
+                            self.state.act.turns_taken += 1
+                            # Skip celebration + camp interludes for now (UI versions pending)
+                            end_of_turn(self.state, self.client)
+                            maybe_journal_lore(self.state, self.client)
+                            if end_act_needed(self.state):
+                                recap_and_transition(self.state, self.client, "turn/end")
+                    finally:
+                        # Drain the buffer before unwinding. Reading it only on
+                        # the happy path threw away everything the DM had
+                        # already written whenever a turn failed part-way.
+                        output_text = clean_output(capture.getvalue())
+            except TerminalInputRequired as exc:
+                blocked = str(exc)
             if output_text:
                 self._append_event(output_text)
+            if blocked:
+                self._append_event(f"[This action could not be completed] {blocked}")
             if consumed:
                 self._options = None
             return {
