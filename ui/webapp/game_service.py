@@ -28,6 +28,7 @@ from Core.AI_Dungeon_Master import (
 from Core.Choice_Handler import ExploreOptions, goal_lock_active, make_explore_options, process_choice
 from Core.Helpers import sanitize_prose
 from Core.Journal import maybe_journal_lore
+from Core.Random_Encounters import handle_post_turn_beat
 from Core.Turn_And_Act_Flow import begin_act, end_act_needed, end_of_turn, recap_and_transition
 
 Scenario = core.Scenario
@@ -393,8 +394,18 @@ class GameSession:
                     try:
                         consumed = process_choice(self.state, code, self.ensure_options(), self.client)
                         if consumed:
+                            # Random encounters and actor discovery. This has
+                            # existed all along and was called only from the
+                            # terminal loop, so neither shipped UI ever spawned
+                            # an encounter. Ordered as the terminal loop does:
+                            # the beat happens before time advances.
+                            #
+                            # celebrate_break and camp_interlude stay out until
+                            # they have a UI flow -- both call input(), which
+                            # here would trip the terminal-input backstop.
+                            if code != "0":
+                                handle_post_turn_beat(self.state, self.client)
                             self.state.act.turns_taken += 1
-                            # Skip celebration + camp interludes for now (UI versions pending)
                             end_of_turn(self.state, self.client)
                             maybe_journal_lore(self.state, self.client)
                             if end_act_needed(self.state):

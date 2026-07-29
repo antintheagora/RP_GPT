@@ -23,6 +23,7 @@ from pathlib import Path
 
 from Core.Config import DEFAULT_MODEL
 from Core.Logging import get_logger
+from engine.validation import repair, validate_world
 from Core.Character_Registry import (
     BASE_DIR as CHAR_BASE_DIR,
     ROLE_DIRS as CHAR_ROLE_DIRS,
@@ -131,6 +132,20 @@ def _mutate_world(slug: str, mutator) -> None:
         raise FileNotFoundError(f"Missing world.json for {slug}")
     data = json.loads(world_path.read_text(encoding="utf-8"))
     mutator(data)
+
+    # Repair model artifacts before they reach disk. Grimdark_fantasy shipped
+    # with its pressure meter named "Here are a few options, keeping it to 1-3
+    # words an" because nothing checked what a model handed back. A field that
+    # cannot be salvaged is left as it was rather than replaced with a guess.
+    for field, issue in validate_world(data):
+        original = data.get(field)
+        fixed = repair(field, original) if isinstance(original, str) else None
+        if fixed:
+            _log.warning("world %s: repaired %s (%s)", slug, field, issue)
+            data[field] = fixed
+        else:
+            _log.warning("world %s: %s %s and could not be repaired", slug, field, issue)
+
     world_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
     _load_world_from_path(_world_dir(slug))
 
