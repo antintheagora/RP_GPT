@@ -197,28 +197,74 @@ def test_check_is_deterministic_under_a_seeded_rng(monkeypatch, rng):
     assert first == second
 
 
-def test_natural_twenty_always_succeeds_and_one_always_fails(monkeypatch):
+def test_natural_twenty_always_succeeds_and_one_always_fails():
     """These two rules are what make every approach viable. Do not lose them.
 
-    Patched on engine.dice rather than RP_GPT: `check` resolves `d20` in its
-    own module namespace, so that is where the substitution has to happen.
+    Asserted on resolve_roll, which is pure: the rule lives there now rather
+    than inside a function that also rolls dice.
     """
-    import engine.dice as dice
+    from engine.dice import Outcome, resolve_roll
 
-    class Player:
-        def effective_stat(self, _key):
-            return 1
+    assert resolve_roll(20, 20).outcome is Outcome.CRITICAL_SUCCESS
+    assert resolve_roll(1, 2).outcome is Outcome.CRITICAL_FAILURE
+    assert resolve_roll(20, 99).succeeded, "a 20 beats an impossible target"
+    assert not resolve_roll(1, 2).succeeded, "a 1 fails a trivial target"
 
-    class State:
-        player = Player()
 
-    monkeypatch.setattr(dice, "d20", lambda: 20)
-    ok, _ = dice.check(State(), "STR", 99)
-    assert ok, "a natural 20 must succeed even against an impossible target"
+def test_the_floor_and_ceiling_are_five_and_ninety_five_percent():
+    """No approach is ever literally impossible, and none is ever certain."""
+    from engine.dice import resolve_roll
 
-    monkeypatch.setattr(dice, "d20", lambda: 1)
-    ok, _ = dice.check(State(), "STR", 2)
-    assert not ok, "a natural 1 must fail even against a trivial target"
+    # Clamped: even an absurd target still falls to a natural 20.
+    wins = sum(resolve_roll(r, 999).succeeded for r in range(1, 21))
+    assert wins == 1, "exactly one face (the 20) succeeds against any target"
+
+    losses = sum(not resolve_roll(r, -5).succeeded for r in range(1, 21))
+    assert losses == 1, "exactly one face (the 1) fails against any target"
+
+
+@pytest.mark.parametrize("roll,band", [
+    (20, "critical"), (19, "great"), (15, "great"),
+    (14, "standard"), (8, "standard"), (7, "limited"), (1, "limited"),
+])
+def test_effect_bands_tile_the_die(roll, band):
+    from engine.dice import effect_for
+
+    assert effect_for(roll).value == band
+
+
+def test_effect_comes_from_the_die_not_the_margin():
+    """A 19 is an excellent roll whatever it was needed for.
+
+    Measuring effect by margin would punish a low stat twice -- someone who
+    needs a 19 can never beat it by five.
+    """
+    from engine.dice import Effect, resolve_roll
+
+    barely = resolve_roll(19, 19)     # needed 19, rolled 19: margin 0
+    easily = resolve_roll(3, 3)       # needed 3, rolled 3: margin 0
+    assert barely.effect is Effect.GREAT
+    assert easily.effect is Effect.LIMITED
+
+
+def test_the_difficulty_ratchet_is_gone():
+    """calc_dc rose on success. It must not depend on state at all now."""
+    import RP_GPT as core
+    from engine.dice import calc_dc
+
+    bp = core.blueprint_from_json({
+        "campaign_goal": "g", "pressure_name": "p",
+        "acts": {"1": _act()},
+    })
+    state = core.GameState(
+        scenario=core.Scenario.APOCALYPSE, scenario_label="T",
+        player=core.Player(name="W"), blueprint=bp, pressure_name="p",
+    )
+    targets = []
+    for phase, stall, pressure in [(0, 0, 0), (5, 2, 40), (11, 4, 95)]:
+        state.scene_phase, state.stall_count, state.pressure = phase, stall, pressure
+        targets.append(calc_dc(state, base=12))
+    assert len(set(targets)) == 1, f"difficulty still moves with state: {targets}"
 
 
 def test_rpgpt_still_re_exports_the_engine_surface():
