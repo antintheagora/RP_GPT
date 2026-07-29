@@ -152,7 +152,7 @@ class GemmaClient:
         opts.update(sampling_for(tag).as_options())
         return opts
 
-    def _post(self, prompt: str, tag: str, want_json: bool) -> str:
+    def _post(self, prompt: str, tag: str, want_json: bool, schema: Optional[Dict] = None) -> str:
         import urllib.request
 
         payload: Dict[str, Any] = {
@@ -168,9 +168,13 @@ class GemmaClient:
             "think": self.think,
             "options": self._options(tag),
         }
-        if want_json:
-            # Ollama constrains decoding to valid JSON. This replaces scraping
-            # the response with a greedy brace regex.
+        if schema is not None:
+            # A JSON *schema* constrains decoding to the exact shape, not just
+            # to valid JSON. The model cannot omit a required field or invent
+            # an enum value, so downstream coercion becomes a safety net rather
+            # than the primary defence.
+            payload["format"] = schema
+        elif want_json:
             payload["format"] = "json"
 
         req = urllib.request.Request(
@@ -228,14 +232,15 @@ class GemmaClient:
                 if chunk.get("done"):
                     break
 
-    def _run(self, prompt: str, tag: str, want_json: bool = False) -> str:
+    def _run(self, prompt: str, tag: str, want_json: bool = False,
+             schema: Optional[Dict] = None) -> str:
         """Call Ollama with retries. Parse failures retry too -- see .json()."""
         spinner = LoadingBar(f"{tag}...")
         last: Optional[Exception] = None
         for attempt in range(1, self.max_retries + 1):
             try:
                 spinner.start()
-                return self._post(prompt, tag, want_json)
+                return self._post(prompt, tag, want_json, schema)
             except Exception as exc:
                 last = exc
                 if attempt < self.max_retries:
@@ -253,7 +258,7 @@ class GemmaClient:
             output = (cut[:space] if space > max_chars * 0.6 else cut).rstrip()
         return output
 
-    def json(self, prompt: str, tag: str) -> Any:
+    def json(self, prompt: str, tag: str, schema: Optional[Dict] = None) -> Any:
         """Return parsed JSON, retrying the *generation* when parsing fails.
 
         The previous implementation retried socket errors four times and parse
@@ -263,7 +268,7 @@ class GemmaClient:
         last: Optional[Exception] = None
         for attempt in range(1, self.max_retries + 1):
             try:
-                raw = self._run(prompt, tag, want_json=True)
+                raw = self._run(prompt, tag, want_json=True, schema=schema)
             except GemmaError as exc:
                 last = exc
                 break

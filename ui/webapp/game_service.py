@@ -15,7 +15,11 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 import RP_GPT as core
+from engine import events as ev
+from engine.bridge import build_run, intent_for, render_result, sync_back
 from engine.events import collecting
+from engine.keeper import ModelKeeper
+from engine.turn import advance_turn
 from engine.persistence import list_runs, load_run, save_run
 from Core.Paths import SAVES_DIR
 from pathlib import Path
@@ -25,11 +29,11 @@ from Core.AI_Dungeon_Master import (
     campaign_blueprint_prompt,
     set_extra_world_text,
 )
-from Core.Choice_Handler import ExploreOptions, goal_lock_active, make_explore_options, process_choice
+from Core.Choice_Handler import ExploreOptions, goal_lock_active, make_explore_options
 from Core.Helpers import sanitize_prose
 from Core.Journal import maybe_journal_lore
 from Core.Random_Encounters import handle_post_turn_beat
-from Core.Turn_And_Act_Flow import begin_act, end_act_needed, end_of_turn, recap_and_transition
+from Core.Turn_And_Act_Flow import begin_act
 
 Scenario = core.Scenario
 Player = core.Player
@@ -201,6 +205,7 @@ class GameSession:
         self.id = uuid.uuid4().hex
         self._turn_events: List[Any] = []
         self._listeners: List[Any] = []
+        self._last_result = None
         self.state = state
         self.client = client
         self.label = scenario_label
@@ -209,6 +214,8 @@ class GameSession:
         self._options: Optional[ExploreOptions] = None
         self._events: List[Event] = []
         self._lock = threading.RLock()
+        self.run = build_run(state)
+        self.keeper = ModelKeeper(client, self._character_block())
         intro = sanitize_prose(self.state.act.situation or "Act begins.")
         if intro:
             self._append_event(intro)
@@ -317,6 +324,77 @@ class GameSession:
         with self._lock:
             return list(self._events[-limit:])
 
+    def _character_block(self) -> str:
+        """Who the player is, handed to the Keeper with every assessment."""
+        try:
+            from engine.describe import character_block
+
+            return character_block(self.state.player, getattr(self, "run", None)
+                                   and self.run.condition)
+        except Exception:
+            _log.debug("could not render the character block", exc_info=True)
+            return ""
+
+    def _post_turn(self) -> None:
+        """What used to be end_of_turn, minus the passive ticks.
+
+        end_of_turn raised `pressure` by 2+act every single turn and nudged
+        goal_progress on a 6% roll. Both are deleted on purpose: clocks move
+        on fiction events now, never on time alone. What is kept is the part
+        that was never about pacing -- buffs expiring, the turn's image, the
+        chronicle, the occasional encounter.
+        """
+        for buff in list(self.state.player.buffs):
+            buff.duration_turns -= 1
+            if buff.duration_turns <= 0:
+                self.state.player.buffs.remove(buff)
+                ev.prose(f"[Buff fades] {buff.name}")
+        self.state.turn_narrative_cache = None
+        self.state.rested_this_turn = False
+
+        # Flavour, not rules. None of it may take a turn down with it.
+        for label, step in (
+            ("turn image", lambda: core.generate_turn_image(self.state, core.queue_image_event)),
+            ("journal lore", lambda: maybe_journal_lore(self.state, self.client)),
+            ("post-turn beat", lambda: handle_post_turn_beat(self.state, self.client)),
+        ):
+            try:
+                step()
+            except Exception:
+                _log.debug("%s failed; turn continues", label, exc_info=True)
+
+    def _advance_act(self) -> None:
+        """The act's project clock filled. Recap it, then move on or end."""
+        from Core.AI_Dungeon_Master import recap_prompt
+        from Core.Helpers import journal_add, wrap
+
+        state = self.state
+        state.act.last_outcome = "success"
+        try:
+            recap = sanitize_prose(
+                self.client.text(recap_prompt(state, True), tag="Recap", max_chars=900)
+            )
+        except Exception:
+            _log.debug("recap failed; the act still ends", exc_info=True)
+            recap = ""
+        if recap:
+            ev.chapter(wrap(recap))
+            state.player_bio_entries.append(f"Act {state.act.index} recap: {recap}")
+        state.history.append(f"Act {state.act.index} success (clock filled)")
+        journal_add(state, f"Act {state.act.index} wrap: success.")
+
+        if state.act.index >= state.act_count:
+            state.running = False
+            ev.chapter("The line holds. Choices converge; the world loosens its grip.")
+            return
+
+        state.scene_phase = 0
+        state.stall_count = 0
+        begin_act(state, state.act.index + 1)
+        self.run = build_run(state)
+        self.keeper = ModelKeeper(self.client, self._character_block())
+        ev.chapter(sanitize_prose(state.act.situation or f"Act {state.act.index}."))
+
     # ------------------------------------------------------------ streaming
 
     def subscribe(self, listener):
@@ -382,6 +460,9 @@ class GameSession:
         session._options = None
         session._events = []
         session._lock = threading.RLock()
+        session._last_result = None
+        session.run = build_run(state)
+        session.keeper = ModelKeeper(session.client, session._character_block())
         resumed = sanitize_prose(
             getattr(state, "last_situation_para", "") or state.act.situation or "The story resumes."
         )
@@ -404,30 +485,36 @@ class GameSession:
             events: List[Any] = []
             blocked: Optional[str] = None
             try:
-                # The engine emits typed events now. We no longer monkeypatch
-                # sys.stdout and scrape the buffer, so a mid-turn failure keeps
-                # everything already emitted and two sessions cannot cross-talk.
+                # One pipeline. The turn loop used to exist four times, and
+                # this path ran the copy that knew nothing of Bearing, clocks,
+                # wounds or Resolve. Everything now goes through advance_turn.
+                #
+                # intercepted_io stays only as a backstop: some engine code
+                # reached from here can still call input(), and returning ""
+                # forever would hang the server.
                 with collecting() as bus, intercepted_io(inputs):
                     bus.subscribe(self._broadcast)
                     try:
-                        consumed = process_choice(self.state, code, self.ensure_options(), self.client)
+                        result = advance_turn(
+                            self.run,
+                            intent_for(code, payload, self.run.stats),
+                            self.keeper,
+                        )
+                        consumed = result.consumed_turn
+                        self._last_result = result
+                        for line in render_result(result, self.run):
+                            ev.prose(line)
+
+                        # Keep the old fields in step so the HUD, the save file
+                        # and the templates stay correct while they migrate.
+                        sync_back(self.run, self.state, result)
+
                         if consumed:
-                            # Random encounters and actor discovery. This has
-                            # existed all along and was called only from the
-                            # terminal loop, so neither shipped UI ever spawned
-                            # an encounter. Ordered as the terminal loop does:
-                            # the beat happens before time advances.
-                            #
-                            # celebrate_break and camp_interlude stay out until
-                            # they have a UI flow -- both call input(), which
-                            # here would trip the terminal-input backstop.
-                            if code != "0":
-                                handle_post_turn_beat(self.state, self.client)
-                            self.state.act.turns_taken += 1
-                            end_of_turn(self.state, self.client)
-                            maybe_journal_lore(self.state, self.client)
-                            if end_act_needed(self.state):
-                                recap_and_transition(self.state, self.client, "turn/end")
+                            self._post_turn()
+                        if result.act_complete:
+                            self._advance_act()
+                        elif result.act_failed:
+                            ev.chapter(f"{self.run.danger.name} got there first.")
                     finally:
                         events = bus.events
             except TerminalInputRequired as exc:

@@ -48,6 +48,15 @@ print(f"state.act_count   : {session.state.act_count}")
 print(f"goal              : {bp.campaign_goal[:70]}")
 print()
 
+def _clocks(session) -> str:
+    """Both clocks as filled/total -- the most useful number for pacing."""
+    run = getattr(session, "run", None)
+    if run is None:
+        return "clk  -    - "
+    parts = [f"{c.filled}/{c.segments}" if c else " - " for c in (run.project, run.danger)]
+    return "clk " + " ".join(parts)
+
+
 acts_seen = {session.state.act.index}
 turns_done = 0
 failures = []
@@ -87,8 +96,15 @@ for turn in range(1, MAX_TURNS + 1):
         f"  turn {turn:2d}  act {st.act.index}/{st.act_count}  "
         f"{elapsed:5.1f}s  hp {st.player.hp:3d}  "
         f"scene {len(st.act.actors):2d} +{len(st.act.undiscovered):2d} known  "
-        f"{out[:48]}{flag}"
+        f"{_clocks(session)}  {out[:40]}{flag}"
     )
+
+    # A finished campaign is a pass, not a reason to keep driving it. Without
+    # this the harness kept calling apply_choice on a run that was already
+    # over, which made a completed final act look like one that never ended.
+    if not getattr(st, "running", True):
+        print(f"\n  CAMPAIGN COMPLETE at turn {turn}")
+        break
 
     if st.is_game_over():
         print(f"\n  GAME OVER at turn {turn}: {st.is_game_over()}")
