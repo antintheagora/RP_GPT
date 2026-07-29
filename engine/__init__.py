@@ -21,6 +21,17 @@ from engine.blueprint import (
     json_to_actplan,
     role_from_kind,
 )
+from engine.actions import (
+    Depth,
+    Intent,
+    MenuOption,
+    ObserveTarget,
+    Verb,
+    apply_observation,
+    build_menu,
+    intent_from_option,
+)
+from engine.scene import Obstacle, Scene
 from engine.character import (
     Condition,
     Scar,
@@ -81,6 +92,9 @@ __all__ = [
     "d20", "calc_dc", "check",
     "Clock", "ClockBoard", "ClockKind", "ClockTick", "opposing_segments_for",
     "Condition", "Wound", "WoundTrack", "Scar", "Virtue", "WeaponWeight",
+    "Verb", "Depth", "ObserveTarget", "MenuOption", "Intent",
+    "build_menu", "intent_from_option", "apply_observation",
+    "Scene", "Obstacle",
     "damage_for", "earns_virtue", "max_hp", "wound_slots",
     "Tide", "TideBoard", "TideMove",
     "Bearing", "Position", "PositionFacts", "Consequence", "Bargain",
