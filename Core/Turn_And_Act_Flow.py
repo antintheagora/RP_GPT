@@ -73,6 +73,16 @@ def begin_act(state, idx: int):
     make_act_transition_prompt = core.make_act_transition_prompt
     make_act_start_prompt = core.make_act_start_prompt
 
+    # Clamp rather than index raw. A blueprint with fewer acts than act_count
+    # used to raise KeyError here and destroy the run, since nothing is saved.
+    available = sorted(state.blueprint.acts.keys())
+    if idx not in state.blueprint.acts:
+        if not available:
+            raise ValueError("Blueprint has no acts")
+        clamped = min(available, key=lambda k: (abs(k - idx), k))
+        print(f"[Act] act {idx} is not in the blueprint (has {available}); using act {clamped}.")
+        idx = clamped
+
     state.act = ActState(index=idx)
     plan = state.blueprint.acts[idx]
     state.act.situation = plan.intro_paragraph

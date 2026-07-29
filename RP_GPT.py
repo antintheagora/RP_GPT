@@ -544,14 +544,29 @@ def json_to_actplan(d:Dict[str,Any])->ActPlan:
 def blueprint_from_json(j:Dict[str,Any])->CampaignBlueprint:
     raw_acts = j.get("acts") or {}
     acts: Dict[int, ActPlan] = {}
+
+    # Models label acts inconsistently: "1", 1, "act1", "Act 2". Pull the first
+    # number out of whatever we were given rather than silently discarding the
+    # act -- dropping one used to leave a hole that begin_act would later index
+    # into and raise KeyError on, twenty turns of unsaveable play later.
+    parsed: List[tuple] = []
+    dropped: List[str] = []
     for key, payload in raw_acts.items():
-        try:
-            idx = int(key)
-        except Exception:
-            continue
-        acts[idx] = json_to_actplan(payload)
-    if not acts:
+        m = re.search(r"\d+", str(key))
+        if m:
+            parsed.append((int(m.group()), payload))
+        else:
+            dropped.append(str(key))
+    if not parsed:
         raise ValueError("Blueprint JSON missing acts")
+
+    # Renumber contiguously from 1 so there can be no gaps, even if the model
+    # emitted 1, 2, 4.
+    parsed.sort(key=lambda pair: pair[0])
+    for new_idx, (_, payload) in enumerate(parsed, start=1):
+        acts[new_idx] = json_to_actplan(payload)
+    if dropped:
+        print(f"[Blueprint] ignored {len(dropped)} unnumbered act key(s): {dropped}")
     return CampaignBlueprint(
         campaign_goal=j["campaign_goal"],
         pressure_name=j["pressure_name"],
@@ -571,7 +586,7 @@ def get_blueprint_interactive(g:GemmaClient, label:str, overrides: Optional[Dict
             for idx in sorted(bp.acts.keys()):
                 ap=bp.acts[idx]
                 if not ap.goal or not ap.intro_paragraph:
-                    raise GemmaError(f'Act {actual_idx} missing goal/intro.')
+                    raise GemmaError(f'Act {idx} missing goal/intro.')
             print("[Gemma] Blueprint OK.")
             return bp
         except Exception as e:

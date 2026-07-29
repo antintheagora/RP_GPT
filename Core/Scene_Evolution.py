@@ -52,6 +52,47 @@ def _core():
 # ------ SCENE EVOLUTION ------
 # =============================
 
+# Honorifics and articles are the main source of name drift: the model writes
+# "Marius", then "Captain Marius", then "Captain Marius Thorne", and exact
+# string matching treats all three as separate people.
+_NAME_NOISE = {
+    "the", "a", "an", "of",
+    "captain", "commander", "sergeant", "corporal", "lieutenant", "general",
+    "brother", "sister", "father", "mother", "elder", "chief", "master",
+    "baron", "baroness", "lord", "lady", "sir", "dame", "doctor", "dr",
+    "mr", "mrs", "ms", "old", "young",
+}
+
+
+def _name_key(name: str) -> str:
+    """Normalised form of a character name, for comparison only."""
+    s = re.sub(r"[^a-z0-9 ]+", " ", (name or "").lower())
+    return " ".join(w for w in s.split() if w not in _NAME_NOISE)
+
+
+def same_person(a: str, b: str) -> bool:
+    """True when two names plausibly refer to the same character."""
+    ka, kb = _name_key(a), _name_key(b)
+    if not ka or not kb:
+        return False
+    if ka == kb:
+        return True
+    wa, wb = set(ka.split()), set(kb.split())
+    # "Marius" vs "Marius Thorne" -- one name's words contain the other's.
+    return wa <= wb or wb <= wa
+
+
+def _people_in_scene(state) -> list:
+    """Everyone the scan should already know about."""
+    out = []
+    act = getattr(state, "act", None)
+    for attr in ("actors", "undiscovered", "passive_bystanders"):
+        out.extend(list(getattr(act, attr, None) or []))
+    for attr in ("companions", "party"):
+        out.extend(list(getattr(state, attr, None) or []))
+    return out
+
+
 def scan_for_new_actor(state, g: GemmaClient, situation_txt: str):
     """Ask the model if the new paragraph introduced a new character.
 
@@ -70,8 +111,23 @@ def scan_for_new_actor(state, g: GemmaClient, situation_txt: str):
     Actor = core.Actor
 
     try:
+        # Telling the model who is already here is half the fix. Without it the
+        # scan runs every turn against a paragraph describing the people
+        # already present, and dutifully reports them as new.
+        already = _people_in_scene(state)
+        known = [getattr(p, "name", "") for p in already if getattr(p, "name", "")]
+        player_name = getattr(getattr(state, "player", None), "name", "")
+        if player_name:
+            known.append(player_name)
+        roster = ", ".join(dict.fromkeys(known)) or "nobody yet"
+
         prompt = f"""
 From the paragraph below, detect if a NEW character or creature has entered the scene.
+
+These characters are ALREADY in the scene. Do NOT report any of them as new,
+under any name or title:
+{roster}
+
 Return STRICT JSON ONLY like:
 {{"introduced": true/false, "name": "string", "kind": "string", "role":"npc|enemy", "personality":"string"}}
 Paragraph: {situation_txt}
@@ -86,6 +142,17 @@ Paragraph: {situation_txt}
         role = (j.get("role", "npc") or "npc").strip().lower()
         if role not in ("npc", "enemy"):
             role = "npc"
+
+        # The model may still return someone we already have -- it is the last
+        # line of defence, and the one that was missing entirely. Appending
+        # without this check is what produced ten Elaras and twenty Captains
+        # across 129 character folders.
+        if player_name and same_person(name, player_name):
+            return
+        for other in already:
+            if same_person(name, getattr(other, "name", "")):
+                state.last_actor = other
+                return
 
         # Set species/communication style and a loose personality archetype
         species, comm = infer_species_and_comm_style(kind)

@@ -205,6 +205,10 @@ class GameSession:
             blueprint=blueprint,
             pressure_name=blueprint.pressure_name,
         )
+        # GameState.act_count defaults to 3 and was never reconciled with the
+        # blueprint here, so a 2- or 5-act campaign walked off the end of the
+        # acts dict partway through and lost the run.
+        state.act_count = len(blueprint.acts)
         state.images_enabled = False
         begin_act(state, 1)
         try:
