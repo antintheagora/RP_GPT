@@ -20,6 +20,7 @@ from flask import (
 )
 from pathlib import Path
 
+from Core.Config import DEFAULT_MODEL
 from Core.Character_Registry import (
     BASE_DIR as CHAR_BASE_DIR,
     ROLE_DIRS as CHAR_ROLE_DIRS,
@@ -613,7 +614,7 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
         config = {
             "scenario": form.get("scenario") or "apocalypse",
             "label": (form.get("custom_label") or form.get("scenario_label") or "").strip(),
-            "model": form.get("model") or "gemma3:12b",
+            "model": form.get("model") or DEFAULT_MODEL,
             "ollama_host": form.get("ollama_host") or None,
             "world_notes": form.get("world_notes") or "",
             "player": {

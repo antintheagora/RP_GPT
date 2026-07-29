@@ -19,6 +19,7 @@ import sys
 import time
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
+from Core.Config import get_config, normalize_model_name, sampling_for
 from Core.Helpers import (
     infer_species_and_comm_style,
     role_style_hint,
@@ -57,160 +58,229 @@ class GemmaError(RuntimeError):
 
 
 class GemmaClient:
-    """Small helper around Ollama (CLI or HTTP) so we can retry and tag requests."""
+    """Ollama client that actually configures the model.
+
+    The previous implementation sent ``{"model", "prompt", "stream": false}``
+    and nothing else -- or shelled out to ``ollama run``, which accepts no
+    sampling or context flags at all. With no ``options`` block, Ollama applies
+    its default context window (4K), so prompts were silently truncated no
+    matter how carefully they were built. This class always sends an explicit
+    ``num_ctx``.
+    """
 
     def __init__(
         self,
-        model: str = "gemma3:12b",
+        model: Optional[str] = None,
         max_retries: int = 4,
         retry_backoff: float = 1.15,
-        timeout: int = 90,
+        timeout: Optional[int] = None,
         base_url: Optional[str] = None,
+        num_ctx: Optional[int] = None,
     ):
-        self.model = model
+        cfg = get_config()
+        self.model = (model or cfg.model).strip() or cfg.model
         self.max_retries = max_retries
         self.retry_backoff = retry_backoff
-        self.timeout = timeout
+        self.timeout = timeout or cfg.timeout
+        self.num_ctx = num_ctx or cfg.num_ctx
+        self.keep_alive = cfg.keep_alive
 
-        # Decide between CLI and HTTP mode.
-        env_host = os.environ.get("OLLAMA_HOST", "").strip()
-        self.base_url = (base_url or env_host).rstrip("/") if (base_url or env_host) else ""
-        self._ollama_cmd: Optional[str] = None
+        # HTTP only. The CLI path accepted no flags, so it could never be
+        # configured; keeping it would silently reintroduce the 4K window.
+        host = (base_url or "").strip() or cfg.host
+        if not host.startswith("http"):
+            host = "http://" + host
+        self.base_url = host.rstrip("/")
 
-        if not self.base_url:
-            cmd = shutil.which("ollama")
-            if not cmd and os.name == "nt":
-                candidates = [
-                    r"C:\\Program Files\\Ollama\\ollama.exe",
-                    os.path.expandvars(r"%LOCALAPPDATA%\\Programs\\Ollama\\ollama.exe"),
-                ]
-                for p in candidates:
-                    if p and os.path.exists(p):
-                        cmd = p
-                        break
-            if cmd:
-                self._ollama_cmd = cmd
-            else:
-                # Fallback to the default local API endpoint.
-                self.base_url = "http://127.0.0.1:11434"
+        # Retained purely so we can offer to pull a missing model.
+        self._ollama_cmd: Optional[str] = shutil.which("ollama")
+        if not self._ollama_cmd and os.name == "nt":
+            for p in (
+                r"C:\Program Files\Ollama\ollama.exe",
+                os.path.expandvars(r"%LOCALAPPDATA%\Programs\Ollama\ollama.exe"),
+            ):
+                if p and os.path.exists(p):
+                    self._ollama_cmd = p
+                    break
+
+    # ---------- availability ----------
+
+    def _installed_models(self) -> List[str]:
+        import urllib.request
+
+        with urllib.request.urlopen(self.base_url + "/api/tags", timeout=self.timeout) as resp:
+            data = json.loads(resp.read().decode("utf-8", errors="ignore") or "{}")
+        return [m.get("name", "") for m in (data.get("models") or [])]
 
     def check_or_pull_model(self) -> None:
-        """Ensure the requested model is available (CLI or HTTP)."""
+        """Verify the model is present, offering to pull it when it is not."""
         noninteractive = os.environ.get("RP_GPT_NONINTERACTIVE", "").lower() in {"1", "true", "yes"}
-        if self._ollama_cmd:
-            result = subprocess.run(
-                [self._ollama_cmd, "show", self.model],
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="ignore",
-            )
-            if result.returncode != 0:
-                if noninteractive:
-                    raise GemmaError(
-                        f"Model '{self.model}' not found locally. Run 'ollama pull {self.model}' and restart."
-                    )
-                answer = input(f"Model '{self.model}' not found. Pull now? [Y/n] > ").strip().lower() or "y"
-                if answer != "n":
-                    code = subprocess.call([self._ollama_cmd, "pull", self.model])
-                    if code != 0:
-                        raise GemmaError("Model pull failed or canceled.")
-                else:
-                    raise GemmaError("Model not available.")
-            return
-
-        # HTTP mode: check models at /api/tags
         try:
-            import urllib.request
-
-            with urllib.request.urlopen(self.base_url + "/api/tags", timeout=self.timeout) as resp:
-                data = json.loads(resp.read().decode("utf-8", errors="ignore") or "{}")
-                models = {m.get("name", "") for m in (data.get("models") or [])}
-                if self.model not in models:
-                    raise GemmaError(
-                        f"Model '{self.model}' not available on {self.base_url}. "
-                        f"Run 'ollama pull {self.model}' on that host, or set OLLAMA_HOST to a server that has it."
-                    )
-        except GemmaError:
-            raise
+            available = {normalize_model_name(m) for m in self._installed_models()}
         except Exception as exc:
             raise GemmaError(
-                f"Unable to reach Ollama at {self.base_url}. Install Ollama or set OLLAMA_HOST. ({exc})"
+                f"Unable to reach Ollama at {self.base_url}. Is it running? "
+                f"Install from ollama.com or set OLLAMA_HOST. ({exc})"
             ) from exc
 
-    def _run(self, prompt: str, tag: str) -> str:
-        """Invoke Ollama and return plain text output (with retries + spinner)."""
-        spinner = LoadingBar(f"{tag}…")
+        # Compare normalized: Ollama reports "gemma4:12b", a user may type "gemma4".
+        if normalize_model_name(self.model) in available:
+            return
+
+        pretty = ", ".join(sorted(available)) or "none"
+        if noninteractive or not self._ollama_cmd:
+            raise GemmaError(
+                f"Model '{self.model}' is not available on {self.base_url}. "
+                f"Installed: {pretty}. Run 'ollama pull {self.model}' and restart."
+            )
+        answer = input(f"Model '{self.model}' not found. Pull it now? [Y/n] > ").strip().lower() or "y"
+        if answer == "n":
+            raise GemmaError(f"Model '{self.model}' not available.")
+        if subprocess.call([self._ollama_cmd, "pull", self.model]) != 0:
+            raise GemmaError("Model pull failed or was cancelled.")
+
+    # ---------- generation ----------
+
+    def _options(self, tag: str) -> Dict[str, Any]:
+        """Build the options block. This is the fix that matters."""
+        opts: Dict[str, Any] = {"num_ctx": self.num_ctx}
+        opts.update(sampling_for(tag).as_options())
+        return opts
+
+    def _post(self, prompt: str, tag: str, want_json: bool) -> str:
+        import urllib.request
+
+        payload: Dict[str, Any] = {
+            "model": self.model,
+            "prompt": prompt,
+            "stream": False,
+            "keep_alive": self.keep_alive,
+            "options": self._options(tag),
+        }
+        if want_json:
+            # Ollama constrains decoding to valid JSON. This replaces scraping
+            # the response with a greedy brace regex.
+            payload["format"] = "json"
+
+        req = urllib.request.Request(
+            self.base_url + "/api/generate",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+            body = resp.read().decode("utf-8", errors="ignore")
+
+        try:
+            text = (json.loads(body or "{}").get("response") or "").strip()
+        except Exception:
+            text = (body or "").strip()
+        if not text:
+            raise GemmaError("Empty output from model.")
+        return text
+
+    def _run(self, prompt: str, tag: str, want_json: bool = False) -> str:
+        """Call Ollama with retries. Parse failures retry too -- see .json()."""
+        spinner = LoadingBar(f"{tag}...")
+        last: Optional[Exception] = None
         for attempt in range(1, self.max_retries + 1):
             try:
                 spinner.start()
-                if not hasattr(self, "_ollama_cmd") or not self._ollama_cmd:
-                    # HTTP mode via Ollama REST API
-                    import urllib.request
-
-                    req = urllib.request.Request(
-                        (self.base_url if hasattr(self, "base_url") and self.base_url else "http://127.0.0.1:11434")
-                        + "/api/generate",
-                        data=json.dumps({
-                            "model": self.model,
-                            "prompt": prompt,
-                            "stream": False,
-                        }).encode("utf-8"),
-                        headers={"Content-Type": "application/json"},
-                        method="POST",
-                    )
-                    with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-                        body = resp.read().decode("utf-8", errors="ignore")
-                    spinner.stop()
-                    try:
-                        payload = json.loads(body or "{}")
-                        text = (payload.get("response") or "").strip()
-                    except Exception:
-                        text = (body or "").strip()
-                    if not text:
-                        raise GemmaError("Empty output from model.")
-                    return text
-                result = subprocess.run(
-                    [self._ollama_cmd, "run", self.model, prompt],
-                    capture_output=True,
-                    text=True,
-                    encoding="utf-8",
-                    errors="ignore",
-                    timeout=self.timeout,
-                )
-                spinner.stop()
-                text = (result.stdout or "").strip()
-                if not text:
-                    raise GemmaError("Empty output from model.")
-                return text
+                return self._post(prompt, tag, want_json)
             except Exception as exc:
+                last = exc
+                if attempt < self.max_retries:
+                    time.sleep(self.retry_backoff ** attempt)
+            finally:
                 spinner.stop()
-                if attempt >= self.max_retries:
-                    raise GemmaError(f"{tag} failed after {attempt} attempts: {exc}") from exc
-                # Exponential-ish backoff so we do not hammer Ollama after errors.
-                time.sleep(self.retry_backoff ** attempt)
+        raise GemmaError(f"{tag} failed after {self.max_retries} attempts: {last}") from last
 
     def text(self, prompt: str, tag: str, max_chars: Optional[int] = None) -> str:
-        """Return truncated text (handy for short responses)."""
+        """Return prose. ``max_chars`` truncates on a word boundary, not mid-word."""
         output = self._run(prompt, tag)
-        return output[:max_chars] if max_chars else output
+        if max_chars and len(output) > max_chars:
+            cut = output[:max_chars]
+            space = cut.rfind(" ")
+            output = (cut[:space] if space > max_chars * 0.6 else cut).rstrip()
+        return output
 
     def json(self, prompt: str, tag: str) -> Any:
-        """Return parsed JSON; raise if Gemma fails to produce a JSON object."""
-        raw = self._run(prompt, tag)
-        match = re.search(r"\{.*\}", raw, flags=re.S)
-        if not match:
-            raise GemmaError(f"No JSON object in output for {tag}.")
-        text = match.group(0)
-        try:
-            return json.loads(text)
-        except Exception:
-            # Be lenient about trailing commas that some models emit.
-            fixed = re.sub(r",\s*([}\]])", r"\1", text)
+        """Return parsed JSON, retrying the *generation* when parsing fails.
+
+        The previous implementation retried socket errors four times and parse
+        failures zero times, which is backwards: a malformed generation is the
+        far more common failure and the one a retry actually fixes.
+        """
+        last: Optional[Exception] = None
+        for attempt in range(1, self.max_retries + 1):
             try:
-                return json.loads(fixed)
+                raw = self._run(prompt, tag, want_json=True)
+            except GemmaError as exc:
+                last = exc
+                break
+            try:
+                return _loads_lenient(raw)
             except Exception as exc:
-                raise GemmaError(f"{tag} JSON parse failed: {exc}") from exc
+                last = exc
+                if attempt < self.max_retries:
+                    time.sleep(self.retry_backoff ** attempt)
+        raise GemmaError(f"{tag} JSON parse failed: {last}") from last
+
+
+def _loads_lenient(raw: str) -> Any:
+    """Parse JSON that a model may have wrapped in prose or a code fence.
+
+    With ``format="json"`` set this should be a plain json.loads every time; the
+    fallbacks exist for older models and for hosts that ignore the parameter.
+    """
+    raw = (raw or "").strip()
+    try:
+        return json.loads(raw)
+    except Exception:
+        pass
+
+    # Strip a ```json fence if one survived.
+    fence = re.search(r"```(?:json)?\s*(.+?)```", raw, flags=re.S)
+    if fence:
+        try:
+            return json.loads(fence.group(1).strip())
+        except Exception:
+            pass
+
+    # Fall back to the outermost balanced object/array, scanned properly rather
+    # than with a greedy "first brace to last brace" regex, which breaks on any
+    # trailing prose containing a brace.
+    for opener, closer in (("{", "}"), ("[", "]")):
+        start = raw.find(opener)
+        if start < 0:
+            continue
+        depth = 0
+        in_str = False
+        esc = False
+        for idx in range(start, len(raw)):
+            ch = raw[idx]
+            if in_str:
+                if esc:
+                    esc = False
+                elif ch == "\\":
+                    esc = True
+                elif ch == '"':
+                    in_str = False
+                continue
+            if ch == '"':
+                in_str = True
+            elif ch == opener:
+                depth += 1
+            elif ch == closer:
+                depth -= 1
+                if depth == 0:
+                    chunk = raw[start:idx + 1]
+                    try:
+                        return json.loads(chunk)
+                    except Exception:
+                        # Tolerate trailing commas, which some models emit.
+                        return json.loads(re.sub(r",\s*([}\]])", r"\1", chunk))
+    raise ValueError("no JSON object found in model output")
 
 
 # =============================

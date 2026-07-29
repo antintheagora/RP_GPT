@@ -167,8 +167,10 @@ class GameSession:
         label = (config.get("label") or scenario.value).strip() or scenario.value
         world_text = config.get("world_notes", "")
         set_extra_world_text(world_text)
+        # An empty model/host falls through to Core.Config, which reads the
+        # environment and defaults to gemma4:12b.
         client = GemmaClient(
-            model=(config.get("model") or "gemma3:12b").strip() or "gemma3:12b",
+            model=_clean_str(config.get("model")),
             base_url=_clean_str(config.get("ollama_host")),
         )
         blueprint = generate_blueprint(client, label)
