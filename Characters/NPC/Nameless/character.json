@@ -1,0 +1,13 @@
+{
+  "name": "Nameless",
+  "role": "npc",
+  "kind": "npc",
+  "hp": 14,
+  "attack": 3,
+  "updated_at": 1785332205.0728204,
+  "last_seen": 1785332205.072821,
+  "encounters": 2,
+  "personality_archetype": "joyful",
+  "species": "human",
+  "comm_style": "speech"
+}

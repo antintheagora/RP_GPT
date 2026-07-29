@@ -1,0 +1,15 @@
+{
+  "name": "Edda",
+  "role": "npc",
+  "kind": "tinkerer",
+  "hp": 12,
+  "attack": 1,
+  "updated_at": 1785332205.0993595,
+  "last_seen": 1785332205.09936,
+  "encounters": 6,
+  "desc": "curious",
+  "personality": "curious",
+  "personality_archetype": "anxious",
+  "species": "human",
+  "comm_style": "speech"
+}

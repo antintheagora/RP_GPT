@@ -305,3 +305,9 @@ def lookup_profile(name: str) -> Optional[CharacterProfile]:
                 portrait_path=portrait,
             )
     return None
+
+# The engine seeds actors but must not write to disk itself. Register the
+# profile writer here so engine/blueprint.py can persist without importing Core.
+from engine.blueprint import set_profile_hook as _set_profile_hook
+
+_set_profile_hook(ensure_character_profile)

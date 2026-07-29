@@ -1,0 +1,13 @@
+{
+  "name": "Stranger",
+  "role": "npc",
+  "kind": "npc",
+  "hp": 14,
+  "attack": 3,
+  "updated_at": 1785332205.067485,
+  "last_seen": 1785332205.067485,
+  "encounters": 2,
+  "personality_archetype": "amiable",
+  "species": "human",
+  "comm_style": "speech"
+}

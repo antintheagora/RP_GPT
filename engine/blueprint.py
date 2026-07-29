@@ -17,8 +17,30 @@ from engine.model import (
     Item,
     Stats,
 )
+from engine.traits import infer_species_and_comm_style, personality_roll
 
 _log = __import__("logging").getLogger("rp_gpt.blueprint")
+
+# Writing a character profile to disk is the caller's business, not the
+# engine's -- engine/ must import with no writable working directory. The Core
+# layer registers a hook here at import time; without one, seeding an actor
+# simply does not persist a profile, which is correct for tests and scripts.
+_profile_hook = None
+
+
+def set_profile_hook(fn) -> None:
+    """Register a callback invoked for each newly seeded actor."""
+    global _profile_hook
+    _profile_hook = fn
+
+
+def _persist_profile(actor) -> None:
+    if _profile_hook is None:
+        return
+    try:
+        _profile_hook(actor)
+    except Exception:
+        _log.debug("profile hook failed for %s", getattr(actor, "name", "?"), exc_info=True)
 
 
 def items_from_seed(seed)->List[Item]:
@@ -54,7 +76,7 @@ def actors_from_seed(seed, act_index:int)->List[Actor]:
             desc=a.get("personality",""),
             species=species, comm_style=comm, personality_archetype=personality_roll()
         )
-        ensure_character_profile(actor)
+        _persist_profile(actor)
         out.append(actor)
     return out
 

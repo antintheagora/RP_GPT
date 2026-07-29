@@ -1,0 +1,15 @@
+{
+  "name": "Raider Scout",
+  "role": "enemy",
+  "kind": "raider",
+  "hp": 18,
+  "attack": 4,
+  "updated_at": 1785332205.0902166,
+  "last_seen": 1785332205.0902169,
+  "encounters": 6,
+  "desc": "twitchy, cruel",
+  "personality": "twitchy, cruel",
+  "personality_archetype": "anxious",
+  "species": "human",
+  "comm_style": "speech"
+}

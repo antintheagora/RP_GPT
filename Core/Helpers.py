@@ -7,6 +7,7 @@ import re
 import textwrap
 from typing import TYPE_CHECKING, Optional, Tuple
 
+from engine.traits import infer_species_and_comm_style, personality_roll  # re-export
 from Core.Logging import get_logger
 
 _log = get_logger("helpers")
@@ -75,21 +76,6 @@ def verbish_from_microplan(plan: str) -> str:
     return fragment.strip()
 
 
-# We make a guess about an actor's species and how they communicate.
-def infer_species_and_comm_style(kind: str) -> Tuple[str, str]:
-    """Infer species and communication style from the given kind string."""
-    lowered = (kind or "").lower()
-    # Animal keywords point to animal sounds.
-    if any(word in lowered for word in ["dog", "wolf", "boar", "bear", "beast", "animal"]):
-        return "animal", "animal"
-    # Mutant creatures usually speak in strained, limited ways.
-    if any(word in lowered for word in ["ghoul", "feral", "mutant"]):
-        return "mutant", "limited"
-    # Synthetic beings often talk like people, so we report speech.
-    if any(word in lowered for word in ["synthetic", "android", "robot", "machine"]):
-        return "synthetic", "speech"
-    # Default to human speech when no clue stands out.
-    return "human", "speech"
 
 
 # We offer quick advice to the dialogue generator about how to speak.
@@ -114,23 +100,6 @@ def role_style_hint(actor: "Actor") -> str:
     return "Speak naturally per personality."
 
 
-# We pull a random personality label to keep NPCs varied.
-def personality_roll() -> str:
-    """Pick a quick personality label for newly discovered actors."""
-    return random.choice(
-        [
-            "joyful",
-            "inquisitive",
-            "stoic",
-            "aggressive",
-            "cautious",
-            "bitter",
-            "amiable",
-            "serene",
-            "anxious",
-            "zealous",
-        ]
-    )
 
 
 # We keep the journal list and the text file in sync.
