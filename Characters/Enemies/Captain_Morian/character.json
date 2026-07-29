@@ -6,7 +6,7 @@
   "attack": 3,
   "updated_at": 1762057516.03312,
   "last_seen": 1762057516.0331202,
-  "encounters": 1,
+  "encounters": 2,
   "desc": "Disciplined, ruthless, unquestioningly loyal to the Dominion.",
   "personality": "Disciplined, ruthless, unquestioningly loyal to the Dominion.",
   "personality_archetype": "amiable",
@@ -14,5 +14,8 @@
   "comm_style": "speech",
   "sex": "other",
   "familiarity": "stranger",
-  "alignment": "neutral"
+  "alignment": "neutral",
+  "aliases": [
+    "Elder Morian"
+  ]
 }

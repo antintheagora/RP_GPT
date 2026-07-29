@@ -6,7 +6,7 @@
   "attack": 2,
   "updated_at": 1762246185.2013237,
   "last_seen": 1762246185.2013242,
-  "encounters": 2,
+  "encounters": 4,
   "desc": "Gruff, pragmatic, suspicious of outsiders",
   "personality": "Gruff but dependable; loyal to Oakhaven and wary of outsiders.",
   "personality_archetype": "stoic",
@@ -14,5 +14,8 @@
   "comm_style": "speech",
   "sex": "other",
   "familiarity": "stranger",
-  "alignment": "neutral"
+  "alignment": "neutral",
+  "aliases": [
+    "Torvin"
+  ]
 }

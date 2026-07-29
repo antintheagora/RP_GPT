@@ -88,6 +88,22 @@ def same_person(a: str, b: str) -> bool:
     return wa <= wb or wb <= wa
 
 
+def _known_aliases(name: str) -> list:
+    """Names an authored character has already answered to.
+
+    The dedupe pass folded "Lord Valerius" and "Sergeant Valerius" into
+    Captain Valerius and recorded both as aliases. Reading them back here is
+    what stops the scanner re-creating the folders it just merged.
+    """
+    try:
+        from Core.Character_Registry import load_profile_aliases
+
+        return load_profile_aliases(name)
+    except Exception:
+        _log.debug("alias lookup failed for %r", name, exc_info=True)
+        return []
+
+
 def _people_in_scene(state) -> list:
     """Everyone the scan should already know about."""
     out = []
@@ -156,7 +172,14 @@ Paragraph: {situation_txt}
         if player_name and same_person(name, player_name):
             return
         for other in already:
-            if same_person(name, getattr(other, "name", "")):
+            other_name = getattr(other, "name", "")
+            if same_person(name, other_name):
+                state.last_actor = other
+                return
+            # Also match against names this character has previously gone by,
+            # so a merged profile is not immediately re-forked under an old
+            # title the model happens to reach for.
+            if any(same_person(name, alias) for alias in _known_aliases(other_name)):
                 state.last_actor = other
                 return
 

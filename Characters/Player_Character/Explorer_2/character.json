@@ -17,5 +17,7 @@
   "created_at": 1762049048.179172,
   "portrait": "portrait.jpg",
   "locked": true,
-  "updated_at": 1762052761.038896
+  "updated_at": 1762052761.038896,
+  "aliases": [],
+  "encounters": 0
 }

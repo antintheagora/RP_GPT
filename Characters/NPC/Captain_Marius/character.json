@@ -6,7 +6,7 @@
   "attack": 4,
   "updated_at": 1762245025.733277,
   "last_seen": 1762245025.7332773,
-  "encounters": 9,
+  "encounters": 15,
   "desc": "Stern, duty-bound, suspicious of outsiders",
   "personality": "Ruthless, pragmatic, loyal to the Dominion.",
   "personality_archetype": "joyful",
@@ -14,5 +14,8 @@
   "comm_style": "speech",
   "sex": "other",
   "familiarity": "stranger",
-  "alignment": "neutral"
+  "alignment": "neutral",
+  "aliases": [
+    "Commander Marius"
+  ]
 }

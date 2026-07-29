@@ -6,7 +6,7 @@
   "attack": 2,
   "updated_at": 1764914442.819793,
   "last_seen": 1764914442.819793,
-  "encounters": 71,
+  "encounters": 72,
   "desc": "Quiet, wise, deeply concerned for the land's suffering.",
   "personality": "Wise, melancholic, deeply connected to nature, wary of outsiders.",
   "personality_archetype": "joyful",
@@ -14,5 +14,8 @@
   "comm_style": "speech",
   "sex": "other",
   "familiarity": "stranger",
-  "alignment": "neutral"
+  "alignment": "neutral",
+  "aliases": [
+    "Eira"
+  ]
 }

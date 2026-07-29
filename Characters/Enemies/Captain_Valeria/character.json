@@ -6,7 +6,7 @@
   "attack": 5,
   "updated_at": 1762246574.6196854,
   "last_seen": 1762246574.619686,
-  "encounters": 5,
+  "encounters": 6,
   "desc": "Ruthless, duty-bound, suspicious of outsiders",
   "personality": "Ruthless, disciplined, loyal to Dominion",
   "personality_archetype": "aggressive",
@@ -14,5 +14,6 @@
   "comm_style": "speech",
   "sex": "other",
   "familiarity": "stranger",
-  "alignment": "neutral"
+  "alignment": "neutral",
+  "aliases": []
 }

@@ -6,7 +6,7 @@
   "attack": 3,
   "updated_at": 1764858301.0516787,
   "last_seen": 1764858301.0516787,
-  "encounters": 6,
+  "encounters": 14,
   "desc": "Practical, weary, determined to protect her people.",
   "personality": "Kind, desperate, resourceful",
   "personality_archetype": "serene",
@@ -14,5 +14,10 @@
   "comm_style": "speech",
   "sex": "other",
   "familiarity": "stranger",
-  "alignment": "neutral"
+  "alignment": "neutral",
+  "aliases": [
+    "Elder Elara",
+    "Sister Elara",
+    "Thane Elara"
+  ]
 }

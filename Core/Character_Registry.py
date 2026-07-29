@@ -11,7 +11,7 @@ import shutil
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Optional, Tuple, TYPE_CHECKING
+from typing import Dict, List, Optional, Tuple, TYPE_CHECKING
 
 if TYPE_CHECKING:  # pragma: no cover - for type hints only
     from RP_GPT import Actor
@@ -336,3 +336,33 @@ def lookup_profile(name: str) -> Optional[CharacterProfile]:
 from engine.blueprint import set_profile_hook as _set_profile_hook
 
 _set_profile_hook(ensure_character_profile)
+
+
+_ALIAS_CACHE: Dict[str, List[str]] = {}
+
+
+def load_profile_aliases(name: str) -> List[str]:
+    """Names an existing profile has answered to, from its character.json.
+
+    Populated by scripts/dedupe_characters.py when it folds duplicates
+    together. Cached because the scanner asks once per actor per turn.
+    """
+    key = (name or "").strip().lower()
+    if not key:
+        return []
+    if key in _ALIAS_CACHE:
+        return _ALIAS_CACHE[key]
+
+    aliases: List[str] = []
+    for role_dir in ROLE_DIRS.values():
+        candidate = BASE_DIR / role_dir / _sanitize(name) / METADATA_FILE
+        if not candidate.exists():
+            continue
+        try:
+            data = json.loads(candidate.read_text(encoding="utf-8-sig"))
+        except Exception:
+            continue
+        aliases = [a for a in (data.get("aliases") or []) if a]
+        break
+    _ALIAS_CACHE[key] = aliases
+    return aliases

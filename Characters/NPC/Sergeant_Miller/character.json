@@ -6,7 +6,7 @@
   "attack": 3,
   "updated_at": 1764914442.8243,
   "last_seen": 1764914442.8243,
-  "encounters": 72,
+  "encounters": 80,
   "desc": "Weary but determined; values duty and teamwork",
   "personality": "Duty-bound, weary, hopeful",
   "personality_archetype": "amiable",
@@ -14,5 +14,7 @@
   "comm_style": "speech",
   "sex": "other",
   "familiarity": "stranger",
-  "alignment": "neutral"
+  "alignment": "neutral",
+  "portrait": "portrait.jpg",
+  "aliases": []
 }

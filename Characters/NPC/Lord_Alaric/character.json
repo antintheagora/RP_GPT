@@ -6,7 +6,7 @@
   "attack": 5,
   "updated_at": 1762814770.6381161,
   "last_seen": 1762814770.6381161,
-  "encounters": 3,
+  "encounters": 5,
   "desc": "Desperate, pragmatic, bordering on ruthless",
   "personality": "Cautious, pragmatic, burdened by responsibility",
   "personality_archetype": "bitter",
@@ -14,5 +14,9 @@
   "comm_style": "speech",
   "sex": "other",
   "familiarity": "stranger",
-  "alignment": "neutral"
+  "alignment": "neutral",
+  "aliases": [
+    "Elder Alaric",
+    "King Alaric"
+  ]
 }

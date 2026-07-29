@@ -6,7 +6,7 @@
   "attack": 4,
   "updated_at": 1762837182.1553018,
   "last_seen": 1762837182.1553018,
-  "encounters": 3,
+  "encounters": 4,
   "desc": "Stern, duty-bound, secretly fearful",
   "personality": "Cautious, pragmatic, burdened by responsibility",
   "personality_archetype": "zealous",
@@ -14,5 +14,8 @@
   "comm_style": "speech",
   "sex": "other",
   "familiarity": "stranger",
-  "alignment": "neutral"
+  "alignment": "neutral",
+  "aliases": [
+    "Master Elmsworth"
+  ]
 }

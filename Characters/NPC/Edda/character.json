@@ -11,5 +11,13 @@
   "personality": "curious",
   "personality_archetype": "anxious",
   "species": "human",
-  "comm_style": "speech"
+  "comm_style": "speech",
+  "bio": "Keeps settlements running by rebuilding scavenged tech. Wants reliable allies more than caps.",
+  "created_at": 1762028093.4027045,
+  "sex": "other",
+  "familiarity": "stranger",
+  "alignment": "neutral",
+  "aliases": [
+    "Edda the Tinkerer"
+  ]
 }

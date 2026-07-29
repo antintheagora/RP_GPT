@@ -6,7 +6,7 @@
   "attack": 3,
   "updated_at": 1762047768.105825,
   "last_seen": 1762047768.1058254,
-  "encounters": 1,
+  "encounters": 2,
   "desc": "Weary but determined, loyal to the NCR.",
   "personality": "Weary but determined, loyal to the NCR.",
   "personality_archetype": "inquisitive",
@@ -14,5 +14,8 @@
   "comm_style": "speech",
   "sex": "other",
   "familiarity": "stranger",
-  "alignment": "neutral"
+  "alignment": "neutral",
+  "aliases": [
+    "Marcus"
+  ]
 }

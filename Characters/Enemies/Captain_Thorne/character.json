@@ -6,7 +6,7 @@
   "attack": 6,
   "updated_at": 1762236734.1709852,
   "last_seen": 1762236734.1709855,
-  "encounters": 3,
+  "encounters": 7,
   "desc": "Brutal, duty-bound, cynical",
   "personality": "Ruthless, ambitious, believes in order through force.",
   "personality_archetype": "zealous",
@@ -14,5 +14,8 @@
   "comm_style": "speech",
   "sex": "other",
   "familiarity": "stranger",
-  "alignment": "neutral"
+  "alignment": "neutral",
+  "aliases": [
+    "Lord Thorne"
+  ]
 }
