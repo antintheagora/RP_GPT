@@ -124,6 +124,24 @@ def isolated_user_data(tmp_path, monkeypatch):
     importlib.reload(paths)
 
 
+@pytest.fixture(autouse=True)
+def no_character_writes():
+    """Tests must never write into Characters/.
+
+    ensure_character_profile bumps `encounters` and `updated_at` every time an
+    actor is seeded, so simply running the suite produced a dirty git tree and
+    silently inflated the play counts of authored characters. A test that wants
+    the hook can re-register it for its own duration.
+    """
+    from Core.Character_Registry import set_persistence
+
+    # Switched off in the registry rather than at the engine hook, because
+    # several call sites reach ensure_character_profile directly.
+    previous = set_persistence(False)
+    yield
+    set_persistence(previous)
+
+
 @pytest.fixture
 def rng():
     """Seeded RNG so dice tests are deterministic."""

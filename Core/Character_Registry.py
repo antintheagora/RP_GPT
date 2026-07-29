@@ -153,8 +153,33 @@ def register_default_characters() -> None:
         meta_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
+_PERSIST = True
+
+
+def set_persistence(enabled: bool) -> bool:
+    """Turn profile writing on or off. Returns the previous setting.
+
+    Every actor seeded or met bumps `encounters` and `updated_at` on disk, so
+    merely running the test suite rewrote authored characters and left a dirty
+    git tree. Tests disable this; the game leaves it on.
+    """
+    global _PERSIST
+    previous = _PERSIST
+    _PERSIST = bool(enabled)
+    return previous
+
+
 def ensure_character_profile(actor: "Actor") -> CharacterProfile:
     """Attach (and persist) metadata for the supplied actor."""
+    if not _PERSIST:
+        role = (actor.role or actor.kind or "npc").lower()
+        return CharacterProfile(
+            name=actor.name or "Character",
+            role=role,
+            folder=BASE_DIR / ROLE_DIRS.get(role, ROLE_DIRS["npc"]) / _sanitize(actor.name or "Character"),
+            metadata={},
+            portrait_path=None,
+        )
     ensure_directories()
     role = (actor.role or actor.kind or "npc").lower()
     folder = BASE_DIR / ROLE_DIRS.get(role, ROLE_DIRS["npc"]) / _sanitize(actor.name or "Character")
