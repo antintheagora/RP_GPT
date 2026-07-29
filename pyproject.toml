@@ -37,9 +37,7 @@ packages = ["Core", "ui", "ui.webapp"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-# Tests must never reach for a GPU, an Ollama host, or the network.
-env = [
-    "RP_GPT_NONINTERACTIVE=1",
-    "RP_GPT_DISABLE_SPINNER=1",
-]
+# Tests must never reach for a GPU, an Ollama host, or the network. The
+# environment is set in tests/conftest.py rather than here, so no plugin is
+# required to run the suite.
 filterwarnings = ["error::SyntaxWarning"]
