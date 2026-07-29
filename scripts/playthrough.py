@@ -79,10 +79,15 @@ for turn in range(1, MAX_TURNS + 1):
         flag = "  <-- BLOCKED"
         failures.append((turn, "hit the terminal-input backstop"))
 
+    # Report both: characters carried across an act boundary move to
+    # `undiscovered` so they can be re-encountered rather than teleporting into
+    # the new opening scene. Counting only `actors` made a correct transition
+    # look like the cast had been wiped.
     print(
         f"  turn {turn:2d}  act {st.act.index}/{st.act_count}  "
         f"{elapsed:5.1f}s  hp {st.player.hp:3d}  "
-        f"cast {len(st.act.actors):2d}  {out[:58]}{flag}"
+        f"scene {len(st.act.actors):2d} +{len(st.act.undiscovered):2d} known  "
+        f"{out[:48]}{flag}"
     )
 
     if st.is_game_over():
@@ -93,8 +98,10 @@ print()
 print("=" * 70)
 print(f"turns applied     : {turns_done}")
 print(f"acts reached      : {sorted(acts_seen)} of {sorted(bp.acts)}")
-print(f"distinct cast     : {len({a.name for a in session.state.act.actors})} "
-      f"named / {len(session.state.act.actors)} entries")
+everyone = list(session.state.act.actors) + list(session.state.act.undiscovered)
+print(f"cast in scene     : {len(session.state.act.actors)}")
+print(f"known to the world: {len(session.state.act.undiscovered)}")
+print(f"distinct names    : {len({a.name for a in everyone})} of {len(everyone)} entries")
 print(f"total wall clock  : {time.time() - t0:.0f}s")
 print(f"failures          : {failures or 'NONE'}")
 print("=" * 70)

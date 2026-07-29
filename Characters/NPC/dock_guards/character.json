@@ -1,0 +1,14 @@
+{
+  "name": "dock guards",
+  "role": "npc",
+  "kind": "human",
+  "hp": 14,
+  "attack": 3,
+  "updated_at": 1785333070.091359,
+  "last_seen": 1785333070.0913599,
+  "encounters": 1,
+  "personality": "alert",
+  "personality_archetype": "joyful",
+  "species": "human",
+  "comm_style": "speech"
+}

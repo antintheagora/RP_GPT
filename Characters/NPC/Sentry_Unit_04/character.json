@@ -1,0 +1,15 @@
+{
+  "name": "Sentry Unit 04",
+  "role": "npc",
+  "kind": "Construct",
+  "hp": 20,
+  "attack": 4,
+  "updated_at": 1785333286.5086696,
+  "last_seen": 1785333286.5086708,
+  "encounters": 1,
+  "desc": "Malfunctioning, aggressive, and sparking.",
+  "personality": "Malfunctioning, aggressive, and sparking.",
+  "personality_archetype": "aggressive",
+  "species": "human",
+  "comm_style": "speech"
+}

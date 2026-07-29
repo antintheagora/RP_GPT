@@ -1,0 +1,15 @@
+{
+  "name": "Tunnel Warden",
+  "role": "npc",
+  "kind": "Enemy",
+  "hp": 20,
+  "attack": 4,
+  "updated_at": 1785333340.9090533,
+  "last_seen": 1785333340.9090543,
+  "encounters": 1,
+  "desc": "Stoic, automated",
+  "personality": "Stoic, automated",
+  "personality_archetype": "joyful",
+  "species": "human",
+  "comm_style": "speech"
+}
