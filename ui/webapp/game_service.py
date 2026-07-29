@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from Core.Logging import get_logger
+
+_log = get_logger("game_service")
+
 """Game session orchestration for the Flask/HTMX web UI."""
 
 import io
@@ -59,7 +63,7 @@ def build_player(data: Dict[str, str]) -> Player:
         try:
             player.attack = int(data["attack"])
         except Exception:
-            pass
+            _log.debug("suppressed error in game_service", exc_info=True)
     player.stats = Stats.random_special()
     for item in default_items:
         player.add_item(item)
@@ -227,7 +231,7 @@ class GameSession:
                 extra={"note": "initial portrait"},
             )
         except Exception:
-            pass
+            _log.debug("suppressed error in game_service", exc_info=True)
         return cls(state=state, client=client, scenario_label=label, world_text=world_text)
 
     def _apply_world_text(self) -> None:

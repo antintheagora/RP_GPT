@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from Core.Logging import get_logger
+
+_log = get_logger("interludes")
+
 """
 Interludes
 ----------
@@ -100,7 +104,7 @@ def celebrate_break(state, g: GemmaClient) -> bool:
         if line:
             print(wrap(line))
     except Exception:
-        pass
+        _log.debug("suppressed error in Interludes", exc_info=True)
 
     # Offer an immediate rest interlude
     print("\nTake a brief celebration rest?\n  [y] Yes (camp interlude)\n  [n] No (continue)")
@@ -125,7 +129,7 @@ def maybe_companion_camp_line(state, g: GemmaClient):
         line = g.text(talk_reply_prompt(state, comp, "Campfire pause"), tag="Camp aside", max_chars=160)
         print(wrap(f"{comp.name}: {sanitize_prose(line)}"))
     except Exception:
-        pass
+        _log.debug("suppressed error in Interludes", exc_info=True)
 
 
 def camp_interlude(state, g: GemmaClient):

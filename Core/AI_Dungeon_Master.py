@@ -10,6 +10,10 @@ This module centralizes:
 
 from __future__ import annotations
 
+from Core.Logging import get_logger
+
+_log = get_logger("ai_dungeon_master")
+
 import json
 import os
 import re
@@ -237,7 +241,7 @@ def _loads_lenient(raw: str) -> Any:
     try:
         return json.loads(raw)
     except Exception:
-        pass
+        _log.debug("suppressed error in AI_Dungeon_Master", exc_info=True)
 
     # Strip a ```json fence if one survived.
     fence = re.search(r"```(?:json)?\s*(.+?)```", raw, flags=re.S)
@@ -245,7 +249,7 @@ def _loads_lenient(raw: str) -> Any:
         try:
             return json.loads(fence.group(1).strip())
         except Exception:
-            pass
+            _log.debug("suppressed error in AI_Dungeon_Master", exc_info=True)
 
     # Fall back to the outermost balanced object/array, scanned properly rather
     # than with a greedy "first brace to last brace" regex, which breaks on any

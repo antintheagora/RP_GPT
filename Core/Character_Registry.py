@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from Core.Logging import get_logger
+
+_log = get_logger("character_registry")
+
 import json
 import shutil
 import time
@@ -247,11 +251,11 @@ def update_character_portrait(actor: "Actor", source_path: str) -> Optional[Path
                         try:
                             shutil.copy(dest, backup)
                         except Exception:
-                            pass
+                            _log.debug("suppressed error in Character_Registry", exc_info=True)
                     break
                 idx += 1
     except Exception:
-        pass
+        _log.debug("suppressed error in Character_Registry", exc_info=True)
     try:
         shutil.copy2(src, dest)
     except Exception:

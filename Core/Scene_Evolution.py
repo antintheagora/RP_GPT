@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from Core.Logging import get_logger
+
+_log = get_logger("scene_evolution")
+
 """
 Scene_Evolution
 ----------------
@@ -106,7 +110,7 @@ def scan_for_new_actor(state, g: GemmaClient, situation_txt: str):
         if isinstance(allow, bool) and not allow:
             return
     except Exception:
-        pass
+        _log.debug("suppressed error in Scene_Evolution", exc_info=True)
     core = _core()
     Actor = core.Actor
 
@@ -177,7 +181,7 @@ Paragraph: {situation_txt}
         try:
             core.ensure_character_profile(new)
         except Exception:
-            pass
+            _log.debug("suppressed error in Scene_Evolution", exc_info=True)
 
         # Put this actor into the current scene and record it in the journal
         state.act.actors.append(new)
@@ -195,7 +199,7 @@ Paragraph: {situation_txt}
                     extra={"note": "auto-generated", "role": new.role},
                 )
             except Exception:
-                pass
+                _log.debug("suppressed error in Scene_Evolution", exc_info=True)
     except Exception:
         # If anything goes wrong (model hiccup, parsing), just continue silently
         return

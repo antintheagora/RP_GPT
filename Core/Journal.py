@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from Core.Logging import get_logger
+
+_log = get_logger("journal")
+
 """
 Journal
 -------
@@ -33,5 +37,5 @@ def maybe_journal_lore(state, g):
         if line:
             journal_add(state, line)
     except Exception:
-        pass
+        _log.debug("suppressed error in Journal", exc_info=True)
 

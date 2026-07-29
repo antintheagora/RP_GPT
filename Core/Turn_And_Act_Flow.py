@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from Core.Logging import get_logger
+
+_log = get_logger("turn_and_act_flow")
+
 """
 Turn_And_Act_Flow
 -----------------
@@ -144,7 +148,7 @@ def begin_act(state, idx: int):
             try:
                 core.ensure_character_profile(actor)
             except Exception:
-                pass
+                _log.debug("suppressed error in Turn_And_Act_Flow", exc_info=True)
         random.shuffle(possible_companions)
         num = random.choice([0, 1, 2])
         state.companions = possible_companions[:num]
@@ -161,7 +165,7 @@ def begin_act(state, idx: int):
                         extra={"note": "companion", "role": c.role},
                     )
                 except Exception:
-                    pass
+                    _log.debug("suppressed error in Turn_And_Act_Flow", exc_info=True)
 
     state.act.undiscovered = seeded
     state.last_actor = state.companions[0] if state.companions else None
@@ -171,7 +175,7 @@ def begin_act(state, idx: int):
         if intro_snippet:
             state.player_bio_entries.append(f"Act {idx}: {intro_snippet}")
     except Exception:
-        pass
+        _log.debug("suppressed error in Turn_And_Act_Flow", exc_info=True)
     journal_add(state, f"Act {idx} begins: {plan.goal}")
     try:
         queue_image_event(
@@ -183,7 +187,7 @@ def begin_act(state, idx: int):
         )
         queue_image_event(state, "act_start", make_act_start_prompt(state, idx), actors=[], extra={"act": idx})
     except Exception:
-        pass
+        _log.debug("suppressed error in Turn_And_Act_Flow", exc_info=True)
 
 
 # =============================
@@ -262,7 +266,7 @@ def recap_and_transition(state, g: GemmaClient, reason: str):
                 extra={"outcome": "success" if ok else "fail"},
             )
         except Exception:
-            pass
+            _log.debug("suppressed error in Turn_And_Act_Flow", exc_info=True)
         if ok:
             print(wrap("Finale: The line holds. Choices converge; the world loosens its grip."))
         else:

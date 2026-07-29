@@ -21,6 +21,7 @@ from flask import (
 from pathlib import Path
 
 from Core.Config import DEFAULT_MODEL
+from Core.Logging import get_logger
 from Core.Character_Registry import (
     BASE_DIR as CHAR_BASE_DIR,
     ROLE_DIRS as CHAR_ROLE_DIRS,
@@ -39,9 +40,8 @@ ASSETS_DIR = PROJECT_ROOT / "Assets"
 WORLDS_DIR = PROJECT_ROOT / "Worlds"
 CHARACTERS_ROOT = PROJECT_ROOT / CHAR_BASE_DIR
 PLAYER_ROOT = PROJECT_ROOT / "Characters" / "Player_Character"
-print(f"DEBUG: Project Root: {PROJECT_ROOT}")
-print(f"DEBUG: Assets Dir: {ASSETS_DIR}")
-print(f"DEBUG: Assets Dir Exists: {ASSETS_DIR.exists()}")
+_log = get_logger("server")
+_log.info("project root %s | assets %s (exists=%s)", PROJECT_ROOT, ASSETS_DIR, ASSETS_DIR.exists())
 
 WORLD_CACHE: Dict[str, Dict] = {}
 CHAR_CACHE: Dict[str, Dict[str, Dict]] = {role: {} for role in ("companion", "npc", "enemy")}
@@ -574,7 +574,7 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
             try:
                 updates["age"] = int(age_val)
             except Exception:
-                pass
+                _log.debug("suppressed error in server", exc_info=True)
         special_updates: Dict[str, int] = {}
         for stat in SPECIAL_STATS:
             field_name = f"special_{stat}"

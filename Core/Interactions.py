@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from Core.Logging import get_logger
+
+_log = get_logger("interactions")
+
 import random
 from typing import TYPE_CHECKING, Optional
 
@@ -63,7 +67,7 @@ def talk_loop(state: "GameState", actor: "Actor", g: "GemmaClient") -> None:
     try:
         ensure_character_profile(actor)
     except Exception:
-        pass
+        _log.debug("suppressed error in Interactions", exc_info=True)
     if not actor.desc:
         describe_actor_physical(g, state, actor)
     if not getattr(actor, "portrait_path", None):
@@ -76,7 +80,7 @@ def talk_loop(state: "GameState", actor: "Actor", g: "GemmaClient") -> None:
                 extra={"mode": "TALK", "role": actor.role},
             )
         except Exception:
-            pass
+            _log.debug("suppressed error in Interactions", exc_info=True)
 
     conversation_log: list[str] = []
     exchanges = 0
@@ -148,7 +152,7 @@ def talk_loop(state: "GameState", actor: "Actor", g: "GemmaClient") -> None:
                         extra={"mode": "COMBAT"},
                     )
                 except Exception:
-                    pass
+                    _log.debug("suppressed error in Interactions", exc_info=True)
                 return
 
 
@@ -242,7 +246,7 @@ def combat_turn(state: "GameState", enemy: "Actor", g: "GemmaClient", goal_lock:
             extra={"mode": "COMBAT"},
         )
     except Exception:
-        pass
+        _log.debug("suppressed error in Interactions", exc_info=True)
 
     print(f"\n-- COMBAT with {enemy.name} (HP {enemy.hp}, ATK {enemy.attack}) --")
     print("  [1] Attack\n  [2] Use Item\n  [3] Parley (talk)\n  [4] Sneak away (AGI)\n  [5] Observe weakness\n  [0] Back")

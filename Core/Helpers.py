@@ -7,6 +7,10 @@ import re
 import textwrap
 from typing import TYPE_CHECKING, Optional, Tuple
 
+from Core.Logging import get_logger
+
+_log = get_logger("helpers")
+
 if TYPE_CHECKING:
     # Only imported for type hints while editing; avoids runtime circular imports.
     from RP_GPT import Actor, GameState, GemmaClient
@@ -142,12 +146,18 @@ def journal_add(state: "GameState", entry: str) -> None:
     formatted = f"Entry {counter}\n{entry}"
     state.journal.append(formatted)
     try:
-        # Append to the world journal file so players can browse the history.
-        with open("world_journal.txt", "a", encoding="utf-8") as handle:
+        # Append to this campaign's journal so players can browse the history.
+        # This used to be a bare "world_journal.txt" relative to the working
+        # directory, so every campaign ever played appended to one interleaved
+        # file -- which was then read back and fed into NPC dialogue.
+        from Core.Paths import journal_path
+
+        campaign = getattr(state, "campaign_id", "") or getattr(state, "scenario_label", "")
+        with open(journal_path(campaign), "a", encoding="utf-8") as handle:
             handle.write(formatted + "\n")
     except Exception:
         # Silent failure keeps the game running even if the disk blocks writes.
-        pass
+        _log.exception("journal write failed")
 
 
 # We call the model for a lore line and save the result inside the journal.
@@ -177,7 +187,7 @@ def journal_lore_line(
             journal_add(state, line)
     except Exception:
         # Any error (network, parsing, etc.) is ignored to keep the game running.
-        pass
+        _log.debug("suppressed error in Helpers", exc_info=True)
 
 
 __all__ = [
