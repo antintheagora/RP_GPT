@@ -181,6 +181,7 @@ class GameSession:
     ):
         self.id = uuid.uuid4().hex
         self._turn_events: List[Any] = []
+        self._listeners: List[Any] = []
         self.state = state
         self.client = client
         self.label = scenario_label
@@ -297,6 +298,34 @@ class GameSession:
         with self._lock:
             return list(self._events[-limit:])
 
+    # ------------------------------------------------------------ streaming
+
+    def subscribe(self, listener):
+        """Receive this session's events live. Returns an unsubscribe callable.
+
+        Listeners are held on the session rather than on one turn's bus, so a
+        browser can connect between turns and still catch the next one.
+        """
+        with self._lock:
+            self._listeners.append(listener)
+
+        def unsubscribe():
+            with self._lock:
+                if listener in self._listeners:
+                    self._listeners.remove(listener)
+
+        return unsubscribe
+
+    def _broadcast(self, event) -> None:
+        with self._lock:
+            listeners = list(self._listeners)
+        for listener in listeners:
+            # A dead browser connection must never take the turn down with it.
+            try:
+                listener(event)
+            except Exception:
+                _log.debug("stream listener failed", exc_info=True)
+
     # ---------------------------------------------------------- persistence
 
     def save(self) -> Optional[str]:
@@ -325,6 +354,7 @@ class GameSession:
         session = cls.__new__(cls)
         session.id = Path(path).parent.name
         session._turn_events = []
+        session._listeners = []
         session.state = state
         session.client = GemmaClient()
         session.label = getattr(state, "scenario_label", "") or "Campaign"
@@ -359,6 +389,7 @@ class GameSession:
                 # sys.stdout and scrape the buffer, so a mid-turn failure keeps
                 # everything already emitted and two sessions cannot cross-talk.
                 with collecting() as bus, intercepted_io(inputs):
+                    bus.subscribe(self._broadcast)
                     try:
                         consumed = process_choice(self.state, code, self.ensure_options(), self.client)
                         if consumed:

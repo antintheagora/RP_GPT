@@ -190,6 +190,44 @@ class GemmaClient:
             raise GemmaError("Empty output from model.")
         return text
 
+    def stream(self, prompt: str, tag: str):
+        """Yield text chunks as the model produces them.
+
+        A turn used to freeze the window for 12-25 seconds and then dump the
+        whole paragraph at once. Streaming does not make generation faster --
+        it makes the wait legible, which for prose is most of the difference.
+        """
+        import urllib.request
+
+        payload: Dict[str, Any] = {
+            "model": self.model,
+            "prompt": prompt,
+            "stream": True,
+            "keep_alive": self.keep_alive,
+            "think": self.think,
+            "options": self._options(tag),
+        }
+        req = urllib.request.Request(
+            self.base_url + "/api/generate",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+            for raw_line in resp:
+                line = raw_line.decode("utf-8", errors="ignore").strip()
+                if not line:
+                    continue
+                try:
+                    chunk = json.loads(line)
+                except Exception:
+                    continue
+                piece = chunk.get("response") or ""
+                if piece:
+                    yield piece
+                if chunk.get("done"):
+                    break
+
     def _run(self, prompt: str, tag: str, want_json: bool = False) -> str:
         """Call Ollama with retries. Parse failures retry too -- see .json()."""
         spinner = LoadingBar(f"{tag}...")

@@ -9,6 +9,7 @@ from typing import Dict, List, Optional
 
 from flask import (
     Flask,
+    Response,
     abort,
     make_response,
     redirect,
@@ -419,6 +420,53 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
                 "saved_at": run.get("saved_at", 0),
             })
         return out
+
+    @app.get("/chronicle/stream")
+    def chronicle_stream():
+        """Server-sent events: the story as it is written, not after.
+
+        The engine emits typed events; this forwards them to the browser as
+        they happen. Nothing here scrapes stdout, so a slow turn no longer
+        means a frozen window with nothing to show for it.
+        """
+        session = _current_session()
+        if session is None:
+            abort(404, description="No active session")
+
+        import json as _json
+        import queue as _queue
+
+        from engine.events import EventKind
+
+        pending: "_queue.Queue" = _queue.Queue(maxsize=512)
+        unsubscribe = session.subscribe(pending.put_nowait)
+
+        def emit_sse():
+            try:
+                # Tell the client we are connected before anything is generated,
+                # so it can swap a spinner for a live cursor immediately.
+                yield "event: open\ndata: {}\n\n"
+                while True:
+                    try:
+                        event = pending.get(timeout=15)
+                    except _queue.Empty:
+                        yield ": keep-alive\n\n"   # keeps proxies from closing us
+                        continue
+                    payload = _json.dumps({
+                        "kind": event.kind.value if isinstance(event.kind, EventKind) else str(event.kind),
+                        "text": event.text,
+                        "meta": event.meta,
+                        "seq": event.seq,
+                    })
+                    yield f"event: chronicle\ndata: {payload}\n\n"
+            finally:
+                unsubscribe()
+
+        response = Response(emit_sse(), mimetype="text/event-stream")
+        response.headers["Cache-Control"] = "no-cache"
+        response.headers["X-Accel-Buffering"] = "no"
+        response.headers["Connection"] = "keep-alive"
+        return response
 
     @app.post("/continue")
     def continue_run():

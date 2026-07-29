@@ -28,7 +28,14 @@ class FlaskThread(threading.Thread):
         super().__init__(daemon=True)
         self.host = host
         self.port = port
-        self._server = make_server(host, port, app)
+        # threaded=True is required for /chronicle/stream: an SSE connection
+        # is held open for the life of the page, and a single-threaded server
+        # would sit inside it and never serve another request.
+        #
+        # This is only safe because the engine no longer captures stdout to
+        # recover its output -- a process-global swap that two concurrent
+        # requests would have corrupted. Events are collected thread-locally.
+        self._server = make_server(host, port, app, threaded=True)
         self._ctx = app.app_context()
         self._ctx.push()
 
