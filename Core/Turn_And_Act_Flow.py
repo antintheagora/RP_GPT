@@ -345,7 +345,13 @@ def last_chance(state) -> bool:
     check = core.check
 
     _ev.prose("\n-- Last Chance --")
-    picks = random.sample(SPECIAL_KEYS, 3)
+    # The last roll of a campaign must not be decided by which three stats the
+    # game happened to deal you. These are the three this character is best at.
+    stats = getattr(state.player, "stats", None)
+    picks = sorted(
+        SPECIAL_KEYS,
+        key=lambda k: (-(int(getattr(stats, k, 5)) if stats else 5), SPECIAL_KEYS.index(k)),
+    )[:3]
     for i, k in enumerate(picks, 1):
         _ev.prose(f"  [{i}] Trust your {k}")
     _ev.system("  [4] Custom (your SPECIAL)\n  [0] Yield")

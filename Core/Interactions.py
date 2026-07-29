@@ -88,8 +88,15 @@ def talk_loop(state: "GameState", actor: "Actor", g: "GemmaClient") -> None:
     exchanges = 0
     max_exchanges = 5
     while True:
+        # Your two best non-Charisma approaches, not two picked at random.
+        # Appeal already covers CHA; these are the ways *this* character has
+        # of getting through to someone when charm is not the answer.
+        stats = getattr(state.player, "stats", None)
         choices = [key for key in SPECIAL_KEYS if key != "CHA"]
-        option_two, option_three = random.sample(choices, 2)
+        option_two, option_three = sorted(
+            choices,
+            key=lambda k: (-(int(getattr(stats, k, 5)) if stats else 5), choices.index(k)),
+        )[:2]
         _ev.system("  [1] Appeal (CHA)")
         _ev.system(f"  [2] {option_two}")
         _ev.prose(f"  [3] {option_three}")

@@ -96,18 +96,51 @@ def test_ties_break_the_same_way_every_time():
     assert a[:2] == b[:2] or set(a) & set(b), "the top picks should be stable"
 
 
-def test_the_random_sample_is_gone():
-    """Regression guard: the anti-build call must not return."""
+def test_no_menu_anywhere_picks_stats_at_random():
+    """Regression guard across the whole engine, not one file.
+
+    The first version of this test checked only Choice_Handler and passed
+    while two more random.sample calls survived -- in talk_loop and in
+    last_chance, which is the final roll of a campaign.
+    """
+    import ast
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent.parent
+    offenders = []
+    for path in list((root / "Core").glob("*.py")) + list((root / "engine").glob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8-sig"))
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "sample"
+            ):
+                offenders.append(f"{path.name}:{node.lineno}")
+    assert not offenders, f"stats are being dealt at random again: {offenders}"
+
+
+def test_the_last_roll_of_a_campaign_uses_your_best_stats():
+    """last_chance dealt three random stats for the endgame roll."""
+    from Core.Turn_And_Act_Flow import last_chance
+    from ui.webapp.game_service import intercepted_io
+    from engine.events import collecting
+
+    state = _state(STR=10, END=9, PER=8)
+    with collecting() as bus, intercepted_io([]):
+        last_chance(state)
+
+    offered = " ".join(e.text for e in bus.events)
+    assert "STR" in offered and "END" in offered and "PER" in offered
+    assert "CHA" not in offered, "dump stats should not be the endgame options"
+
+
+def test_talking_offers_the_approaches_you_are_good_at():
+    """talk_loop dealt two random non-CHA stats."""
     import ast
     from pathlib import Path
 
     source = (Path(__file__).resolve().parent.parent
-              / "Core" / "Choice_Handler.py").read_text(encoding="utf-8")
-    tree = ast.parse(source)
-    for node in ast.walk(tree):
-        if (
-            isinstance(node, ast.Call)
-            and isinstance(node.func, ast.Attribute)
-            and node.func.attr == "sample"
-        ):
-            pytest.fail(f"random.sample is back at line {node.lineno}")
+              / "Core" / "Interactions.py").read_text(encoding="utf-8-sig")
+    assert "random.sample" not in source
+    assert "option_two, option_three = sorted(" in source
