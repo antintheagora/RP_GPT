@@ -16,11 +16,6 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# The pygame UI is scheduled for deletion; it cannot import under this venv's
-# Python anyway (its binaries are cp311, the venv is 3.14). Kept declared only
-# so the legacy stack is installable until it is removed.
-legacy = ["pygame>=2.5"]
-
 dev = [
     "pytest>=8.0",
 ]

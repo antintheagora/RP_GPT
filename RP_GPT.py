@@ -156,7 +156,6 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Dict, List, Optional, Tuple, Any, Literal
 
-from Core.Music import init_music
 from Core.Helpers import (
     wrap,
     sanitize_prose,
@@ -264,7 +263,7 @@ PORTRAIT_IMG_WIDTH, PORTRAIT_IMG_HEIGHT = 300, 300
 IMG_TIMEOUT = 50
 
 # Pick how the game launches. Change to "ui" or "prompt" if needed.
-RUN_INTERFACE: Literal["terminal", "ui", "prompt"] = "ui"
+RUN_INTERFACE: Literal["terminal"] = "terminal"  # the pygame "ui" mode was removed
 
 try:
     import certifi
@@ -717,26 +716,6 @@ def game_loop_legacy(state:GameState, g:GemmaClient):
 # ---------- MAIN -------------
 # =============================
 
-def _resolve_interface_choice() -> str:
-    '''Decide whether we boot the terminal loop or the pygame UI.'''
-    # RUN_INTERFACE lets a developer flip between terminal, ui, or an interactive prompt.
-    desired = (RUN_INTERFACE or "terminal").strip().lower()
-    if desired == "prompt":
-        print("[Mode] Pick how you want to play:")
-        print("  [1] Terminal (default)")
-        print("  [2] UI (pygame window)")
-        while True:
-            pick = input("> ").strip() or "1"
-            if pick in {"1","terminal","t"}:
-                return "terminal"
-            if pick in {"2","ui","u"}:
-                return "ui"
-            print("Please press 1 for Terminal or 2 for UI.")
-    if desired in {"terminal","ui"}:
-        return desired
-    print(f"[Mode] Unknown RUN_INTERFACE '{RUN_INTERFACE}'. Using terminal mode.")
-    return "terminal"
-
 def _run_terminal_game():
     global _GEMMA
     print("[Mode] Starting terminal interface.")
@@ -752,7 +731,6 @@ def _run_terminal_game():
     state=GameState(scenario=sc, scenario_label=label, player=player,
                     blueprint=bp, pressure_name=bp.pressure_name)
     begin_act(state,1)
-    init_music()
     print("\n--- Adventure Begins ---\n")
     try:
         queue_image_event(state, "startup", make_startup_prompt(state), actors=[state.player.name], extra={"act":1})
@@ -763,15 +741,11 @@ def _run_terminal_game():
     print("\nThanks for playing RP-GPT6.")
 
 def main():
-    choice = _resolve_interface_choice()
-    if choice == "ui":
-        print("[Mode] Starting UI (Main Menu).")
-        from Core.Main_Menu import run_main_menu
-        from pathlib import Path
-        run_main_menu(Path(__file__).resolve().parent)
-        return
-
-    # Fall back to the original terminal loop.
+    # The pygame UI was removed: it could not import under this project's
+    # Python at all, and carrying a second, untestable implementation of every
+    # flow taxed every change. The web UI is the one that boots --
+    #   python -m flask --app ui.webapp.server:create_app run
+    # Salvaged pieces worth porting are in salvage/README.md.
     _run_terminal_game()
 
 if __name__=="__main__":
