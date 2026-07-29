@@ -69,7 +69,25 @@ def build_player(data: Dict[str, str]) -> Player:
             player.attack = int(data["attack"])
         except Exception:
             _log.debug("suppressed error in game_service", exc_info=True)
-    player.stats = Stats.random_special()
+
+    # Honour the edited character sheet. This unconditionally called
+    # Stats.random_special(), so every stat a player chose was discarded the
+    # moment the game started -- the character screen was decorative.
+    special = data.get("special") or {}
+    if isinstance(special, dict) and special:
+        stats = Stats()
+        for key in core.SPECIAL_KEYS:
+            value = special.get(key, special.get(key.lower()))
+            if value is None:
+                continue
+            try:
+                setattr(stats, key, max(1, min(10, int(value))))
+            except (TypeError, ValueError):
+                _log.warning("player sheet had a non-numeric %s: %r", key, value)
+        player.stats = stats
+    else:
+        player.stats = Stats.random_special()
+
     for item in default_items:
         player.add_item(item)
     return player

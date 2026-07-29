@@ -696,11 +696,97 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
 
     @app.post("/worlds/<slug>/characters/<player_slug>/begin")
     def begin_with_player(slug: str, player_slug: str):
-        if not _get_world(slug) or not _get_player(player_slug):
+        """Start the game from the chosen world and character.
+
+        This used to stash both slugs in the session and redirect to a form
+        that asked for everything again -- and nothing ever read the stashed
+        values back, so the world's lore and the edited character sheet were
+        both discarded. Six authored worlds and every player sheet were
+        unreachable from the game.
+        """
+        world = _get_world(slug)
+        player = _get_player(player_slug)
+        if not world or not player:
             abort(404)
+
         flask_session["selected_world"] = slug
         flask_session["selected_player"] = player_slug
-        return redirect(url_for("legacy_start"))
+
+        try:
+            config = _config_from_selection(slug, player_slug)
+            session = _store().create_session(config)
+        except GemmaError as exc:
+            return render_template(
+                "legacy_start.html",
+                error=str(exc),
+                previous={},
+                has_active=False,
+            ), 400
+
+        # Put the world's chosen roster into the opening scene.
+        _apply_world_roster(session.state, world)
+        session.state.world_folder = slug
+        session.save()
+
+        flask_session["session_id"] = session.id
+        return redirect(url_for("play"))
+
+    def _config_from_selection(slug: str, player_slug: str) -> Dict:
+        """Build a session config from an authored world and character sheet."""
+        raw_world = json.loads(_world_file(slug).read_text(encoding="utf-8-sig"))
+        raw_player = json.loads(
+            (_player_folder(player_slug) / CHAR_META_FILE).read_text(encoding="utf-8-sig")
+        )
+        label = (raw_world.get("name") or slug.replace("_", " ")).strip()
+        return {
+            "scenario": raw_world.get("scenario") or "custom",
+            "label": label,
+            "world_notes": raw_world.get("lore_bible") or "",
+            "acts": raw_world.get("acts"),
+            "turns_per_act": raw_world.get("turns_per_act"),
+            "player": {
+                "name": raw_player.get("name") or "Explorer",
+                "age": raw_player.get("age"),
+                "sex": raw_player.get("sex"),
+                "hair": raw_player.get("hair_color") or raw_player.get("hair"),
+                "clothing": raw_player.get("clothing"),
+                "appearance": raw_player.get("appearance"),
+                "special": raw_player.get("special") or {},
+            },
+        }
+
+    def _apply_world_roster(state, world: Dict) -> None:
+        """Seed the world's chosen companions, NPCs and enemies into the act.
+
+        Ported from Main_Menu._apply_world_roster_to_state, which was the only
+        code that turned roster picks into live actors and went out with the
+        pygame stack.
+        """
+        import RP_GPT as core
+
+        for role, key in WORLD_SELECTION_KEYS.items():
+            for char_slug in world.get(key) or []:
+                entry = _load_character_entry(role, _character_folder(role, char_slug))
+                if not entry:
+                    continue
+                actor = core.Actor(
+                    name=entry["name"],
+                    kind=entry.get("kind") or role,
+                    role=role,
+                    hp=int(entry.get("hp") or 14),
+                    attack=int(entry.get("attack") or 3),
+                    personality=entry.get("personality") or "",
+                    desc=entry.get("desc") or "",
+                    bio=entry.get("bio") or "",
+                    species=entry.get("species") or "human",
+                    discovered=(role == "companion"),
+                    alive=True,
+                )
+                if role == "companion":
+                    state.companions.append(actor)
+                    state.act.actors.append(actor)
+                else:
+                    state.act.undiscovered.append(actor)
 
     @app.get("/legacy-start")
     def legacy_start():
