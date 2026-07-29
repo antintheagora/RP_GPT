@@ -181,8 +181,12 @@ def test_check_is_deterministic_under_a_seeded_rng(monkeypatch, rng):
 
 
 def test_natural_twenty_always_succeeds_and_one_always_fails(monkeypatch):
-    """These two rules are what make every approach viable. Do not lose them."""
-    import RP_GPT
+    """These two rules are what make every approach viable. Do not lose them.
+
+    Patched on engine.dice rather than RP_GPT: `check` resolves `d20` in its
+    own module namespace, so that is where the substitution has to happen.
+    """
+    import engine.dice as dice
 
     class Player:
         def effective_stat(self, _key):
@@ -191,13 +195,23 @@ def test_natural_twenty_always_succeeds_and_one_always_fails(monkeypatch):
     class State:
         player = Player()
 
-    monkeypatch.setattr(RP_GPT, "d20", lambda: 20)
-    ok, _ = RP_GPT.check(State(), "STR", 99)
+    monkeypatch.setattr(dice, "d20", lambda: 20)
+    ok, _ = dice.check(State(), "STR", 99)
     assert ok, "a natural 20 must succeed even against an impossible target"
 
-    monkeypatch.setattr(RP_GPT, "d20", lambda: 1)
-    ok, _ = RP_GPT.check(State(), "STR", 2)
+    monkeypatch.setattr(dice, "d20", lambda: 1)
+    ok, _ = dice.check(State(), "STR", 2)
     assert not ok, "a natural 1 must fail even against a trivial target"
+
+
+def test_rpgpt_still_re_exports_the_engine_surface():
+    """Every existing call site imports these from RP_GPT. Keep them working."""
+    import RP_GPT
+    import engine
+
+    for name in engine.__all__:
+        assert hasattr(RP_GPT, name), f"RP_GPT no longer re-exports {name}"
+        assert getattr(RP_GPT, name) is getattr(engine, name)
 
 
 # =============================

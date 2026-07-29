@@ -257,10 +257,6 @@ if __name__ == "__main__":
 # ---------- CONFIG -----------
 # =============================
 
-ENABLE_TURN_IMAGE = True
-IMG_WIDTH, IMG_HEIGHT = 768, 432
-PORTRAIT_IMG_WIDTH, PORTRAIT_IMG_HEIGHT = 300, 300
-IMG_TIMEOUT = 50
 
 # Pick how the game launches. Change to "ui" or "prompt" if needed.
 RUN_INTERFACE: Literal["terminal"] = "terminal"  # the pygame "ui" mode was removed
@@ -274,157 +270,39 @@ except Exception:
 # ---------- PLAYER AND GAME STATES ----------
 # =============================
 
-class Scenario(Enum):
-    APOCALYPSE = "Apocalypse"
-    DARK_FANTASY = "Dark Fantasy"
-    HAUNTED_HOUSE = "Haunted House"
-    CUSTOM = "Custom"
-
-class TurnMode(Enum):
-    EXPLORE = auto()
-    COMBAT = auto()
-    TALK = auto()
-
-SPECIAL_KEYS = ["STR","PER","END","CHA","INT","AGI","LUC"]
-
-@dataclass
-class Stats:
-    STR:int=5; PER:int=5; END:int=5; CHA:int=5; INT:int=5; AGI:int=5; LUC:int=5
-    @classmethod
-    def random_special(cls, lo=3, hi=8):
-        r=lambda: random.randint(lo,hi); return cls(r(),r(),r(),r(),r(),r(),r())
-
-@dataclass
-class Buff:
-    name:str; duration_turns:int; stat_mods:Dict[str,int]=field(default_factory=dict)
-
-@dataclass
-class Item:
-    name:str; tags:List[str]=field(default_factory=list)
-    hp_delta:int=0; attack_delta:int=0; special_mods:Dict[str,int]=field(default_factory=dict)
-    goal_delta:int=0; pressure_delta:int=0; consumable:bool=True; notes:str=""
-
-@dataclass
-class Actor:
-    name:str; kind:str; hp:int=10; attack:int=2; disposition:int=0; personality:str=""
-    role:str="npc"  # "npc","enemy","companion"
-    discovered:bool=False
-    alive:bool=True
-    desc:str=""     # visual
-    bio:str=""      # world journal bio
-    # New tags for dialogue & behavior
-    species:str="human"             # human, mutant, animal, synthetic, etc.
-    comm_style:str="speech"         # speech, limited, animal, gestures
-    personality_archetype:str=""    # joyful, inquisitive, stoic, aggressive, etc.
-    aware:bool=True                 # whether NPC has detected the player
-    stalks:bool=False               # whether NPC persists if you Leave
-    ephemeral:bool=False            # lightweight/by-encounter only
-    portrait_path: Optional[str] = None
-    profile_folder: Optional[str] = None
-    profile_metadata: Dict[str, Any] = field(default_factory=dict)
-
-@dataclass
-class Player:
-    name:str="Explorer"; hp:int=100; attack:int=5; stats:Stats=field(default_factory=Stats.random_special)
-    inventory:List[Item]=field(default_factory=list); buffs:List[Buff]=field(default_factory=list)
-    age: Optional[int] = None; sex: Optional[str] = None; hair_color: Optional[str] = None
-    clothing: Optional[str] = None; appearance: Optional[str] = None
-    def effective_stat(self,k): 
-        base=getattr(self.stats,k)
-        return base+sum(b.stat_mods.get(k,0) for b in self.buffs)
-    def add_item(self,it:Item):
-        self.inventory.append(it)
-        if it.attack_delta and "weapon" in it.tags: 
-            self.attack+=it.attack_delta
-
-@dataclass
-class ActPlan:
-    goal:str; intro_paragraph:str; pressure_evolution:str
-    suggested_encounters:List[str]=field(default_factory=list)
-    seed_actors:List[Dict[str,Any]]=field(default_factory=list)
-    seed_items:List[Dict[str,Any]]=field(default_factory=list)
-
-@dataclass
-class CampaignBlueprint:
-    campaign_goal:str; pressure_name:str; pressure_logic:str; acts:Dict[int,ActPlan]
-
-@dataclass
-class ActState:
-    index:int
-    turns_taken:int=1
-    turn_cap:int=field(default_factory=lambda: random.randint(8,13))
-    goal_progress:int=0
-    situation:str=""
-    actors:List[Actor]=field(default_factory=list)
-    undiscovered:List[Actor]=field(default_factory=list)
-    last_outcome:Optional[str]=None
-    custom_uses:int=0
-
-@dataclass
-class ImageEvent:
-    kind: Literal["startup","player_portrait","act_transition","act_start","turn","portrait","combat","ending"]
-    act_index: int; turn_index: int; prompt: str
-    actors: List[str] = field(default_factory=list)
-    extra: Dict[str, Any] = field(default_factory=dict)
-
-def queue_image_event(state:'GameState', kind:str, prompt:str, actors:Optional[List[str]]=None, extra:Optional[Dict[str,Any]]=None):
-    evt = ImageEvent(
-        kind=kind,
-        act_index=state.act.index if state and state.act else 1,
-        turn_index=state.act.turns_taken if state and state.act else 1,
-        prompt=prompt, actors=list(actors or []), extra=dict(extra or {})
-    )
-    state.image_events.append(evt)
-    try:
-        with open("./image_events.jsonl","a",encoding="utf-8") as f:
-            f.write(json.dumps({
-                "kind":evt.kind,"act_index":evt.act_index,"turn_index":evt.turn_index,
-                "prompt":evt.prompt,"actors":evt.actors,"extra":evt.extra
-            })+"\n")
-    except Exception:
-        pass
-
-@dataclass
-class GameState:
-    scenario:Scenario; scenario_label:str; player:Player; blueprint:CampaignBlueprint
-    pressure_name:str; pressure:int=0; mode:TurnMode=TurnMode.EXPLORE
-    act:ActState=field(default_factory=lambda: ActState(1)); act_count:int=3
-    running:bool=True; debug:bool=False; last_enemy:Optional[Actor]=None
-    custom_stat:Optional[str]=None; combat_turn_already_counted:bool=False
-    history:List[str]=field(default_factory=list)
-    turn_narrative_cache:Optional[str]=None
-    combined_turn_text:Optional[str]=None
-    last_custom_intent:Optional[str]=None
-    last_shown_turn:int=-1
-    scene_phase:int=0
-    stall_count:int=0
-    companions:List[Actor]=field(default_factory=list)
-    images_enabled:bool=ENABLE_TURN_IMAGE
-    last_image_path:Optional[str]=None
-    last_image_url:Optional[str]=None
-    last_actor:Optional[Actor]=None
-    location_desc:str=""
-    image_events: List[ImageEvent] = field(default_factory=list)
-    world_metadata: Dict[str, Any] = field(default_factory=dict)
-    world_folder: Optional[str] = None
-    turns_per_act_override: Optional[int] = None
-    # NEW: evolution focus + last printed paras (for option bias)
-    last_result_para:str=""
-    last_situation_para:str=""
-    last_turn_success:bool=False
-    # NEW: World Journal
-    journal:List[str]=field(default_factory=list)
-    journal_entry_count:int=0
-    player_bio_entries:List[str]=field(default_factory=list)
-    # NEW: per-turn flags
-    rested_this_turn:bool=False
-    # NEW: passive bystanders that didn't detect you
-    passive_bystanders:List[str]=field(default_factory=list)
-
-    def is_game_over(self)->Optional[str]:
-        if self.player.hp<=0: return "You died."
-        if self.pressure>=100: return f"{self.pressure_name} overwhelmed you."
-        return None
+# The data model, dice, and blueprint parsing now live in engine/, which
+# imports nothing that draws and nothing that writes to stdout. They are
+# re-exported here so every existing call site keeps working unchanged.
+from engine import (
+    ActPlan,
+    ActState,
+    Actor,
+    Buff,
+    CampaignBlueprint,
+    ENABLE_TURN_IMAGE,
+    GameState,
+    IMG_HEIGHT,
+    IMG_TIMEOUT,
+    IMG_WIDTH,
+    ImageEvent,
+    Item,
+    PORTRAIT_IMG_HEIGHT,
+    PORTRAIT_IMG_WIDTH,
+    Player,
+    SPECIAL_KEYS,
+    Scenario,
+    Stats,
+    TurnMode,
+    actors_from_seed,
+    blueprint_from_json,
+    calc_dc,
+    check,
+    d20,
+    items_from_seed,
+    json_to_actplan,
+    queue_image_event,
+    role_from_kind,
+)
 
 # =============================
 # ---------- GEMMA ------------
@@ -434,23 +312,6 @@ _GEMMA: Optional[GemmaClient] = None
 
 # =============================
 # ---------- DICE -------------
-# =============================
-
-def d20(): return random.randint(1, 20)
-def calc_dc(state, base: int = 12, extra: int = 0) -> int:
-    return base + state.act.index + state.scene_phase + state.stall_count + (state.pressure // 25) + extra
-def check(state:GameState, stat: str, dc: int) -> Tuple[bool, int]:
-    val = state.player.effective_stat(stat)
-    first = d20(); nat = first
-    luck = max(0, state.player.effective_stat("LUC") - 5); p = min(0.30, luck / 40.0)
-    roll = max(first, d20()) if random.random() < p else first
-    total = roll + val
-    if nat == 1: return False, total
-    if nat == 20: return True, total
-    return total >= dc, total
-
-# =============================
-# ---------- SETUP ------------
 # =============================
 
 def pick_scenario()->Tuple[Scenario,str]:
@@ -494,96 +355,6 @@ def init_player()->Player:
         Item("Old Journal",["book","boon"],special_mods={"INT":+1},notes="Sparks insight")
     ]: p.add_item(it)
     return p
-
-def items_from_seed(seed)->List[Item]:
-    out=[]
-    for i in seed or []:
-        out.append(Item(
-            name=i.get("name","Curio"), tags=i.get("tags",[]) or [],
-            hp_delta=int(i.get("hp_delta",0)), attack_delta=int(i.get("attack_delta",0)),
-            special_mods=i.get("special_mods",{}) or {}, goal_delta=int(i.get("goal_delta",0)),
-            pressure_delta=int(i.get("pressure_delta",0)), consumable=bool(i.get("consumable",True)),
-            notes=i.get("notes","")
-        ))
-    return out
-
-def role_from_kind(kind:str)->str:
-    low=kind.lower()
-    if any(k in low for k in ["raider","bandit","goblin","spirit","monster","beast","shaman","soldier","assassin","cult","demon","ghoul"]):
-        return "enemy"
-    return "npc"
-
-def actors_from_seed(seed, act_index:int)->List[Actor]:
-    out=[]
-    for a in seed or []:
-        role=role_from_kind(a.get("kind","npc"))
-        base_hp=int(a.get("hp",14)); base_atk=int(a.get("attack",3))
-        hp=base_hp + (act_index-1)*6 + (4 if role=="enemy" else 0)
-        atk=base_atk + (act_index-1)*1 + (1 if role=="enemy" else 0)
-        species,comm=infer_species_and_comm_style(a.get("kind","npc"))
-        actor = Actor(
-            name=a.get("name","Stranger"), kind=a.get("kind","npc"),
-            hp=hp, attack=atk, disposition=int(a.get("disposition",0)),
-            personality=a.get("personality",""), role=role, discovered=False, alive=True,
-            desc=a.get("personality",""),
-            species=species, comm_style=comm, personality_archetype=personality_roll()
-        )
-        ensure_character_profile(actor)
-        out.append(actor)
-    return out
-
-def json_to_actplan(d:Dict[str,Any])->ActPlan:
-    return ActPlan(
-        goal=d.get("goal",""), intro_paragraph=d.get("intro_paragraph",""),
-        pressure_evolution=d.get("pressure_evolution",""),
-        suggested_encounters=d.get("suggested_encounters",[]) or [],
-        seed_actors=d.get("seed_actors",[]) or [], seed_items=d.get("seed_items",[]) or []
-    )
-
-def blueprint_from_json(j:Dict[str,Any])->CampaignBlueprint:
-    raw_acts = j.get("acts") or {}
-    acts: Dict[int, ActPlan] = {}
-
-    # Models label acts inconsistently: "1", 1, "act1", "Act 2". Pull the first
-    # number out of whatever we were given rather than silently discarding the
-    # act -- dropping one used to leave a hole that begin_act would later index
-    # into and raise KeyError on, twenty turns of unsaveable play later.
-    # Models label acts every possible way: "1", 1, "act1", "Act 2",
-    # "Act I: The Grey Veil". Order them by any number we can find, and fall
-    # back to the order they arrived in -- dicts preserve insertion order, and
-    # a model that writes acts in sequence is telling us the sequence.
-    items = [(str(k), v) for k, v in raw_acts.items() if isinstance(v, dict)]
-    if not items:
-        raise ValueError("Blueprint JSON missing acts")
-
-    _ROMAN = {"i": 1, "ii": 2, "iii": 3, "iv": 4, "v": 5, "vi": 6, "vii": 7}
-
-    def _rank(pair) -> float:
-        key = pair[0].lower()
-        m = re.search(r"\d+", key)
-        if m:
-            return float(m.group())
-        for word in re.findall(r"[a-z]+", key):
-            if word in _ROMAN:
-                return float(_ROMAN[word])
-        return float("inf")  # unnumbered: keep original position
-
-    ranked = sorted(range(len(items)), key=lambda i: (_rank(items[i]), i))
-
-    # Renumber contiguously from 1 so there can be no gaps, even if the model
-    # emitted 1, 2, 4.
-    for new_idx, orig_i in enumerate(ranked, start=1):
-        acts[new_idx] = json_to_actplan(items[orig_i][1])
-
-    skipped = len(raw_acts) - len(items)
-    if skipped:
-        print(f"[Blueprint] ignored {skipped} act entr(ies) that were not objects")
-    return CampaignBlueprint(
-        campaign_goal=j["campaign_goal"],
-        pressure_name=j["pressure_name"],
-        pressure_logic=j.get("pressure_logic", ""),
-        acts=acts,
-    )
 
 def get_blueprint_interactive(g:GemmaClient, label:str, overrides: Optional[Dict[str, object]] = None)->CampaignBlueprint:
     while True:
