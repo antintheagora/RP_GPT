@@ -494,6 +494,25 @@ Output STRICT JSON ONLY:
 """
 
 
+def _character(state) -> str:
+    """The player, as the narrator needs to know them.
+
+    state.player appeared zero times across every prompt in this module, so a
+    10-STR brute and a 10-INT scholar received word-for-word interchangeable
+    narration. Stats go in as traits, never as numbers.
+    """
+    try:
+        from engine.describe import character_block
+
+        return character_block(
+            state.player, getattr(state, "condition", None)
+        )
+    except Exception:  # a prompt must never fail over a missing sheet
+        _log.debug("could not render the character block", exc_info=True)
+        name = getattr(getattr(state, "player", None), "name", "") or "the traveller"
+        return f"PLAYER: {name}."
+
+
 def world_journal_prompt(state: "GameState") -> str:
     """Summarise the in-world journal so Gemma keeps lore consistent."""
     last_entries = "\n".join(state.journal[-14:]) if state.journal else "None yet."
@@ -510,7 +529,8 @@ def turn_narration_prompt(state: "GameState", last_event: str, goal_lock: bool) 
     recent = summarize_for_prompt("; ".join(state.history[-6:]), 420)
     focus = summarize_for_prompt((state.last_result_para + " " + state.last_situation_para), 320)
     lock = "Tightly advance toward the act goal." if goal_lock else "Keep to one clear beat."
-    return f"""
+    return f"""{_character(state)}
+
 Write paragraph-length turn narration (2-3 sentences) for a {state.scenario_label} RPG.
 Act {state.act.index} goal "{plan.goal}" supports campaign "{blueprint.campaign_goal}".
 Pressure "{blueprint.pressure_name}" {state.pressure}/100; act progress {state.act.goal_progress}/100.
@@ -527,7 +547,8 @@ def recap_prompt(state: "GameState", success: bool) -> str:
     mood = "advantage hard-won" if success else "moment slipping away"
     blueprint = state.blueprint
     recent = summarize_for_prompt("; ".join(state.history[-10:]), 600)
-    return f"""
+    return f"""{_character(state)}
+
 Between-act recap (3–5 sentences), mood: {mood}, for a {state.scenario_label} RPG.
 Summarize the act, its effect on pressure "{blueprint.pressure_name}", and setup next act toward "{blueprint.campaign_goal}".
 Progress {state.act.goal_progress}/100; pressure {state.pressure}/100; scene phase {state.scene_phase}. Prior beats: {recent}.
@@ -539,7 +560,8 @@ def talk_reply_prompt(state: "GameState", actor: "Actor", user_line: str) -> str
     """Guide Gemma when responding as an NPC."""
     blueprint = state.blueprint
     relationship = "friendly" if actor.disposition >= 30 else "neutral" if actor.disposition >= 0 else "hostile"
-    return f"""
+    return f"""{_character(state)}
+
 NPC reply <=180 chars (no quotes). 
 NPC: {actor.name} ({actor.kind}), role {actor.role}, disp {actor.disposition} ({relationship}), archetype "{actor.personality_archetype or actor.personality}", comm "{actor.comm_style}".
 Style hint: {role_style_hint(actor)}
@@ -557,9 +579,10 @@ def observe_prompt(state: "GameState", goal_lock: bool) -> str:
     lock = "Drive toward the act goal." if goal_lock else "Keep a single, clear focus."
     recent_focus = summarize_for_prompt((state.last_result_para + " " + state.last_situation_para), 300)
     return (
+        f"{_character(state)}\n"
         f"One sentence observation for a {state.scenario_label} {location}, aligned with Act {state.act.index} goal "
         f"'{plan.goal}' and campaign goal '{blueprint.campaign_goal}'. Bias toward: {recent_focus}. {lock} "
-        "No quotes, no numeric meters."
+        "Write what THIS character would notice. No quotes, no numeric meters."
     )
 
 
@@ -569,8 +592,9 @@ def combat_observe_prompt(state: "GameState", enemy: "Actor", goal_lock: bool) -
     plan = blueprint.acts[state.act.index]
     lock = "Tight focus; on-path clue." if goal_lock else "One hint only."
     return (
-        f"<=140 chars hint about {enemy.name} the {enemy.kind}; Act {state.act.index} goal '{plan.goal}', "
-        f"pressure {blueprint.pressure_name} {state.pressure}/100. {lock} No quotes or meters."
+        f"{_character(state)}\n"
+        f"<=140 chars hint about {enemy.name} the {enemy.kind}; Act {state.act.index} goal '{plan.goal}'. "
+        f"{lock} Write what THIS character would spot. No quotes or meters."
     )
 
 
@@ -596,7 +620,8 @@ def option_microplans_prompt(state: "GameState", stats: List[str], goal_lock: bo
         if goal_lock
         else "Prefer to use entities and details that appeared in the last printed Result/Situation, but it's allowed to introduce off-screen items/actors if plausible in context."
     )
-    return f"""
+    return f"""{_character(state)}
+
 Provide microplans (STRICT JSON only) for a {state.scenario_label} RPG turn.
 
 Context:
@@ -630,7 +655,8 @@ def custom_action_outcome_prompt(
     plan = blueprint.acts[state.act.index]
     outcome = "SUCCESS" if success else "FAIL"
     focus = "Drive toward the act goal." if goal_lock and success else "Keep a single focus."
-    return f"""
+    return f"""{_character(state)}
+
 Write 1–2 sentences for a {state.scenario_label} RPG describing the outcome of a custom action.
 Intent: {intent} (using {stat}). Outcome: {outcome}.
 Tie to Act {state.act.index} goal "{plan.goal}", campaign goal "{blueprint.campaign_goal}", and pressure "{blueprint.pressure_name}" at {state.pressure}/100.
@@ -656,7 +682,8 @@ def next_situation_prompt(
         if goal_lock and outcome == "success"
         else "Allow texture, but keep one clear focus; avoid unrelated new elements."
     )
-    return f"""
+    return f"""{_character(state)}
+
 Write a new situation paragraph (2–4 sentences) for a {state.scenario_label} RPG in {location}.
 - Act {state.act.index} goal: "{plan.goal}"
 - Campaign goal: "{blueprint.campaign_goal}"
