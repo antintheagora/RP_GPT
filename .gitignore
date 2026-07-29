@@ -1,0 +1,37 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# --- Virtual environments ---
+.venv/
+venv/
+env/
+
+# --- OS cruft ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Office lock files ---
+~$*
+
+# --- Runtime artefacts (generated during play, never source) ---
+ui_images/
+saves/
+logs/
+world_journal.txt
+image_events.jsonl
+turn_*.jpg
+turn_*.png
+
+# --- Scratch ---
+tmp_*
+*.tmp
+*.bak
+*.orig
+
+# --- Recorded LLM fixtures are committed on purpose; caches are not ---
+tests/fixtures/**/*.live.json
