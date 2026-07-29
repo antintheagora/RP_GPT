@@ -267,14 +267,30 @@ def test_the_difficulty_ratchet_is_gone():
     assert len(set(targets)) == 1, f"difficulty still moves with state: {targets}"
 
 
-def test_rpgpt_still_re_exports_the_engine_surface():
+# What was moved OUT of RP_GPT.py into engine/. Existing call sites import
+# these from RP_GPT, so they must keep resolving. New engine modules are not
+# listed: nothing outside engine/ ever imported them from RP_GPT, and requiring
+# that would mean re-exporting every future addition for no reason.
+MOVED_OUT_OF_RPGPT = [
+    "ActPlan", "ActState", "Actor", "Buff", "CampaignBlueprint", "GameState",
+    "ImageEvent", "Item", "Player", "SPECIAL_KEYS", "Scenario", "Stats",
+    "TurnMode", "queue_image_event",
+    "ENABLE_TURN_IMAGE", "IMG_WIDTH", "IMG_HEIGHT", "IMG_TIMEOUT",
+    "PORTRAIT_IMG_WIDTH", "PORTRAIT_IMG_HEIGHT",
+    "d20", "calc_dc", "check",
+    "items_from_seed", "role_from_kind", "actors_from_seed",
+    "json_to_actplan", "blueprint_from_json",
+]
+
+
+@pytest.mark.parametrize("name", MOVED_OUT_OF_RPGPT)
+def test_rpgpt_still_re_exports_what_it_used_to_own(name):
     """Every existing call site imports these from RP_GPT. Keep them working."""
     import RP_GPT
     import engine
 
-    for name in engine.__all__:
-        assert hasattr(RP_GPT, name), f"RP_GPT no longer re-exports {name}"
-        assert getattr(RP_GPT, name) is getattr(engine, name)
+    assert hasattr(RP_GPT, name), f"RP_GPT no longer re-exports {name}"
+    assert getattr(RP_GPT, name) is getattr(engine, name), f"{name} diverged"
 
 
 # =============================

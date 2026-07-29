@@ -14,6 +14,20 @@ from engine.blueprint import (
     role_from_kind,
 )
 from engine.dice import calc_dc, check, d20
+from engine.resolve import (
+    Assessment,
+    Bargain,
+    Bearing,
+    Consequence,
+    Position,
+    PositionFacts,
+    Resolution,
+    assessment_from_json,
+    chance_for,
+    position_for,
+    resolve,
+    target_for,
+)
 from engine.model import (
     ActPlan,
     ActState,
@@ -44,6 +58,9 @@ __all__ = [
     "ENABLE_TURN_IMAGE", "IMG_WIDTH", "IMG_HEIGHT", "IMG_TIMEOUT",
     "PORTRAIT_IMG_WIDTH", "PORTRAIT_IMG_HEIGHT",
     "d20", "calc_dc", "check",
+    "Bearing", "Position", "PositionFacts", "Consequence", "Bargain",
+    "Assessment", "Resolution", "assessment_from_json",
+    "position_for", "resolve", "target_for", "chance_for",
     "items_from_seed", "role_from_kind", "actors_from_seed",
     "json_to_actplan", "blueprint_from_json",
 ]
