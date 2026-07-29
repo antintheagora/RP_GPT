@@ -1,5 +1,13 @@
 """The headless game engine.
 
+Note on naming: the `resolve()` function is deliberately NOT re-exported here.
+`engine.resolve` is the *module*; exporting a function of the same name from
+the package would shadow it, so `import engine.resolve as R` would hand back a
+function and every attribute lookup on it would fail. Import it explicitly:
+
+    from engine.resolve import resolve
+
+
 `import engine` must succeed with flask uninstalled, pygame absent, and
 stdout closed. That invariant is enforced by tests/test_engine_headless.py
 and it is what lets the rules be tested, scripted, and reused by any front
@@ -39,7 +47,6 @@ from engine.resolve import (
     assessment_from_json,
     chance_for,
     position_for,
-    resolve,
     target_for,
 )
 from engine.model import (
@@ -78,7 +85,7 @@ __all__ = [
     "Tide", "TideBoard", "TideMove",
     "Bearing", "Position", "PositionFacts", "Consequence", "Bargain",
     "Assessment", "Resolution", "assessment_from_json",
-    "position_for", "resolve", "target_for", "chance_for",
+    "position_for", "target_for", "chance_for",
     "items_from_seed", "role_from_kind", "actors_from_seed",
     "json_to_actplan", "blueprint_from_json",
 ]
