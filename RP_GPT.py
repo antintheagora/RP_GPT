@@ -548,24 +548,36 @@ def blueprint_from_json(j:Dict[str,Any])->CampaignBlueprint:
     # number out of whatever we were given rather than silently discarding the
     # act -- dropping one used to leave a hole that begin_act would later index
     # into and raise KeyError on, twenty turns of unsaveable play later.
-    parsed: List[tuple] = []
-    dropped: List[str] = []
-    for key, payload in raw_acts.items():
-        m = re.search(r"\d+", str(key))
-        if m:
-            parsed.append((int(m.group()), payload))
-        else:
-            dropped.append(str(key))
-    if not parsed:
+    # Models label acts every possible way: "1", 1, "act1", "Act 2",
+    # "Act I: The Grey Veil". Order them by any number we can find, and fall
+    # back to the order they arrived in -- dicts preserve insertion order, and
+    # a model that writes acts in sequence is telling us the sequence.
+    items = [(str(k), v) for k, v in raw_acts.items() if isinstance(v, dict)]
+    if not items:
         raise ValueError("Blueprint JSON missing acts")
+
+    _ROMAN = {"i": 1, "ii": 2, "iii": 3, "iv": 4, "v": 5, "vi": 6, "vii": 7}
+
+    def _rank(pair) -> float:
+        key = pair[0].lower()
+        m = re.search(r"\d+", key)
+        if m:
+            return float(m.group())
+        for word in re.findall(r"[a-z]+", key):
+            if word in _ROMAN:
+                return float(_ROMAN[word])
+        return float("inf")  # unnumbered: keep original position
+
+    ranked = sorted(range(len(items)), key=lambda i: (_rank(items[i]), i))
 
     # Renumber contiguously from 1 so there can be no gaps, even if the model
     # emitted 1, 2, 4.
-    parsed.sort(key=lambda pair: pair[0])
-    for new_idx, (_, payload) in enumerate(parsed, start=1):
-        acts[new_idx] = json_to_actplan(payload)
-    if dropped:
-        print(f"[Blueprint] ignored {len(dropped)} unnumbered act key(s): {dropped}")
+    for new_idx, orig_i in enumerate(ranked, start=1):
+        acts[new_idx] = json_to_actplan(items[orig_i][1])
+
+    skipped = len(raw_acts) - len(items)
+    if skipped:
+        print(f"[Blueprint] ignored {skipped} act entr(ies) that were not objects")
     return CampaignBlueprint(
         campaign_goal=j["campaign_goal"],
         pressure_name=j["pressure_name"],

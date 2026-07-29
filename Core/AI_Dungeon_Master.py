@@ -88,6 +88,7 @@ class GemmaClient:
         self.timeout = timeout or cfg.timeout
         self.num_ctx = num_ctx or cfg.num_ctx
         self.keep_alive = cfg.keep_alive
+        self.think = cfg.think
 
         # HTTP only. The CLI path accepted no flags, so it could never be
         # configured; keeping it would silently reintroduce the 4K window.
@@ -159,6 +160,12 @@ class GemmaClient:
             "prompt": prompt,
             "stream": False,
             "keep_alive": self.keep_alive,
+            # Thinking off. gemma4 is a reasoning model, and left on it spends
+            # its budget reasoning -- under format="json" it returns
+            # {"thought": "..."} instead of the requested object, which made
+            # blueprint generation fail outright. On prose calls the reasoning
+            # would be narrated straight to the player.
+            "think": self.think,
             "options": self._options(tag),
         }
         if want_json:
@@ -433,14 +440,16 @@ Output STRICT JSON ONLY:
       "intro_paragraph": "1-3 sentences connecting act1 to act2 with explicit consequences from act1",
       "pressure_evolution": "string",
       "suggested_encounters": ["short phrases"],
-      "seed_actors": [{{...}}], "seed_items": [{{...}}]
+      "seed_actors": [{{"name":"string","kind":"string","hp":14,"attack":3,"disposition":0,"personality":"string"}}],
+      "seed_items": [{{"name":"string","tags":["weapon"],"hp_delta":0,"attack_delta":2,"special_mods":{{}},"goal_delta":0,"pressure_delta":0,"consumable":false,"notes":"string"}}]
     }},
     "3": {{
       "goal": "string (payoff of prior acts)",
       "intro_paragraph": "1-3 sentences setting stage for finale (acknowledge act2 results)",
       "pressure_evolution": "string",
       "suggested_encounters": ["short phrases"],
-      "seed_actors": [{{...}}], "seed_items": [{{...}}]
+      "seed_actors": [{{"name":"string","kind":"string","hp":14,"attack":3,"disposition":0,"personality":"string"}}],
+      "seed_items": [{{"name":"string","tags":["weapon"],"hp_delta":0,"attack_delta":2,"special_mods":{{}},"goal_delta":0,"pressure_delta":0,"consumable":false,"notes":"string"}}]
     }}
   }}
 }}

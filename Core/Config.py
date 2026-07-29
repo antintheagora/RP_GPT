@@ -39,6 +39,13 @@ DEFAULT_KEEP_ALIVE = "30m"
 
 DEFAULT_TIMEOUT = 180
 
+# gemma4 is a thinking model. Left enabled, it spends its output budget on
+# reasoning -- and under format="json" it wraps that reasoning in JSON and
+# returns {"thought": "..."} instead of the thing you asked for, which made
+# blueprint generation fail outright. Thinking tokens would also be narrated
+# straight to the player on prose calls.
+DEFAULT_THINK = False
+
 
 # =============================
 # ------ SAMPLING PROFILES ----
@@ -120,6 +127,7 @@ class Config:
     num_ctx: int = DEFAULT_NUM_CTX
     keep_alive: str = DEFAULT_KEEP_ALIVE
     timeout: int = DEFAULT_TIMEOUT
+    think: bool = DEFAULT_THINK
 
     @classmethod
     def from_env(cls) -> "Config":
@@ -133,6 +141,7 @@ class Config:
             host=host.rstrip("/"),
             num_ctx=_env_int("RP_GPT_NUM_CTX", DEFAULT_NUM_CTX),
             keep_alive=_env_str("RP_GPT_KEEP_ALIVE", DEFAULT_KEEP_ALIVE),
+            think=_env_str("RP_GPT_THINK", "").lower() in {"1", "true", "yes"},
             timeout=_env_int("RP_GPT_TIMEOUT", DEFAULT_TIMEOUT),
         )
 

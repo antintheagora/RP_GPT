@@ -40,23 +40,49 @@ def test_blueprint_act_keys_are_normalised(raw_keys, expected):
     assert sorted(bp.acts) == expected
 
 
-def test_blueprint_drops_unnumbered_keys_but_keeps_the_rest():
+@pytest.mark.parametrize(
+    "keys,expected_count",
+    [
+        (["Act I", "Act II", "Act III"], 3),          # roman numerals
+        (["Act I: The Grey Veil", "Act II: Ash"], 2),  # roman + prose, as gemma4 emits
+        (["prologue", "middle", "finale"], 3),         # no numbers at all
+        (["1", "prologue", "2"], 3),                   # mixed
+    ],
+)
+def test_blueprint_keeps_acts_it_cannot_number(keys, expected_count):
+    """Unnumbered acts are ordered, not discarded.
+
+    gemma4 labels acts "Act I: The Grey Veil". Dropping those lost the whole
+    campaign; dicts preserve insertion order, and a model writing acts in
+    sequence is telling us the sequence.
+    """
     import RP_GPT
 
     bp = RP_GPT.blueprint_from_json({
         "campaign_goal": "g",
         "pressure_name": "p",
-        "acts": {"1": _act(), "prologue": _act(), "2": _act()},
+        "acts": {k: _act(k) for k in keys},
     })
-    assert sorted(bp.acts) == [1, 2]
+    assert sorted(bp.acts) == list(range(1, expected_count + 1))
 
 
-def test_blueprint_with_no_usable_acts_raises():
+def test_blueprint_orders_roman_numerals_correctly():
+    import RP_GPT
+
+    bp = RP_GPT.blueprint_from_json({
+        "campaign_goal": "g",
+        "pressure_name": "p",
+        "acts": {"Act III": _act("third"), "Act I": _act("first"), "Act II": _act("second")},
+    })
+    assert [bp.acts[i].goal for i in sorted(bp.acts)] == ["first", "second", "third"]
+
+
+def test_blueprint_with_no_act_objects_raises():
     import RP_GPT
 
     with pytest.raises(ValueError):
         RP_GPT.blueprint_from_json({
-            "campaign_goal": "g", "pressure_name": "p", "acts": {"prologue": _act()},
+            "campaign_goal": "g", "pressure_name": "p", "acts": {"1": "not an object"},
         })
 
 
