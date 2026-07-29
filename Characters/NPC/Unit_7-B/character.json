@@ -1,0 +1,15 @@
+{
+  "name": "Unit 7-B",
+  "role": "npc",
+  "kind": "Construct",
+  "hp": 20,
+  "attack": 4,
+  "updated_at": 1785330221.8616993,
+  "last_seen": 1785330221.8617,
+  "encounters": 1,
+  "desc": "Malfunctioning, erratic movements.",
+  "personality": "Malfunctioning, erratic movements.",
+  "personality_archetype": "zealous",
+  "species": "human",
+  "comm_style": "speech"
+}
