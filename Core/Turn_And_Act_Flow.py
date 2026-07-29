@@ -87,7 +87,43 @@ def begin_act(state, idx: int):
         print(f"[Act] act {idx} is not in the blueprint (has {available}); using act {clamped}.")
         idx = clamped
 
+    # --- carry the world across the act boundary (B15) ---------------------
+    # A fresh ActState used to erase every character the player had met, so
+    # act 2 opened with an empty cast while the HUD still listed companions.
+    # Companions travel with you; other living people you have met still exist
+    # in the world and can be re-encountered, so they move to `undiscovered`
+    # rather than being deleted. Enemies are left behind with their act.
+    previous = getattr(state, "act", None)
+    carried_companions = []
+    carried_known = []
+    if previous is not None:
+        seen_ids = set()
+        for actor in list(getattr(previous, "actors", []) or []) + list(
+            getattr(previous, "undiscovered", []) or []
+        ):
+            if id(actor) in seen_ids or not getattr(actor, "alive", True):
+                continue
+            seen_ids.add(id(actor))
+            role = (getattr(actor, "role", "npc") or "npc").lower()
+            if role == "companion":
+                carried_companions.append(actor)
+            elif role != "enemy":
+                carried_known.append(actor)
+
     state.act = ActState(index=idx)
+    state.act.actors.extend(carried_companions)
+    state.act.undiscovered.extend(carried_known)
+
+    # --- reset what should NOT survive the boundary (B04) ------------------
+    # These live on GameState rather than ActState, so they used to leak: a
+    # defeated enemy from the finished act would ambush you inside the new
+    # act's opening scene, because state.mode was still COMBAT.
+    core_mod = _core()
+    state.mode = core_mod.TurnMode.EXPLORE
+    state.last_enemy = None
+    state.combat_turn_already_counted = False
+    state.passive_bystanders = []
+
     plan = state.blueprint.acts[idx]
     state.act.situation = plan.intro_paragraph
     state.location_desc = plan.intro_paragraph.split(".")[0] if plan.intro_paragraph else ""
@@ -167,7 +203,13 @@ def begin_act(state, idx: int):
                 except Exception:
                     _log.debug("suppressed error in Turn_And_Act_Flow", exc_info=True)
 
-    state.act.undiscovered = seeded
+    # Extend, do not assign: characters carried across the act boundary were
+    # already placed here, and a bare assignment discarded them.
+    known_names = {(a.name or "").lower() for a in state.act.undiscovered}
+    known_names |= {(a.name or "").lower() for a in state.act.actors}
+    state.act.undiscovered.extend(
+        a for a in seeded if (a.name or "").lower() not in known_names
+    )
     state.last_actor = state.companions[0] if state.companions else None
     state.history.append(f"Act {idx} opened: {plan.goal}")
     try:
