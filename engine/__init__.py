@@ -13,7 +13,9 @@ from engine.blueprint import (
     json_to_actplan,
     role_from_kind,
 )
+from engine.clocks import Clock, ClockBoard, ClockKind, ClockTick, opposing_segments_for
 from engine.dice import calc_dc, check, d20
+from engine.tides import Tide, TideBoard, TideMove
 from engine.resolve import (
     Assessment,
     Bargain,
@@ -58,6 +60,8 @@ __all__ = [
     "ENABLE_TURN_IMAGE", "IMG_WIDTH", "IMG_HEIGHT", "IMG_TIMEOUT",
     "PORTRAIT_IMG_WIDTH", "PORTRAIT_IMG_HEIGHT",
     "d20", "calc_dc", "check",
+    "Clock", "ClockBoard", "ClockKind", "ClockTick", "opposing_segments_for",
+    "Tide", "TideBoard", "TideMove",
     "Bearing", "Position", "PositionFacts", "Consequence", "Bargain",
     "Assessment", "Resolution", "assessment_from_json",
     "position_for", "resolve", "target_for", "chance_for",
