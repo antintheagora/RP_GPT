@@ -100,12 +100,48 @@ def goal_lock_active(state: "GameState", last_success: bool) -> bool:
     return last_success and (ratio >= 0.60 or state.act.goal_progress >= 60 or state.pressure >= 60)
 
 
+def _offer_stats(state: "GameState", count: int = 3) -> list:
+    """Which approaches the menu offers this turn.
+
+    Your best stats, plus one wildcard so the menu is not identical every
+    turn. Ties are broken by a stable order rather than randomly, so the same
+    sheet produces the same leading options and a build feels consistent.
+
+    Nothing here restricts what is possible: Custom and Talk remain open, and
+    Bearing decides what any approach is actually worth.
+    """
+    keys = _get_special_keys()
+    stats = getattr(state.player, "stats", None)
+
+    def value(key: str) -> int:
+        return int(getattr(stats, key, 5)) if stats else 5
+
+    ranked = sorted(keys, key=lambda k: (-value(k), keys.index(k)))
+    top = ranked[: max(1, count - 1)]
+    rest = [k for k in keys if k not in top]
+    wildcard = random.choice(rest) if rest else None
+    offered = top + ([wildcard] if wildcard else [])
+    # Keep the sheet's own order so the menu does not reshuffle every turn.
+    return sorted(offered, key=keys.index)
+
+
 def make_explore_options(state: "GameState", g: GemmaClient, goal_lock: bool) -> ExploreOptions:
     """Build the 3 SPECIAL options and ask the model for short microplans.
 
     If the model errors or returns nothing, we still show a clean menu.
     """
-    choices = random.sample(_get_special_keys(), 3)
+    # Offer the approaches this character is actually built for.
+    #
+    # This was random.sample(SPECIAL_KEYS, 3): the game picked three of your
+    # seven stats at random each turn and only let you use those. A 10-STR
+    # bruiser got Strength on roughly 43% of turns and spent the rest rolling
+    # dump stats -- the character sheet decided nothing.
+    #
+    # The fiction constrains what is *smart* (that is Bearing's job). It must
+    # never constrain what is *legal*. So the menu leads with your strengths
+    # and always keeps one wildcard, so a build is expressible without the
+    # menu becoming the same three entries every turn.
+    choices = _offer_stats(state, count=3)
     labels = [(k, k) for k in choices]
     try:
         j = g.json(option_microplans_prompt(state, choices, goal_lock), tag="Action plans")
