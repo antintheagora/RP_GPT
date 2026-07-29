@@ -635,6 +635,88 @@ Acts are chapters and they stay. The blueprint's three-act spine is good bones.
 
 ---
 
+## 5.4 Cohesion: what is planned, and what is improvised
+
+Agreed 2026-07-29. Not yet built -- the callback half needs the ledger
+(Phase 3). Recorded here because it decides the shape of Phase 2's blueprint
+prompt.
+
+The old build evolved purely turn by turn: each beat followed sensibly from
+the last, and twenty turns later there was no arc. Nothing had been set up, so
+nothing could pay off. The obvious correction -- have the model plan the whole
+act up front -- fails the other way: the plan cannot know what the player will
+do, so it either railroads them or is thrown away.
+
+**The resolution is to plan forces, not events.**
+
+A [Tide](#52-tides) is not a plot. It is a pressure with an ordered list of
+moves, every one of them conditional on the player not intervening. It costs
+one short generation per act and it is the connective tissue. The story is
+what happens when the player collides with it; the collision is never
+authored.
+
+### Three horizons, three costs
+
+| Horizon | When | What is generated | Cost |
+|---|---|---|---|
+| **The act** | once, at act start | one project clock, two or three Tides, and the seeded facts below | ~200 tokens, once |
+| **The scene** | first entry, then cached | the obstacles present and their [Bearing](#23-bearing--the-world-pushes-back) for all seven stats | one call, reused for every turn in that place |
+| **The turn** | every action | narration only -- the outcome is already decided by code | the only per-turn cost |
+
+Caching the scene is what makes a place feel authored rather than improvised:
+the door is hard for the same reason on turn one and on turn six.
+
+### Seeded facts
+
+At act start, generate three to five things that are **true but not yet
+revealed**. Facts, not events:
+
+> The foreman is the Coven's informant.
+> The pump house floods at high tide.
+> Sable knows the woman in the archive.
+
+A fact costs almost nothing and does not demand to happen, so it cannot
+railroad. It waits. When the player does something that would surface it, it
+is already there and lands as though it had been set up -- because it had.
+Discovered in any order, by any route, or never.
+
+### Callback over foreshadowing
+
+The cheapest source of cohesion is not predicting -- it is remembering.
+
+> Captain Marius is here. The officer whose patrol you humiliated in the
+> Ashfall, who kept his commission because of the bribe you paid at Greywater,
+> whose sister you left in the burning mill nine hours ago.
+
+None of that was planned. It is four rows and a query. To a reader,
+foreshadowing and callback are nearly indistinguishable, and callback is
+strictly cheaper: foreshadowing that goes unused is dead weight, while a
+callback only fires when the material already exists.
+
+This is why [the ledger](#82-memory) is the load-bearing piece of Phase 3, and
+why cohesion before then rests on Tides and clocks alone -- enough to shape an
+act, not yet enough to make a campaign feel remembered.
+
+### Why this does not meander
+
+Three mechanical guarantees, none of them an instruction to the model:
+
+1. **Something is always due.** A clock is always filling, so a turn spent on
+   nothing still costs something. Pacing stops depending on the model's
+   judgement.
+2. **The player chooses which pressure to face.** Structure comes from the
+   clocks; the organic feeling comes from which one they walk toward.
+3. **The world pushes when the player is comfortable and eases when they are
+   not** -- computed from clocks and harm, which are already on screen, so it
+   never becomes another hidden meter. See [the Director](#132-the-director).
+
+> **What the old build got wrong**, precisely: pressure was a number nobody
+> could see, progress was a number nobody could see, and complications were
+> decorative -- they raised the tone without changing anything. Nothing was
+> ever *due*. That is what made it read as drift rather than a story.
+
+---
+
 # 6. The world between scenes
 
 ## 6.1 Rest

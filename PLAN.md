@@ -575,6 +575,8 @@ Two renames: **Fronts → Tides**, **The Night Shift → Vigil**. One addition w
 | M35 | Factions | **ADD** | [MECHANICS §7.3](MECHANICS.md#73-reputation) — with a `known` flag, so "never heard of you" is distinct from "indifferent", and a witnessed-only bleed rule. |
 | M36 | Companion assists | **ADD** | [MECHANICS §7.5](MECHANICS.md#74-companion-assists) — count from CHA, willingness from Affinity, and a cost when they get hurt for you. |
 | M37 | Wound worsening | **ADD** | [MECHANICS §1.2](MECHANICS.md#worsening) — raw wounds worsen on a natural 1, never on a timer. |
+| M38 | Seeded facts | **ADD** | [MECHANICS §5.4](MECHANICS.md#54-cohesion-what-is-planned-and-what-is-improvised) — 3–5 true-but-unrevealed facts per act. Foreshadowing that cannot railroad, because a fact does not demand to happen. |
+| M39 | Scene caching | **ADD** | [MECHANICS §5.4](MECHANICS.md#54-cohesion-what-is-planned-and-what-is-improvised) — obstacles and their seven Bearings generated once per place and reused, so a door is hard for the same reason every turn. |
 | M27 | Callback engine | **ADD** | Falls out of the ledger — [§8.2](MECHANICS.md#82-memory) |
 | M28 | The Oracle | **ADD**, optional | [§10.1](MECHANICS.md#101-the-oracle) — off by default |
 | M29 | The Grain | **DEFERRED** 🔮 | Still speculative. Requires the llama-server migration. |
