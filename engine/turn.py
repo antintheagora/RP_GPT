@@ -108,6 +108,9 @@ class TurnResult:
     observation: str = ""
     assisted_by: str = ""
     companion_hurt: str = ""
+    damage_dealt: int = 0
+    struck: str = ""
+    felled: str = ""
     act_complete: bool = False
     act_failed: bool = False
     consumed_turn: bool = False
@@ -169,11 +172,28 @@ def assisting_companion(run: Run, position: str) -> Optional[str]:
 
 
 def _obstacle_for(run: Run, intent: Intent, keeper: Keeper) -> Optional[Obstacle]:
-    """The thing being acted on. Rated once, then reused."""
+    """The thing being acted on. Rated once, then reused.
+
+    Swinging at someone is rated against *them*, not against the act's goal.
+    Without this, attacking the guard in the doorway was scored as an
+    approach to "reach the archive" -- which is Dire, so a fight could open
+    at a target of 20 and be unwinnable for reasons that had nothing to do
+    with the fight.
+    """
     if intent.target:
         existing = run.scene.obstacle(intent.target)
         if existing:
             return existing
+
+    if intent.verb is Verb.ATTACK:
+        foe = run.scene.foe(intent.target)
+        if foe is not None:
+            # One obstacle per foe, so what you learn about them by fighting
+            # them sticks the way it does for a door.
+            key = f"foe:{foe.name}"
+            return (run.scene.obstacle(key)
+                    or run.scene.add(Obstacle(id=key, name=foe.name)))
+
     unresolved = run.scene.unresolved
     return unresolved[0] if unresolved else None
 
@@ -286,6 +306,7 @@ def advance_turn(
     else:
         result.ticks = _apply_clocks(run, resolution, intent)
         result.tide_moves = _advance_tides(run, resolution)
+        _strike(run, resolution, intent, result)
         _apply_harm(run, resolution, intent, result, rng)
         _apply_assist_cost(run, resolution, result)
         # A finding "applies" to the attempt it was bought for, then it is
@@ -386,11 +407,52 @@ def _advance_tides(run: Run, resolution: Resolution) -> List[TideMove]:
     return moves
 
 
+def _strike(run: Run, resolution: Resolution, intent: Intent,
+            result: TurnResult) -> None:
+    """A landed attack wears the other side down.
+
+    Nothing did this. `hostiles` was a list of names, so a successful attack
+    damaged nobody and no enemy could ever die -- you could swing at a ghoul
+    until the act clock ran out and it would be exactly as healthy as when
+    you started.
+    """
+    if intent.verb is not Verb.ATTACK or not resolution.succeeded:
+        return
+    foe = run.scene.foe(intent.target)
+    if foe is None:
+        return
+
+    amount = damage_for(
+        intent.weapon or run.condition.weapon,
+        run.stats.get("STR", 5),
+        resolution.effect.value if resolution.effect else "standard",
+    )
+    result.damage_dealt = foe.take(amount)
+    result.struck = foe.name
+    ev.harm(f"You hit {foe.name} for {result.damage_dealt}.")
+
+    if not foe.alive:
+        result.felled = foe.name
+        ev.chapter(f"{foe.name} goes down.")
+        # Putting down the thing in your way is progress, and it is the one
+        # place a kill touches the act clock.
+        tick = run.clocks.tick(run.project_id, 1)
+        if tick:
+            result.ticks.append(tick)
+
+
 def _apply_harm(run: Run, resolution: Resolution, intent: Intent,
                 result: TurnResult, rng: random.Random) -> None:
     if resolution.consequence is Consequence.HARM:
-        weapon = intent.weapon or WeaponWeight.LIGHT
-        amount = damage_for(weapon, run.stats.get("STR", 5), "standard")
+        # Costed from whoever is hitting you. This used to read the player's
+        # own weapon and Strength, so a STR 10 character with a maul took 17
+        # damage for failing and a weak unarmed one took 3 -- being strong
+        # and well-armed made failure hurt more.
+        foe = run.scene.foe()
+        if foe is not None:
+            amount = damage_for(foe.threat, foe.strength, "standard")
+        else:
+            amount = damage_for(WeaponWeight.LIGHT, 5, "standard")
         settled, raw = run.condition.take_damage(amount)
         result.damage = amount
         ev.harm(f"You take {amount}.")

@@ -19,7 +19,7 @@ from engine.actions import Depth, Intent, ObserveTarget, Verb
 from engine.character import Condition, WeaponWeight
 from engine.clocks import ACT_SEGMENTS, Clock, ClockBoard, ClockKind
 from engine.model import SPECIAL_KEYS
-from engine.scene import Obstacle, Scene
+from engine.scene import Foe, Obstacle, Scene
 from engine.tides import Tide, TideBoard
 from engine.turn import Run, TurnResult
 
@@ -62,6 +62,16 @@ def weapon_of(player) -> WeaponWeight:
     return best
 
 
+def threat_of(actor) -> WeaponWeight:
+    """How hard this one hits, from the attack value it was seeded with."""
+    attack = int(getattr(actor, "attack", 3) or 3)
+    if attack >= 8:
+        return WeaponWeight.HEAVY
+    if attack >= 5:
+        return WeaponWeight.MEDIUM
+    return WeaponWeight.LIGHT
+
+
 def build_run(state) -> Run:
     """Construct a Run from a live GameState.
 
@@ -78,9 +88,22 @@ def build_run(state) -> Run:
         id=f"act{state.act.index}",
         name=getattr(state, "location_desc", "") or goal,
         description=getattr(state.act, "situation", "") or "",
-        hostiles=[a.name for a in getattr(state.act, "actors", []) if
-                  (getattr(a, "role", "") or "").lower() == "enemy" and getattr(a, "alive", True)],
     )
+    # Anyone in the scene who is trying to stop you, with the health and reach
+    # they were seeded with. This was a list of names, so a hit landed on
+    # nothing and no enemy could die.
+    for actor in getattr(state.act, "actors", []) or []:
+        if (getattr(actor, "role", "") or "").lower() != "enemy":
+            continue
+        if not getattr(actor, "alive", True):
+            continue
+        scene.add_foe(Foe(
+            name=actor.name,
+            hp=int(getattr(actor, "hp", 14) or 14),
+            max_hp=int(getattr(actor, "hp", 14) or 14),
+            threat=threat_of(actor),
+            strength=5 + int(getattr(actor, "attack", 3) or 3) // 2,
+        ))
     scene.add(Obstacle(id="main", name=goal))
     # Things that are true now and not yet known. Surfaced by looking, which
     # is what finally makes Observe worth a turn -- until acts carried facts,
@@ -167,6 +190,41 @@ def build_run(state) -> Run:
     )
 
 
+def sync_foes(run: Run, state) -> None:
+    """Bring the scene up to date with who is actually standing here.
+
+    Seeded actors start `undiscovered` and only enter the scene when the
+    player runs into them, but the Run -- and its scene -- is built once at
+    act start. So an enemy discovered on turn six never became a foe, the
+    menu never offered a weapon, and a campaign could seed a hostile in every
+    act without a single fight ever starting.
+    """
+    present = {}
+    for actor in getattr(state.act, "actors", []) or []:
+        if (getattr(actor, "role", "") or "").lower() != "enemy":
+            continue
+        if not getattr(actor, "alive", True) or not getattr(actor, "name", ""):
+            continue
+        present[actor.name] = actor
+
+    known = {foe.name for foe in run.scene.foes}
+    for name, actor in present.items():
+        if name in known:
+            continue
+        run.scene.add_foe(Foe(
+            name=name,
+            hp=int(getattr(actor, "hp", 14) or 14),
+            max_hp=int(getattr(actor, "hp", 14) or 14),
+            threat=threat_of(actor),
+            strength=5 + int(getattr(actor, "attack", 3) or 3) // 2,
+        ))
+
+    # Someone who left, or was killed elsewhere, stops being in the fight.
+    for foe in run.scene.foes:
+        if foe.alive and foe.name not in present:
+            foe.hp = 0
+
+
 def sync_back(run: Run, state, result: Optional[TurnResult] = None) -> None:
     """Push the Run's state onto GameState so old readers stay correct.
 
@@ -186,6 +244,12 @@ def sync_back(run: Run, state, result: Optional[TurnResult] = None) -> None:
     )
     state.act.turns_taken = run.turn
     state.player.hp = run.condition.hp
+    # Deaths go back to the actor list, so a felled enemy stays felled across
+    # the act boundary and the save.
+    down = {f.name for f in run.scene.foes if not f.alive}
+    for actor in getattr(state.act, "actors", []) or []:
+        if getattr(actor, "name", "") in down:
+            actor.alive = False
     # Facts leave the scene as they surface. Recording them on the campaign
     # keeps a reload from revealing the same one twice.
     seeded = set(getattr(state.blueprint.acts.get(state.act.index), "seeded_facts", []) or [])
@@ -243,6 +307,14 @@ def render_result(result: TurnResult, run: Run) -> List[str]:
         lines.append(result.observation)
     for move in result.tide_moves:
         lines.append(move.text)
+    if result.struck:
+        lines.append(f"You hit {result.struck} for {result.damage_dealt}.")
+    if result.felled:
+        lines.append(f"{result.felled} goes down.")
+    if result.assisted_by:
+        lines.append(f"{result.assisted_by} moves with you.")
+    if result.companion_hurt:
+        lines.append(f"{result.companion_hurt} is hurt helping you.")
     if result.damage:
         lines.append(f"You take {result.damage}.")
     if result.rallied:
@@ -260,6 +332,6 @@ def render_result(result: TurnResult, run: Run) -> List[str]:
 
 
 __all__ = [
-    "build_run", "sync_back", "intent_for", "render_result",
+    "build_run", "sync_back", "sync_foes", "intent_for", "render_result",
     "stats_of", "weapon_of", "CODE_TO_INTENT",
 ]

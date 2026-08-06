@@ -202,7 +202,9 @@ def close(conversation: Conversation, actor, run=None) -> TalkOutcome:
     if regard is Regard.NEMESIS:
         outcome.turned_hostile = True
         if run is not None and outcome.actor_name:
-            run.scene.hostiles.append(outcome.actor_name)
+            from engine.scene import Foe
+
+            run.scene.add_foe(Foe(name=outcome.actor_name))
         outcome.text = f"{outcome.actor_name} is done talking."
 
     if not outcome.text:

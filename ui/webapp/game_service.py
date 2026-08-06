@@ -17,7 +17,13 @@ from typing import Any, Dict, List, Optional
 import RP_GPT as core
 from engine import events as ev
 from engine.actions import Depth, Intent, MenuOption, Verb, build_menu, intent_from_option
-from engine.bridge import build_run, intent_for, render_result, sync_back
+from engine.bridge import (
+    build_run,
+    intent_for,
+    render_result,
+    sync_back,
+    sync_foes,
+)
 from engine.events import collecting
 from engine.keeper import ModelKeeper
 from engine.rest import render_rest, take_rest
@@ -556,6 +562,13 @@ class GameSession:
                 "bargain": self._bargain_payload(),
                 "talk": self._talk_payload(),
                 "party": self._party_payload(),
+                # Who is still standing, and how worn down they are. Without
+                # this the player swings at a name with no idea whether it is
+                # working.
+                "foes": [
+                    {"name": foe.name, "hp": foe.hp, "max_hp": foe.max_hp}
+                    for foe in self.run.scene.foes if foe.alive
+                ],
                 # Every force in play, so the player can see which pressures
                 # exist and choose which to walk toward. The structure comes
                 # from the clocks; the choosing is where the story does.
@@ -635,6 +648,14 @@ class GameSession:
                 step()
             except Exception:
                 _log.debug("%s failed; turn continues", label, exc_info=True)
+
+        # After the beat, not before it: the beat is what walks someone into
+        # the scene, and syncing first meant a hostile only became a foe on
+        # the turn *after* they arrived. Seeded enemies start `undiscovered`,
+        # so without this a campaign could seed one in every act and never
+        # start a single fight.
+        sync_foes(self.run, self.state)
+        self._options = None
 
     def _recall(self, scene) -> str:
         """What the people in this scene remember about the player.
@@ -835,8 +856,16 @@ class GameSession:
                                     )
                             else:
                                 self._close_talk()
-                        for line in render_result(result, self.run):
-                            ev.prose(line)
+                        # Deliberately NOT re-emitting render_result here.
+                        # advance_turn already announces every one of these
+                        # through the event bus -- the roll, the clocks, the
+                        # damage, the Tide moves -- so piping the rendered
+                        # lines back in printed the whole turn twice. It went
+                        # unnoticed because the playthrough harness truncates
+                        # each line before the repeat begins.
+                        #
+                        # render_result stays for a front end that polls
+                        # instead of streaming; this one streams.
 
                         # Keep the old fields in step so the HUD, the save file
                         # and the templates stay correct while they migrate.

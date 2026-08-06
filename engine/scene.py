@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
 from engine.model import SPECIAL_KEYS
+from engine.character import WeaponWeight
 from engine.resolve import Bearing, DEFAULT_BASE_DIFFICULTY
 
 # The order Bearings improve in, for Observe results and Study.
@@ -101,6 +102,41 @@ class Obstacle:
 
 
 @dataclass
+class Foe:
+    """Someone in the scene who is trying to stop you.
+
+    `hostiles` was a list of names, which is why a successful attack had
+    nothing to damage and no enemy ever died. A fight needs the other side to
+    be wearing down, and this is the smallest thing that can.
+
+    `threat` and `strength` are theirs, not yours. Failure used to be costed
+    from the *player's* weapon and Strength, so a strong, well-armed character
+    was punished harder for missing.
+    """
+
+    name: str
+    hp: int = 14
+    max_hp: int = 14
+    threat: WeaponWeight = WeaponWeight.LIGHT
+    strength: int = 5
+
+    def __post_init__(self) -> None:
+        self.max_hp = max(1, self.max_hp or self.hp)
+        self.hp = max(0, min(self.hp, self.max_hp))
+
+    @property
+    def alive(self) -> bool:
+        return self.hp > 0
+
+    def take(self, amount: int) -> int:
+        """Wear them down. Returns what actually landed."""
+        amount = max(0, int(amount))
+        dealt = min(amount, self.hp)
+        self.hp -= dealt
+        return dealt
+
+
+@dataclass
 class Scene:
     """Where the player is, and what is in the way."""
 
@@ -108,14 +144,30 @@ class Scene:
     name: str
     description: str = ""
     obstacles: Dict[str, Obstacle] = field(default_factory=dict)
-    hostiles: List[str] = field(default_factory=list)
+    foes: List[Foe] = field(default_factory=list)
     exits: List[str] = field(default_factory=list)
     facts: List[str] = field(default_factory=list)   # seeded, true, unrevealed
 
     @property
+    def hostiles(self) -> List[str]:
+        """Who is still standing. Derived, so it cannot drift from the foes."""
+        return [f.name for f in self.foes if f.alive]
+
+    @property
     def in_combat(self) -> bool:
         """There is no combat *mode*. A fight is a scene with a hostile in it."""
-        return bool(self.hostiles)
+        return any(f.alive for f in self.foes)
+
+    def add_foe(self, foe: "Foe") -> "Foe":
+        self.foes.append(foe)
+        return foe
+
+    def foe(self, name: str = "") -> Optional["Foe"]:
+        """The one being fought. Named if given, else whoever is still up."""
+        for candidate in self.foes:
+            if candidate.alive and (not name or candidate.name == name):
+                return candidate
+        return None
 
     def obstacle(self, obstacle_id: str) -> Optional[Obstacle]:
         return self.obstacles.get(obstacle_id)
@@ -133,4 +185,4 @@ class Scene:
         return self.facts.pop(0) if self.facts else None
 
 
-__all__ = ["Obstacle", "Scene", "BEARING_LADDER", "improve", "worsen"]
+__all__ = ["Obstacle", "Scene", "Foe", "BEARING_LADDER", "improve", "worsen"]

@@ -16,7 +16,7 @@ from engine.character import Condition, WeaponWeight
 from engine.clocks import Clock, ClockBoard, ClockKind
 from engine.model import SPECIAL_KEYS
 from engine.resolve import Assessment, Bearing, Consequence
-from engine.scene import Obstacle, Scene
+from engine.scene import Foe, Obstacle, Scene
 from engine.tides import Tide, TideBoard
 from engine.turn import Run, advance_turn
 
@@ -45,7 +45,7 @@ class StubKeeper:
 
 def _run(*, hostiles=None, exits=None, stats=None, tides=None) -> Run:
     scene = Scene(id="pump", name="Pump House",
-                  hostiles=list(hostiles or []), exits=list(exits or []))
+                  foes=[Foe(name=h) for h in (hostiles or [])], exits=list(exits or []))
     scene.add(Obstacle(id="door", name="Reinforced door"))
     return Run(
         scene=scene,

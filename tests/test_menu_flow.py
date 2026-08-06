@@ -93,7 +93,9 @@ def test_the_menu_offers_the_verbs_not_three_random_stats():
 def test_carrying_a_knife_puts_it_on_the_menu():
     """Attack options are generated from inventory, not hardcoded."""
     session = _session()
-    session.run.scene.hostiles = ["a ghoul"]
+    from engine.scene import Foe
+
+    session.run.scene.add_foe(Foe(name="a ghoul"))
     session._options = None
     labels = [option.label for option in session.ensure_options()
               if option.verb is Verb.ATTACK]

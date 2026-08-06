@@ -55,16 +55,33 @@ def items_from_seed(seed)->List[Item]:
         ))
     return out
 
-def role_from_kind(kind:str)->str:
-    low=kind.lower()
-    if any(k in low for k in ["raider","bandit","goblin","spirit","monster","beast","shaman","soldier","assassin","cult","demon","ghoul"]):
-        return "enemy"
-    return "npc"
+# Only a fallback now: the blueprint states `hostile` outright. Kept, and
+# widened, for older saves and for anything that arrives without the flag.
+# The original list was raider/bandit/goblin/monster/demon/ghoul, which is a
+# fantasy bestiary -- it matched none of the guards, sentinels, wardens,
+# automatons, drones and enforcers the model actually writes, so every
+# campaign ran with an empty hostile list and combat never once started.
+HOSTILE_WORDS = (
+    "raider bandit goblin spirit monster beast shaman soldier assassin cult "
+    "demon ghoul guard sentinel sentry warden watchman enforcer automaton "
+    "construct drone golem hunter marauder reaver revenant wraith swarm "
+    "predator brute thug mercenary overseer guardian stalker"
+).split()
+
+
+def role_from_kind(kind: str) -> str:
+    low = (kind or "").lower()
+    return "enemy" if any(word in low for word in HOSTILE_WORDS) else "npc"
 
 def actors_from_seed(seed, act_index:int)->List[Actor]:
     out=[]
     for a in seed or []:
-        role=role_from_kind(a.get("kind","npc"))
+        # What the blueprint said, if it said anything.
+        declared = a.get("hostile")
+        if isinstance(declared, bool):
+            role = "enemy" if declared else "npc"
+        else:
+            role = role_from_kind(a.get("kind", "npc"))
         base_hp=int(a.get("hp",14)); base_atk=int(a.get("attack",3))
         hp=base_hp + (act_index-1)*6 + (4 if role=="enemy" else 0)
         atk=base_atk + (act_index-1)*1 + (1 if role=="enemy" else 0)

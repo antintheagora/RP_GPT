@@ -88,6 +88,29 @@
     </div>
   </div>
 
+  {# Who is trying to stop you, and how far you have got. Hostiles were a list
+     of names with no health at all, so a hit landed on nothing and nobody
+     could be worn down. #}
+  {% if payload.foes %}
+    <div class="rounded-xl border border-rose-500/60 bg-rose-500/10 p-4">
+      <p class="text-xs uppercase tracking-wide text-rose-300 mb-2">Against you</p>
+      <ul class="space-y-2 text-sm">
+        {% for foe in payload.foes %}
+          <li>
+            <div class="flex justify-between gap-2">
+              <span class="font-semibold">{{ foe.name }}</span>
+              <span class="text-slate-400 tabular-nums">{{ foe.hp }} / {{ foe.max_hp }}</span>
+            </div>
+            <div class="mt-1 h-1.5 w-full rounded bg-slate-800">
+              <div class="h-full rounded bg-rose-400"
+                   style="width: {{ (100 * foe.hp / foe.max_hp) | round }}%"></div>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
   {# The forces in play. Not a plot -- each is a pressure with an ordered list
      of moves, every one conditional on the player not intervening. The story
      is what happens when they collide with one; the collision is never

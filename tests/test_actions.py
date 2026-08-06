@@ -23,7 +23,7 @@ from engine.actions import (
 )
 from engine.character import WeaponWeight
 from engine.resolve import Bearing
-from engine.scene import Obstacle, Scene
+from engine.scene import Foe, Obstacle, Scene
 
 
 def _player(strength=5, items=None):
@@ -44,7 +44,7 @@ def _item(name, tags, attack_delta=0):
 def _scene(hostiles=None, exits=None, facts=None):
     return Scene(
         id="pump_house", name="The Pump House",
-        hostiles=list(hostiles or []), exits=list(exits or []),
+        foes=[Foe(name=h) for h in (hostiles or [])], exits=list(exits or []),
         facts=list(facts or []),
     )
 

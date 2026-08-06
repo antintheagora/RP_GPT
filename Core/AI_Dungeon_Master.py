@@ -501,12 +501,18 @@ def campaign_blueprint_schema(target_acts: int = 3) -> Dict[str, Any]:
                     "properties": {
                         "name": {"type": "string"},
                         "kind": {"type": "string"},
+                        # Asked for, not guessed. This was inferred from a
+                        # keyword list -- raider, goblin, demon -- which
+                        # matched almost nothing a model actually writes, so
+                        # guards, sentinels, wardens and automatons were all
+                        # filed as harmless and no fight ever started.
+                        "hostile": {"type": "boolean"},
                         "hp": {"type": "integer"},
                         "attack": {"type": "integer"},
                         "disposition": {"type": "integer"},
                         "personality": {"type": "string"},
                     },
-                    "required": ["name", "kind"],
+                    "required": ["name", "kind", "hostile"],
                 },
             },
             "seed_items": {
@@ -616,6 +622,9 @@ language -- the player is shown these words.
                  between.
 
 Write moves that change the player's situation, never moods or weather.
+
+Mark each seeded actor `hostile`: true if they would fight the player on
+sight, false otherwise. At least one act should have someone hostile in it.
 
 Also write `seeded_facts`: 3-5 things that are TRUE RIGHT NOW and that the
 player does not know yet. Facts, not events -- a fact waits, an event
