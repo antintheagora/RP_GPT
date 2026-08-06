@@ -120,7 +120,10 @@ class ActState:
     # nothing reads it. Kept only so saves written before the change
     # still load.
     turn_cap:int=0
-    goal_progress:int=0
+    # Where each of this act's clocks stands. Saved as segments, which is
+    # what a clock is -- resuming used to rebuild it from a percentage, so a
+    # 6-segment clock at 5/6 came back as 83%, rounded to 5, only by luck.
+    clock_fill:Dict[str,int]=field(default_factory=dict)
     situation:str=""
     actors:List[Actor]=field(default_factory=list)
     undiscovered:List[Actor]=field(default_factory=list)
@@ -158,7 +161,7 @@ def _new_ledger():
 @dataclass
 class GameState:
     scenario:Scenario; scenario_label:str; player:Player; blueprint:CampaignBlueprint
-    pressure_name:str; pressure:int=0; mode:TurnMode=TurnMode.EXPLORE
+    pressure_name:str; mode:TurnMode=TurnMode.EXPLORE
     act:ActState=field(default_factory=lambda: ActState(1)); act_count:int=3
     running:bool=True; debug:bool=False; last_enemy:Optional[Actor]=None
     custom_stat:Optional[str]=None; combat_turn_already_counted:bool=False
@@ -183,6 +186,9 @@ class GameState:
     last_result_para:str=""
     last_situation_para:str=""
     last_turn_success:bool=False
+    # Whether a clock in this act is far enough along to bias what turns up.
+    # This replaces reading two 0-100 meters that no longer exist.
+    act_pressing:bool=False
     # Seeded facts already surfaced, so a reload does not re-reveal them.
     revealed_facts:List[str]=field(default_factory=list)
     # Everyone met and every faction heard of, for the whole campaign.
@@ -199,10 +205,19 @@ class GameState:
     player_bio_entries:List[str]=field(default_factory=list)
     # NEW: per-turn flags
     rested_this_turn:bool=False
+    # Set when the campaign is decided, by whoever decided it.
+    ending:str=""
     # NEW: passive bystanders that didn't detect you
     passive_bystanders:List[str]=field(default_factory=list)
 
     def is_game_over(self)->Optional[str]:
+        """Endings that belong to the character, not to a clock.
+
+        The doom check used to live here as `pressure >= 100`, which ended
+        the *campaign* whenever any act's danger clock filled. Per the rules
+        only the final act's doom clock loses the run; an earlier one loses
+        that act. A clock lives on the Run, so that decision belongs where
+        the clocks are, and it is made in the session.
+        """
         if self.player.hp<=0: return "You died."
-        if self.pressure>=100: return f"{self.pressure_name} overwhelmed you."
-        return None
+        return self.ending or None

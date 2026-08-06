@@ -214,3 +214,58 @@ def test_the_prompt_is_unchanged_when_there_is_nothing_to_recall():
     intent = Intent(verb=Verb.PARLEY, depth=Depth.QUICK, text="talk")
     assert (assess_prompt(intent, scene, None, "X", "")
             == assess_prompt(intent, scene, None, "X"))
+
+
+# =============================
+# ------ LOSING AN ACT --------
+# =============================
+
+def _session_at(act_index, act_count):
+    """A session mid-campaign, with acts to advance into.
+
+    The blueprint needs every act it might move to: begin_act clamps to the
+    nearest one that exists, so a single-act blueprint makes "move on" look
+    like "stay put".
+    """
+    import ui.webapp.game_service as gs
+    from engine.bridge import build_run
+    from tests.test_menu_flow import _session
+
+    session = _session()
+    acts = {str(i): dict(ACT, goal=f"act {i}") for i in range(1, act_count + 1)}
+    session.state.blueprint = core.blueprint_from_json({
+        "campaign_goal": "g", "pressure_name": "The Tide", "acts": acts,
+    })
+    session.state.act_count = act_count
+    session.state.act.index = act_index
+    session.run = build_run(session.state)
+    session.client = None
+    session._character_block = lambda: ""
+    return session
+
+
+def test_losing_an_early_act_does_not_lose_the_campaign():
+    """`is_game_over` read `pressure >= 100`, which fired whenever *any* act's
+    danger clock filled -- so losing act one ended a three-act campaign. Per
+    the rules only the final act's doom clock loses the run."""
+    session = _session_at(1, 3)
+    session.run.clocks.tick("danger", 99)
+    assert session.run.danger.full
+
+    session._act_lost()
+    assert session.state.running, "the campaign ended on a lost first act"
+    assert session.state.act.index == 2, "the story should move on"
+
+
+def test_losing_the_last_act_loses_the_campaign():
+    session = _session_at(3, 3)
+    session._act_lost()
+
+    assert not session.state.running
+    assert session.state.is_game_over()
+
+
+def test_dying_still_ends_it_wherever_you_are():
+    session = _session_at(1, 3)
+    session.state.player.hp = 0
+    assert session.state.is_game_over() == "You died."

@@ -755,6 +755,33 @@ class GameSession:
         present += list(getattr(scene, "hostiles", []) or [])
         return recall_block(getattr(self.state, "ledger", None), present)
 
+    def _act_lost(self) -> None:
+        """A doom clock filled.
+
+        On the last act that is the campaign; earlier it is this act, and the
+        story goes on from a worse place. `is_game_over` used to end the whole
+        run whenever any danger clock reached 100, so losing act one ended a
+        three-act campaign on the spot.
+        """
+        name = self.run.danger.name if self.run.danger else self.state.pressure_name
+        state = self.state
+        state.act.last_outcome = "fail"
+        state.history.append(f"Act {state.act.index} lost ({name})")
+
+        if state.act.index >= state.act_count:
+            state.running = False
+            state.ending = f"{name} got there first."
+            ev.chapter(state.ending)
+            return
+
+        ev.chapter(f"{name} got there first. You do not get this one back.")
+        state.scene_phase = 0
+        state.stall_count = 0
+        begin_act(state, state.act.index + 1)
+        self.run = build_run(state)
+        self.keeper = ModelKeeper(self.client, self._character_block(), self._recall)
+        ev.chapter(sanitize_prose(state.act.situation or f"Act {state.act.index}."))
+
     def _advance_act(self) -> None:
         """The act's project clock filled. Recap it, then move on or end."""
         from Core.AI_Dungeon_Master import recap_prompt
@@ -961,7 +988,7 @@ class GameSession:
                         if result.act_complete:
                             self._advance_act()
                         elif result.act_failed:
-                            ev.chapter(f"{self.run.danger.name} got there first.")
+                            self._act_lost()
                     finally:
                         events = bus.events
             except (_OfferMade, _TurnHandled):

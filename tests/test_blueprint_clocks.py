@@ -141,15 +141,27 @@ def test_an_act_without_a_tide_still_falls_back_to_encounters():
     assert run.tides.active[0].moves == ["a beggar", "a locked gate"]
 
 
-def test_resumed_progress_scales_to_the_clock_it_is_resuming_into():
-    """Assuming eight segments put a 4-segment danger clock at double where
-    it belonged, so a resumed run inherited a crisis it had not earned."""
+def test_a_resumed_run_stands_exactly_where_it_stood():
+    """Clock state was saved as a 0-100 meter and rebuilt by scaling it back,
+    so the saved value and the restored one agreed only when the arithmetic
+    happened to round the same way. It is stored as segments now."""
     state = _state()
-    state.act.goal_progress = 50
-    state.pressure = 50
+    state.act.clock_fill = {"project": 5, "danger": 3}
     run = build_run(state)
-    assert run.project.filled == 3, "half of six"
-    assert run.danger.filled == 2, "half of four, not half of eight"
+    assert run.project.filled == 5
+    assert run.danger.filled == 3
+
+
+def test_a_saved_clock_survives_a_round_trip_through_the_run():
+    state = _state()
+    run = build_run(state)
+    run.clocks.tick("project", 4)
+    run.clocks.tick("danger", 2)
+    sync_back(run, state)
+
+    restored = build_run(state)
+    assert restored.project.filled == 4
+    assert restored.danger.filled == 2
 
 
 # =============================
@@ -220,3 +232,35 @@ def test_the_prompt_asks_for_events_not_moods():
     assert "project_clock" in prompt and "danger_clock" in prompt
     assert "tides" in prompt and "seeded_facts" in prompt
     assert "never moods" in prompt
+
+
+def test_the_percentage_meters_are_gone_for_good():
+    """A regression guard.
+
+    `pressure` and `goal_progress` were 0-100 numbers nobody was ever shown.
+    Pressure rose two points a turn whether or not anything happened, progress
+    was nudged at random when a scene evolved, and both decided real things.
+    Clocks replaced them; this stops them creeping back as a convenience.
+    """
+    import ast as _ast
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent.parent
+    offenders = []
+    for folder in ("engine", "Core", "ui"):
+        for path in sorted((root / folder).rglob("*.py")):
+            tree = _ast.parse(path.read_text(encoding="utf-8-sig"))
+            for node in _ast.walk(tree):
+                if not isinstance(node, _ast.Attribute):
+                    continue
+                if node.attr in ("goal_progress",):
+                    offenders.append(f"{path.name}:{node.lineno} .{node.attr}")
+                if node.attr == "pressure" and isinstance(node.value, _ast.Name):
+                    offenders.append(f"{path.name}:{node.lineno} .pressure")
+    assert not offenders, "the 0-100 meters came back: " + "; ".join(offenders)
+
+
+def test_a_state_has_no_meters_to_read():
+    state = _state()
+    assert not hasattr(state, "pressure")
+    assert not hasattr(state.act, "goal_progress")

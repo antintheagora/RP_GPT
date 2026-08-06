@@ -32,7 +32,7 @@ def _state(turns=4, act=2):
     st.act = core.ActState(index=act)
     st.act.turns_taken = turns
     st.act.actors = [core.Actor(name="Sable", kind="rogue", role="companion")]
-    st.pressure = 37
+    st.act.clock_fill = {"project": 3, "danger": 5}
     st.player.hp = 62
     st.player.add_item(core.Item("Rusty Knife", ["weapon"], attack_delta=2, consumable=False))
     st.history = ["went left", "went right"]
@@ -48,7 +48,8 @@ def test_round_trip_preserves_the_run(tmp_path):
     assert restored.scenario_label == original.scenario_label
     assert restored.player.name == "Wren"
     assert restored.player.hp == 62
-    assert restored.pressure == 37
+    # Segments, not a percentage: clock state is saved as what a clock is.
+    assert restored.act.clock_fill == {"project": 3, "danger": 5}
     assert restored.act.index == original.act.index
     assert restored.act.turns_taken == original.act.turns_taken
     assert restored.history == ["went left", "went right"]

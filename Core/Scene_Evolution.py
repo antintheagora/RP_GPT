@@ -294,10 +294,10 @@ def evolve_situation(state, g: GemmaClient, outcome: str, intent: Optional[str] 
     if outcome == "success":
         state.scene_phase += 1
         state.stall_count = 0
-        # Gentle auto-progress if the situation text obviously relates to the goal
-        goal_terms = re.findall(r"\w+", state.blueprint.acts[state.act.index].goal.lower())
-        if any(t in state.act.situation.lower() for t in goal_terms):
-            state.act.goal_progress = min(100, state.act.goal_progress + random.randint(2, 4))
+        # Deleted: two to four points of progress, awarded at random, when the
+        # situation text happened to share a word with the act goal. Nothing
+        # may fill a clock except something the player actually did -- which
+        # is the axiom the 0-100 meters existed in violation of.
     else:
         state.stall_count = min(4, state.stall_count + 1)
 

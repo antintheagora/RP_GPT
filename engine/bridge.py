@@ -134,17 +134,12 @@ def build_run(state) -> Run:
               segments=danger_spec.get("segments") or ACT_SEGMENTS,
               kind=ClockKind.DANGER),
     ])
-    # Carry across whatever the old meters had accumulated, so a resumed run
-    # does not reset its own progress. Scaled by each clock's real size --
-    # assuming eight put a 4-segment clock at double where it belonged.
-    for clock_id, percent in (
-        ("project", getattr(state.act, "goal_progress", 0)),
-        ("danger", getattr(state, "pressure", 0)),
-    ):
-        clock = clocks.get(clock_id)
-        filled = round((percent or 0) / 100 * clock.segments) if clock else 0
-        if filled:
-            clocks.tick(clock_id, filled)
+    # Restore where the clocks actually stood. This used to be rebuilt from a
+    # 0-100 meter and scaled back, so the saved value and the restored one
+    # agreed only when the arithmetic happened to round the same way.
+    for clock_id, filled in (getattr(state.act, "clock_fill", None) or {}).items():
+        if clocks.get(clock_id) and filled:
+            clocks.tick(clock_id, int(filled))
 
     # The opposition's plan, as written. `suggested_encounters` is the
     # fallback for saves made before acts carried a Tide -- it is a list of
@@ -235,10 +230,11 @@ def sync_back(run: Run, state, result: Optional[TurnResult] = None) -> None:
     rather than left to drift.
     """
     project, danger = run.project, run.danger
-    if project:
-        state.act.goal_progress = int(project.ratio * 100)
-    if danger:
-        state.pressure = int(danger.ratio * 100)
+    state.act.clock_fill = {c.id: c.filled for c in run.clocks}
+    # One boolean where two 0-100 meters used to be. It decides whether the
+    # encounter picker biases toward the act's own business, and that is the
+    # only thing either meter was still read for.
+    state.act_pressing = any(c.ratio >= 0.6 for c in run.clocks)
     # What the narrator is told. A percentage is not describable; "five of
     # eight, and each one put there by something that happened" is.
     state.clock_summary = "; ".join(

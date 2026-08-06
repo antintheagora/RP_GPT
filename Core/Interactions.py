@@ -106,10 +106,10 @@ def use_item(state: "GameState") -> str:
     player.attack += item.attack_delta
     for key, value in item.special_mods.items():
         setattr(player.stats, key, max(1, getattr(player.stats, key) + value))
-    if item.goal_delta:
-        state.act.goal_progress = min(100, state.act.goal_progress + item.goal_delta)
-    if item.pressure_delta:
-        state.pressure = max(0, min(100, state.pressure + item.pressure_delta))
+    # Deleted: an item's goal_delta and pressure_delta nudged two 0-100 meters
+    # that no longer exist. Progress is a clock, and a clock is filled by
+    # doing something -- not by carrying something. (This path is unreachable
+    # from the web UI in any case; it belongs to the retired terminal loop.)
     message = f"You use {item.name}."
     _ev.prose(wrap(message))
     if item.consumable:

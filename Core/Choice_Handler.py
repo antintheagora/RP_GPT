@@ -80,15 +80,14 @@ def goal_lock_active(state: "GameState", last_success: bool) -> bool:
     Read by the encounter picker, to bias what shows up toward the act's own
     business once the act is nearly decided.
 
-    This used to measure the act by `turns_taken / turn_cap` -- a random
-    8-13 turn budget rolled at the start of the act, which decided when the
-    act ended regardless of whether anything had happened. Acts end on clocks
-    now, so being "past 60% of the act" means a clock is past 60%, and
-    `turn_cap` has no readers left.
+    This measured the act by `turns_taken / turn_cap` -- a random 8-13 turn
+    budget rolled at the start, which decided when an act ended regardless of
+    whether anything had happened -- and then by two 0-100 meters nobody was
+    ever shown. Acts end on clocks, so "past 60% of the act" is a fact about
+    a clock, computed once in sync_back rather than re-derived here from
+    numbers that no longer exist.
     """
-    if not last_success:
-        return False
-    return state.act.goal_progress >= 60 or state.pressure >= 60
+    return bool(last_success and getattr(state, "act_pressing", False))
 
 
 def _offer_stats(state: "GameState", count: int = 3) -> list:
