@@ -7,6 +7,7 @@ from Core.Logging import get_logger
 _log = get_logger("character_registry")
 
 import json
+import re
 import shutil
 import time
 from dataclasses import dataclass
@@ -107,6 +108,97 @@ def _sanitize(name: str) -> str:
     return filtered or "Character"
 
 
+# Titles and articles a model sprinkles inconsistently: it will write "The
+# Overseer" one turn and "Overseer" the next and mean the same machine.
+TITLES = {
+    "the", "a", "an", "of", "captain", "commander", "sergeant", "corporal",
+    "lieutenant", "general", "brother", "sister", "father", "mother", "elder",
+    "chief", "master", "baron", "baroness", "lord", "lady", "sir", "dame",
+    "doctor", "dr", "mr", "mrs", "ms", "old", "young", "king", "queen",
+    "thane", "man",
+}
+
+
+def normalise(name: str) -> str:
+    """The comparison key for "is this the same character?".
+
+    Shared with scripts/dedupe_characters.py so the cleanup pass and the
+    write-time guard cannot drift into disagreeing about what a duplicate is.
+
+    Deliberately narrow. An earlier attempt matched on surnames too and would
+    have folded seventeen distinct characters into four, chaining
+    Captain Marius -> Captain Marius Thorne -> Lord Thorne -> Elias Thorne.
+    Matching too little leaves a duplicate; matching too much destroys the cast.
+    """
+    cleaned = re.sub(r"[^a-z0-9 ]+", " ", (name or "").lower())
+    return " ".join(word for word in cleaned.split() if word not in TITLES)
+
+
+_FOLDER_INDEX: Optional[Dict[str, Path]] = None
+
+
+def _index() -> Dict[str, Path]:
+    """Every profile on disk, keyed by normalised name.
+
+    Built once and kept current by the writers below, because this is asked
+    once per actor per turn and rglob over the whole tree is not free.
+    """
+    global _FOLDER_INDEX
+    if _FOLDER_INDEX is None:
+        index: Dict[str, Path] = {}
+        if BASE_DIR.exists():
+            for meta in BASE_DIR.rglob(METADATA_FILE):
+                name = meta.parent.name.replace("_", " ")
+                try:
+                    data = json.loads(meta.read_text(encoding="utf-8-sig"))
+                    name = data.get("name") or name
+                    known = [name] + [a for a in (data.get("aliases") or []) if a]
+                except Exception:
+                    known = [name]
+                for alias in known:
+                    key = normalise(alias)
+                    # First writer wins, so an alias never displaces a real
+                    # profile that happens to normalise the same way.
+                    if key:
+                        index.setdefault(key, meta.parent)
+        _FOLDER_INDEX = index
+    return _FOLDER_INDEX
+
+
+def forget_index() -> None:
+    """Drop the cache. For tests, and after a dedupe run rewrites the tree."""
+    global _FOLDER_INDEX
+    _FOLDER_INDEX = None
+    _ALIAS_CACHE.clear()
+
+
+def existing_folder_for(name: str) -> Optional[Path]:
+    """Where this character already lives, whatever folder or spelling.
+
+    Without this the registry keyed folders on role + exact name, so one
+    campaign produced Overseer Bot, Overseer Unit 7 and The Overseer as three
+    separate people, and put The Core Guardian in both Enemies/ and NPC/ with
+    contradictory descriptions. The dedupe script cleaned that up once; every
+    campaign since rebuilt it.
+    """
+    key = normalise(name)
+    if not key:
+        return None
+    index = _index()
+    if key in index:
+        return index[key]
+
+    # A bare given name that uniquely extends to one longer name -- "Silas"
+    # meeting an existing "Brother Silas Vane". Ambiguity means no match:
+    # two candidates is a signal we do not know which, not a licence to pick.
+    if len(key.split()) == 1:
+        longer = [folder for other, folder in index.items()
+                  if len(other.split()) > 1 and other.split()[0] == key]
+        if len(longer) == 1:
+            return longer[0]
+    return None
+
+
 def _discover_portrait(folder: Path) -> Optional[Path]:
     for ext in PORTRAIT_EXTS:
         candidate = folder / f"{PORTRAIT_BASENAME}{ext}"
@@ -182,7 +274,16 @@ def ensure_character_profile(actor: "Actor") -> CharacterProfile:
         )
     ensure_directories()
     role = (actor.role or actor.kind or "npc").lower()
-    folder = BASE_DIR / ROLE_DIRS.get(role, ROLE_DIRS["npc"]) / _sanitize(actor.name or "Character")
+
+    # Reuse the profile this character already has, in whatever folder and
+    # under whatever spelling. Keying on role + exact name meant a campaign
+    # invented a fresh person every time the model varied the wording.
+    folder = existing_folder_for(actor.name or "")
+    known_as = ""
+    if folder is None:
+        folder = BASE_DIR / ROLE_DIRS.get(role, ROLE_DIRS["npc"]) / _sanitize(actor.name or "Character")
+    else:
+        known_as = actor.name or ""
     folder.mkdir(parents=True, exist_ok=True)
     meta_path = folder / METADATA_FILE
     metadata: Dict[str, object] = {}
@@ -193,7 +294,20 @@ def ensure_character_profile(actor: "Actor") -> CharacterProfile:
             metadata = {}
 
     metadata.setdefault("name", actor.name)
-    metadata["role"] = role
+    # A variant spelling becomes an alias rather than a second character, so
+    # the profile answers to it next time without another disk scan.
+    if known_as and known_as != metadata.get("name"):
+        aliases = [a for a in (metadata.get("aliases") or []) if a]
+        if known_as not in aliases:
+            aliases.append(known_as)
+            metadata["aliases"] = aliases
+            _ALIAS_CACHE.pop(str(metadata.get("name", "")).strip().lower(), None)
+        _index().setdefault(normalise(known_as), folder)
+    # The role on disk is the one that was authored. Letting each sighting
+    # overwrite it made The Core Guardian a Boss, a Beast and an Enemy in
+    # turn, depending on what the model last called it.
+    metadata.setdefault("role", role)
+    role = str(metadata.get("role") or role)
     metadata.setdefault("kind", actor.kind)
     metadata["hp"] = actor.hp
     metadata["attack"] = actor.attack

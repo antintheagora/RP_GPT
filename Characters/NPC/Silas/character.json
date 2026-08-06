@@ -6,7 +6,7 @@
   "attack": 3,
   "updated_at": 1785333139.758173,
   "last_seen": 1785333139.7581737,
-  "encounters": 6,
+  "encounters": 7,
   "desc": "Paranoid and desperate",
   "personality": "Evasive, wise, cryptic",
   "personality_archetype": "inquisitive",
@@ -17,6 +17,7 @@
   "alignment": "neutral",
   "aliases": [
     "Brother Silas",
-    "Old Man Silas"
+    "Old Man Silas",
+    "Silas the Hermit"
   ]
 }

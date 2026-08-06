@@ -39,18 +39,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 CHARACTERS = ROOT / "Characters"
 
-TITLES = {
-    "the", "a", "an", "of", "captain", "commander", "sergeant", "corporal",
-    "lieutenant", "general", "brother", "sister", "father", "mother", "elder",
-    "chief", "master", "baron", "baroness", "lord", "lady", "sir", "dame",
-    "doctor", "dr", "mr", "mrs", "ms", "old", "young", "king", "queen",
-    "thane", "man",
-}
+sys.path.insert(0, str(ROOT))
 
-
-def normalise(name: str) -> str:
-    cleaned = re.sub(r"[^a-z0-9 ]+", " ", (name or "").lower())
-    return " ".join(w for w in cleaned.split() if w not in TITLES)
+# One definition of "same character", shared with the registry's write-time
+# guard so the cleanup pass and the guard cannot drift apart.
+from Core.Character_Registry import TITLES, normalise  # noqa: E402,F401
 
 
 def load_all():
