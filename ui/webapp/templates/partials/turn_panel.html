@@ -132,6 +132,16 @@
     </div>
   {% endif %}
 
+  {# The scene, when one has arrived. Pictures are fetched off the turn, so
+     this lags by a beat rather than holding the game up -- and the panel
+     simply has no image block until the first one lands. #}
+  {% if payload.image_url %}
+    <figure class="rounded-xl overflow-hidden border border-slate-700/80">
+      <img src="{{ payload.image_url }}" alt="{{ payload.situation[:120] }}"
+           class="w-full object-cover" style="aspect-ratio: 16 / 9;" loading="lazy" />
+    </figure>
+  {% endif %}
+
   <div class="rounded-xl bg-night/80 border border-slate-700/80 p-4 space-y-2">
     <p class="text-xs uppercase tracking-wide text-slate-400">Situation</p>
     <p class="text-slate-100 leading-relaxed">{{ payload.situation or 'Waiting for the first spark of adventure.' }}</p>

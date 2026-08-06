@@ -25,12 +25,14 @@ from engine.bridge import (
     sync_foes,
 )
 from engine.events import collecting
+from engine.imagery import ImageRequest, ImageResult, ImageWorker
+from engine.model import IMG_HEIGHT, IMG_WIDTH
 from engine.keeper import ModelKeeper
 from engine.rest import render_rest, take_rest
 from engine import talk as talk_engine
 from engine.turn import advance_turn, prepare_turn
 from engine.persistence import list_runs, load_run, save_run
-from Core.Paths import SAVES_DIR
+from Core.Paths import IMAGES_DIR, SAVES_DIR
 from pathlib import Path
 from Core.AI_Dungeon_Master import (
     GemmaClient,
@@ -41,6 +43,15 @@ from Core.AI_Dungeon_Master import (
 )
 
 from Core.Helpers import sanitize_prose
+# Straight from the module that owns them. Reaching through the RP_GPT
+# facade for these raised AttributeError -- it does not re-export them --
+# and the failure was swallowed by the flavour loop's except, so every
+# image request silently did nothing.
+from Core.Image_Gen import (
+    build_urls_with_fallbacks,
+    download_image,
+    make_image_prompt,
+)
 from Core.Journal import maybe_journal_lore
 from Core.Random_Encounters import handle_post_turn_beat
 from Core.Turn_And_Act_Flow import begin_act
@@ -277,6 +288,7 @@ class GameSession:
         self._events: List[Event] = []
         self.run = build_run(state)
         self.keeper = ModelKeeper(client, self._character_block(), self._recall)
+        self.imagery = self._build_imagery()
         intro = sanitize_prose(self.state.act.situation or "Act begins.")
         if intro:
             self._append_event(intro)
@@ -306,7 +318,13 @@ class GameSession:
         # blueprint here, so a 2- or 5-act campaign walked off the end of the
         # acts dict partway through and lost the run.
         state.act_count = len(blueprint.acts)
-        state.images_enabled = False
+        # Images were switched off here, unconditionally and without comment.
+        # That was the right call while the fetch ran inline: it retried four
+        # times with a two-second backoff *inside the turn*, so a slow host
+        # meant twenty seconds of staring at a button already pressed. The
+        # fetch is on a worker now and a turn never waits for it, so the
+        # default goes back to on -- and the setup config can still say no.
+        state.images_enabled = bool(config.get("images", True))
         begin_act(state, 1)
         try:
             core.queue_image_event(
@@ -562,6 +580,16 @@ class GameSession:
                 "bargain": self._bargain_payload(),
                 "talk": self._talk_payload(),
                 "party": self._party_payload(),
+                # The most recent picture that actually arrived. Nothing ever
+                # displayed one: the queued event carried the prompt and not
+                # the file, so there was nothing for a template to point at.
+                # A plain path rather than url_for: this payload is built by
+                # tests and by the playthrough harness, neither of which has
+                # a Flask application context, and url_for raises without one.
+                "image_url": (
+                    f"/run-image/{self.id}/{Path(self._images[-1]['path']).name}"
+                    if self._images else ""
+                ),
                 # Who is still standing, and how worn down they are. Without
                 # this the player swings at a name with no idea whether it is
                 # working.
@@ -594,6 +622,28 @@ class GameSession:
         with self._lock:
             return list(self._events[-limit:])
 
+    def _build_imagery(self) -> ImageWorker:
+        """The picture worker for this run.
+
+        Images land under the user data directory, one folder per run, so a
+        campaign's art stays with it. They used to be written to the process
+        working directory as turn_00000.jpg -- the same filename every time,
+        in the repository root.
+        """
+        def fetch(prompt: str, out_path: str) -> None:
+            # Seeded on the file itself, so the same turn always redraws to
+            # the same picture but the next turn does not.
+            primary, simple = build_urls_with_fallbacks(
+                prompt, IMG_WIDTH, IMG_HEIGHT, seed=abs(hash(out_path)))
+            download_image(primary, out_path, simplified_url=simple)
+
+        return ImageWorker(
+            directory=IMAGES_DIR / self.id,
+            fetch=fetch,
+            on_ready=self._image_ready,
+            enabled=bool(getattr(self.state, "images_enabled", True)),
+        )
+
     def _reset_transient(self) -> None:
         """Everything that is per-session rather than per-campaign.
 
@@ -608,6 +658,7 @@ class GameSession:
         self._last_rest = None
         self._pending: Optional[PendingOffer] = None
         self._talk: Optional[talk_engine.Conversation] = None
+        self._images: List[Dict[str, Any]] = []
         self._lock = threading.RLock()
 
     def _character_block(self) -> str:
@@ -640,7 +691,7 @@ class GameSession:
 
         # Flavour, not rules. None of it may take a turn down with it.
         for label, step in (
-            ("turn image", lambda: core.generate_turn_image(self.state, core.queue_image_event)),
+            ("turn image", self._queue_turn_image),
             ("journal lore", lambda: maybe_journal_lore(self.state, self.client)),
             ("post-turn beat", lambda: handle_post_turn_beat(self.state, self.client)),
         ):
@@ -656,6 +707,29 @@ class GameSession:
         # start a single fight.
         sync_foes(self.run, self.state)
         self._options = None
+
+    def _queue_turn_image(self) -> None:
+        """Ask for a picture of where we are. Does not wait for it."""
+        if not getattr(self.state, "images_enabled", True):
+            return
+        prompt = make_image_prompt(self.state)
+        self.imagery.submit(ImageRequest(
+            kind="turn", prompt=prompt,
+            act=self.state.act.index, turn=self.state.act.turns_taken,
+            actors=[a.name for a in (self.state.act.actors or [])],
+        ))
+
+    def _image_ready(self, result: ImageResult) -> None:
+        """Called from the worker thread when a picture lands."""
+        with self._lock:
+            self._images.append({
+                "kind": result.kind, "path": result.path,
+                "act": result.act, "turn": result.turn,
+            })
+            # A gallery, not a history: the newest handful is all the panel
+            # shows and all a save needs to point at.
+            self._images = self._images[-12:]
+            self.state.last_image_path = result.path
 
     def _recall(self, scene) -> str:
         """What the people in this scene remember about the player.
@@ -768,6 +842,7 @@ class GameSession:
         session.run = build_run(state)
         session.keeper = ModelKeeper(session.client, session._character_block(),
                                      session._recall)
+        session.imagery = session._build_imagery()
         resumed = sanitize_prose(
             getattr(state, "last_situation_para", "") or state.act.situation or "The story resumes."
         )

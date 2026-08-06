@@ -886,6 +886,22 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
         html = render_template("partials/log_panel.html", events=session.get_events(), payload=session.get_turn_payload())
         return _action_response(html)
 
+    @app.get("/run-image/<run_id>/<path:filename>")
+    def run_image(run_id: str, filename: str):
+        """Serve a picture this run generated.
+
+        Under the user data directory rather than the project, and scoped to
+        the run that made it. Both segments are resolved and checked against
+        the images root, so a crafted name cannot walk out of it.
+        """
+        from Core.Paths import IMAGES_DIR
+
+        root = Path(IMAGES_DIR).resolve()
+        target = (root / run_id / filename).resolve()
+        if root not in target.parents or not target.is_file():
+            abort(404)
+        return send_from_directory(str(target.parent), target.name)
+
     @app.post("/reset")
     def reset():
         _store().destroy(_current_session_id())

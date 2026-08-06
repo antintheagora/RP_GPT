@@ -253,17 +253,31 @@ def rate_limit_images(min_interval: float = 1.2) -> None:
     _last_image_ts = time.time()
 
 
-def pollinations_url(prompt: str, width: int, height: int) -> str:
+def pollinations_url(prompt: str, width: int, height: int,
+                     seed: Optional[int] = None) -> str:
+    """The image URL.
+
+    `seed` matters more than it looks: the service is deterministic on the
+    prompt, so two turns in the same room returned byte-identical pictures.
+    Varying it per turn gives a new angle on the same scene rather than the
+    same file again.
+    """
     query = parse.quote_plus(prompt)
-    return f"https://image.pollinations.ai/prompt/{query}?width={width}&height={height}&nologo=true"
+    url = (f"https://image.pollinations.ai/prompt/{query}"
+           f"?width={width}&height={height}&nologo=true")
+    if seed is not None:
+        url += f"&seed={int(seed) % 1_000_000}"
+    return url
 
 
-def build_urls_with_fallbacks(prompt: str, width: int, height: int) -> tuple[str, str]:
-    primary = pollinations_url(prompt, width, height)
+def build_urls_with_fallbacks(prompt: str, width: int, height: int,
+                              seed: Optional[int] = None) -> tuple[str, str]:
+    primary = pollinations_url(prompt, width, height, seed)
     simple = pollinations_url(
         compress_and_sanitize(f"moody establishing shot. {image_style_prefix()}.", max_len=220),
         min(width, 640),
         min(height, 360),
+        seed,
     )
     return primary, simple
 
