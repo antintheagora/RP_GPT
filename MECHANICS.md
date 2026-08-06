@@ -1180,7 +1180,9 @@ All marked **[tunable]** unless noted otherwise.
 
 # 13. Later phases — designed, not scheduled
 
-Both of these are **designed and agreed in principle but not committed to a phase.** Neither is load-bearing; the core loop works without them. Revisit once the game is playable.
+[Aspects](#131-aspects) is **designed and agreed in principle but not committed to a phase.** It is not load-bearing; the core loop works without it. Revisit once the game has been played.
+
+[The Director](#132-the-director) is **built.**
 
 ## 13.1 Aspects
 
@@ -1211,6 +1213,36 @@ The Director adjusts pacing by **reading state that is already on screen**:
 - You are badly wounded, low on Resolve, clocks near full → **the world relents.** A quieter scene, an ally arrives, an opening to rest.
 
 This is the rubber-banding a good human GM does by instinct. Because it is computed entirely from visible state, the player can always see *why* the pressure changed.
+
+### Mountains and valleys
+
+Agreed 2026-07-29, and it is the part that makes the rest work.
+
+Checking the state each turn and pushing or relenting accordingly **oscillates**: push, ease, push, ease, one turn apart. The result is a flat line at medium where nothing builds to anything and nothing settles — the same shapelessness the Director was meant to cure, arrived at from the other direction.
+
+So the Director holds a **stance**, and a stance has a **minimum length**:
+
+| Stance | Holds for at least |
+|---|---|
+| **Quiet** | 3 turns |
+| **Building** | 2 turns |
+| **Peak** | 3 turns, and at most 6 |
+| **Easing** | 2 turns |
+
+A high is allowed to last rather than dissipating the moment it arrives. A low is allowed to be genuinely low — **not every moment of a campaign should have something breathing down the player's neck.**
+
+Two things may break the rhythm, and only two:
+
+1. **A peak has a ceiling.** Tension that never resolves stops being tension and becomes the new normal, which is the flat line again.
+2. **Being about to die** drops it straight to Easing, dwell ignored. That is the one mercy worth breaking the shape for.
+
+**Pacing belongs to the campaign, not the act.** Held per-act it restarts from Quiet at every boundary and, on a campaign where many turns are free actions, never leaves it.
+
+### What it governs, and what it must not
+
+The Director decides what *happens* — whether an off-screen force takes an extra move, whether something is allowed to walk into the scene. It never touches a target number. Exactly one thing moves those and that is Bearing; a hidden difficulty knob is precisely what `state.pressure` was.
+
+A Tide still advances whenever the player actually loses ground, whatever the stance. The Director governs only the *extra* nudge at a peak, which is what makes a bad stretch feel like it is compounding rather than merely continuing.
 
 > **Rejected: the Chaos Factor** (from Mythic GME) — a hidden global number, usually 1–9, that rises when things go badly and falls when the player is winning, and is rolled against at the start of each scene. It is rejected for two reasons: it is a hidden meter that moves on its own, which is precisely what axiom A3 forbids and what we deleted along with `state.pressure`; and it substantially duplicates [Tides](#52-tides), which already supply escalating off-screen pressure — but *visibly*, and with names.
 

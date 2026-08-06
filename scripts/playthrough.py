@@ -56,7 +56,15 @@ def _clocks(session) -> str:
     if run is None:
         return "clk  -    - "
     parts = [f"{c.filled}/{c.segments}" if c else " - " for c in (run.project, run.danger)]
-    return "clk " + " ".join(parts)
+    return "clk " + " ".join(parts) + " " + _stance(session)
+
+
+def _stance(session) -> str:
+    """Where the pacing stands. Highs and lows should read as stretches."""
+    run = getattr(session, "run", None)
+    if run is None:
+        return "        "
+    return f"{run.director.stance.value:<8s}"
 
 
 acts_seen = {session.state.act.index}
@@ -118,7 +126,7 @@ for turn in range(1, MAX_TURNS + 1):
         f"  turn {turn:2d}  act {st.act.index}/{st.act_count}  "
         f"{elapsed:5.1f}s  hp {st.player.hp:3d}  "
         f"scene {len(st.act.actors):2d} +{len(st.act.undiscovered):2d} known  "
-        f"{_clocks(session)}  {('CAMP' if camping else option.label)[:14]:14s} {out[:34]}{flag}"
+        f"{_clocks(session)} {('CAMP' if camping else option.label)[:12]:12s} {out[:26]}{flag}"
     )
 
     # A finished campaign is a pass, not a reason to keep driving it. Without

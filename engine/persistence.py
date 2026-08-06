@@ -18,6 +18,7 @@ import time
 from dataclasses import fields, is_dataclass
 
 from engine.affinity import Faction, Ledger, Person
+from engine.director import Director, Stance
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -56,9 +57,10 @@ _TYPES = {
     "Ledger": Ledger,
     "Person": Person,
     "Faction": Faction,
+    "Director": Director,
 }
 
-_ENUMS = {"Scenario": Scenario, "TurnMode": TurnMode}
+_ENUMS = {"Scenario": Scenario, "TurnMode": TurnMode, "Stance": Stance}
 
 
 # ---------------------------------------------------------------- encoding

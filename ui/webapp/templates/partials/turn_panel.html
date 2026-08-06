@@ -155,6 +155,21 @@
     </figure>
   {% endif %}
 
+  {# How hard the world is leaning, and why. Shown because pacing the player
+     cannot see is a hidden meter, which is the thing this replaced. #}
+  {% if payload.pacing %}
+    {% set stance = payload.pacing.stance %}
+    <div class="rounded-xl border p-3
+                {{ 'border-rose-500/50 bg-rose-500/5' if stance == 'peak'
+                   else 'border-amber-500/40 bg-amber-500/5' if stance == 'building'
+                   else 'border-slate-700/80 bg-night/80' }}">
+      <p class="text-sm">{{ payload.pacing.text }}</p>
+      {% if payload.pacing.why %}
+        <p class="text-xs text-slate-500 mt-1">{{ payload.pacing.why | join(' · ') }}</p>
+      {% endif %}
+    </div>
+  {% endif %}
+
   <div class="rounded-xl bg-night/80 border border-slate-700/80 p-4 space-y-2">
     <p class="text-xs uppercase tracking-wide text-slate-400">Situation</p>
     <p class="text-slate-100 leading-relaxed">{{ payload.situation or 'Waiting for the first spark of adventure.' }}</p>

@@ -18,6 +18,7 @@ from typing import Dict, List, Optional
 from engine.actions import Depth, Intent, ObserveTarget, Verb
 from engine.character import Condition, WeaponWeight
 from engine.clocks import ACT_SEGMENTS, Clock, ClockBoard, ClockKind
+from engine.director import Director
 from engine.model import SPECIAL_KEYS
 from engine.scene import Foe, Obstacle, Scene
 from engine.tides import Tide, TideBoard
@@ -183,6 +184,9 @@ def build_run(state) -> Run:
                     for c in (getattr(state, "companions", []) or [])
                     if getattr(c, "name", "") and getattr(c, "alive", True)],
         ledger=getattr(state, "ledger", None),
+        # Carried, not recreated: an act boundary is not a reason for the
+        # world to forget how hard it was leaning a moment ago.
+        director=getattr(state, "director", None) or Director(),
     )
 
 

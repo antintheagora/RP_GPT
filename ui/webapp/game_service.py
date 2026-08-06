@@ -580,6 +580,14 @@ class GameSession:
                 "bargain": self._bargain_payload(),
                 "talk": self._talk_payload(),
                 "party": self._party_payload(),
+                # On screen, with its reason. Pacing that the player cannot
+                # see is a hidden meter, which is the thing this replaced.
+                "pacing": {
+                    "stance": self.run.director.stance.value,
+                    "text": self.run.director.describe(),
+                    "why": (self.run.director.last_reading.why
+                            if self.run.director.last_reading else []),
+                },
                 # Only the factions that have actually heard of you. The rest
                 # have no opinion, and showing "neutral" for a group that has
                 # never met you would be a different, wrong claim.
@@ -703,7 +711,10 @@ class GameSession:
         for label, step in (
             ("turn image", self._queue_turn_image),
             ("journal lore", lambda: maybe_journal_lore(self.state, self.client)),
-            ("post-turn beat", lambda: handle_post_turn_beat(self.state, self.client)),
+            # Only when the world is leaning in. A quiet stretch that still
+            # has someone walking into it every other turn is not a quiet
+            # stretch, and the low moments are half the point of pacing.
+            ("post-turn beat", self._maybe_beat),
         ):
             try:
                 step()
@@ -717,6 +728,12 @@ class GameSession:
         # start a single fight.
         sync_foes(self.run, self.state)
         self._options = None
+
+    def _maybe_beat(self) -> None:
+        """Let something find the player, if the moment is right for it."""
+        if not self.run.director.may_interrupt():
+            return
+        handle_post_turn_beat(self.state, self.client)
 
     def _queue_turn_image(self) -> None:
         """Ask for a picture of where we are. Does not wait for it."""

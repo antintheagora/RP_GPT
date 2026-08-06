@@ -32,6 +32,7 @@ from engine.affinity import (
 from engine.character import Condition, Scar, Virtue, WeaponWeight, damage_for, earns_virtue
 from engine.clocks import ClockBoard, ClockKind, ClockTick, opposing_segments_for
 from engine.dice import Effect, Outcome
+from engine.director import Director
 from engine.model import SPECIAL_KEYS
 from engine.resolve import (
     Assessment,
@@ -79,6 +80,9 @@ class Run:
     assists_used: int = 0
     wound_taken_for_you: bool = False
     ledger: Optional[Ledger] = None
+    # Pacing. Holds a stance for a stretch rather than reacting turn to
+    # turn, so a campaign has peaks and troughs instead of a flat line.
+    director: Director = field(default_factory=Director)
 
     @property
     def assists_left(self) -> int:
@@ -113,6 +117,8 @@ class TurnResult:
     struck: str = ""
     felled: str = ""
     reputation_shifted: str = ""
+    stance: str = ""
+    stance_changed: bool = False
     act_complete: bool = False
     act_failed: bool = False
     consumed_turn: bool = False
@@ -355,6 +361,15 @@ def advance_turn(
     result.consumed_turn = intent.costs_a_turn and not resolution.can_withdraw
     if result.consumed_turn:
         run.turn += 1
+        # Pacing reads the turn that just happened, then decides what the
+        # world is allowed to do next. It never touches what just happened.
+        run.director.record(not resolution.succeeded)
+        before = run.director.stance
+        run.director.update(run)
+        result.stance = run.director.stance.value
+        if run.director.changed:
+            result.stance_changed = True
+            ev.marginal(run.director.describe())
 
     # --- did the act end? ------------------------------------------------
     project, danger = run.project, run.danger
@@ -424,13 +439,22 @@ def _apply_clocks(run: Run, resolution: Resolution,
 
 
 def _advance_tides(run: Run, resolution: Resolution) -> List[TideMove]:
-    """Tides move on failure, not on a timer."""
-    if resolution.succeeded and resolution.effect is not Effect.LIMITED:
+    """Tides move on failure, not on a timer.
+
+    Losing ground always moves one -- that is the rule, and the Director does
+    not get a say in it. What the Director governs is the *extra* nudge at a
+    peak, which is what makes a bad stretch feel like it is compounding
+    rather than merely continuing.
+    """
+    lost_ground = not resolution.succeeded or resolution.effect is Effect.LIMITED
+    if not lost_ground and not run.director.may_advance_a_tide():
         return []
+
     urgent = run.tides.most_urgent()
     if urgent is None:
         return []
-    moves = urgent.advance(1)
+    segments = 2 if (lost_ground and run.director.may_advance_a_tide()) else 1
+    moves = urgent.advance(segments)
     for move in moves:
         ev.chapter(move.text)
     return moves
