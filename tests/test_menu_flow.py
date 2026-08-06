@@ -57,6 +57,10 @@ def _session(keeper=None, tmp_path=None, monkeypatch=None):
 
     session = gs.GameSession.__new__(gs.GameSession)
     session.id = "menu-test"
+    # One call rather than a hand-copied field list: the session grew three
+    # new transient fields during this work, and each time the copy here went
+    # stale and took nine unrelated tests down with it.
+    session._reset_transient()
     session.state = core.GameState(
         scenario=core.Scenario.APOCALYPSE, scenario_label="T",
         player=player, blueprint=blueprint, pressure_name="The Tide",
@@ -65,12 +69,6 @@ def _session(keeper=None, tmp_path=None, monkeypatch=None):
     session.client = None
     session.world_text = ""
     session._events = []
-    session._turn_events = []
-    session._listeners = []
-    session._options = None
-    session._last_result = None
-    session._pending = None
-    session._lock = threading.RLock()
     session.run = build_run(session.state)
     session.keeper = keeper or StubKeeper()
     # Never touch the real save directory from a test.

@@ -1,0 +1,13 @@
+{
+  "name": "The Reclamation Fleet",
+  "role": "npc",
+  "kind": "Industrial Recovery Force",
+  "hp": 26,
+  "attack": 5,
+  "updated_at": 1786029050.592943,
+  "last_seen": 1786029050.5929432,
+  "encounters": 1,
+  "personality_archetype": "stoic",
+  "species": "human",
+  "comm_style": "speech"
+}

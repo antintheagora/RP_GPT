@@ -1,0 +1,15 @@
+{
+  "name": "The Deep-Diver",
+  "role": "npc",
+  "kind": "Humanoid",
+  "hp": 20,
+  "attack": 4,
+  "updated_at": 1786027906.2899292,
+  "last_seen": 1786027906.2899299,
+  "encounters": 1,
+  "desc": "A cultist who believes the sea is a god.",
+  "personality": "A cultist who believes the sea is a god.",
+  "personality_archetype": "joyful",
+  "species": "human",
+  "comm_style": "speech"
+}

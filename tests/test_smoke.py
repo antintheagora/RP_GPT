@@ -27,7 +27,6 @@ LIVE_MODULES = [
     "Core.Turn_And_Act_Flow",
     "Core.Choice_Handler",
     "Core.Character_Registry",
-    "Core.Interludes",
     "Core.Journal",
     "Core.Random_Encounters",
     "Core.Terminal_HUD",
@@ -74,29 +73,32 @@ def test_no_engine_module_needs_pygame():
     assert "pygame" not in sys.modules
 
 
-def test_talk_loop_imports_resolve():
-    """Regression for B03: talk_loop's function-local import block.
+def test_function_local_rp_gpt_imports_all_resolve():
+    """Regression for B03, widened.
 
-    Every name it pulls from RP_GPT must actually exist there. It did not, so
-    pressing Talk raised ImportError in all three UIs.
+    `talk_loop` pulled fourteen names out of RP_GPT inside the function body,
+    two of which did not exist there -- so pressing Talk raised ImportError in
+    all three UIs and nothing caught it, because a function-local import is
+    invisible until the function runs.
+
+    talk_loop itself is gone, but the pattern is still all over Core/ and the
+    failure mode is unchanged: a name deleted from RP_GPT breaks a function
+    nobody calls in a test. This checks every one of them at once.
     """
     import RP_GPT
 
-    src = (PROJECT_ROOT / "Core" / "Interactions.py").read_text(encoding="utf-8")
-    tree = ast.parse(src)
-    fn = next(
-        n for n in tree.body
-        if isinstance(n, ast.FunctionDef) and n.name == "talk_loop"
-    )
-    imported = [
-        alias.name
-        for node in ast.walk(fn)
-        if isinstance(node, ast.ImportFrom)
-        for alias in node.names
-    ]
-    assert imported, "talk_loop should still have a local import block"
-    missing = [name for name in imported if not hasattr(RP_GPT, name)]
-    assert not missing, f"talk_loop imports names RP_GPT does not export: {missing}"
+    offenders = []
+    for path in sorted((PROJECT_ROOT / "Core").glob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8-sig"))
+        for fn in [n for n in ast.walk(tree)
+                   if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]:
+            for node in ast.walk(fn):
+                if not isinstance(node, ast.ImportFrom) or node.module != "RP_GPT":
+                    continue
+                for alias in node.names:
+                    if not hasattr(RP_GPT, alias.name):
+                        offenders.append(f"{path.name}:{fn.name} imports {alias.name}")
+    assert not offenders, "names RP_GPT does not export: " + "; ".join(offenders)
 
 
 def test_image_gen_reuses_canonical_prompt_builders():

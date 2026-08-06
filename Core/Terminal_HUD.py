@@ -61,37 +61,8 @@ class LoadingBar:
             self._thread.join()
 
 
-def header(width: int = 78) -> None:
-    """Print the title banner so the player knows the adventure is live."""
-    print("=" * width)
-    print("RP-GPT — Gemma-Orchestrated RPG".center(width))
-    print("=" * width)
 
 
-def hud(state: "GameState", width: int = 78) -> None:
-    """Show the core adventure stats in one tidy block."""
-    player = state.player
-    plan = state.blueprint.acts[state.act.index]
-
-    # Top line: where we are in the act and the turn order.
-    print(f"Act: {state.act.index}/{state.act_count} | Turn: {state.act.turns_taken}/{state.act.turn_cap}")
-
-    # Player status plus current act goal progress.
-    print(f"HP:{player.hp} ATK:{player.attack} | Act Goal: {state.act.goal_progress}/100  ({plan.goal})")
-
-    # Pressure meter and a short reminder of the campaign goal.
-    print(f"{state.pressure_name}: {state.pressure}/100 | Campaign: {state.blueprint.campaign_goal}")
-
-    # List the SPECIAL stats plus a few pacing counters so choices stay informed.
-    s = player.stats
-    print(
-        f"S:{s.STR} P:{s.PER} E:{s.END} C:{s.CHA} I:{s.INT} A:{s.AGI} L:{s.LUC} "
-        f"| Phase:{state.scene_phase} Stall:{state.stall_count} "
-        f"| Custom uses left:{max(0, 3 - state.act.custom_uses)}"
-    )
-
-    # Divider to separate the HUD from the rest of the turn narration.
-    print("-" * width)
 
 
 __all__ = ["LoadingBar", "header", "hud"]

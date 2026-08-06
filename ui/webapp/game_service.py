@@ -16,11 +16,12 @@ from typing import Any, Dict, List, Optional
 
 import RP_GPT as core
 from engine import events as ev
-from engine.actions import Depth, MenuOption, build_menu, intent_from_option
+from engine.actions import Depth, Intent, MenuOption, Verb, build_menu, intent_from_option
 from engine.bridge import build_run, intent_for, render_result, sync_back
 from engine.events import collecting
 from engine.keeper import ModelKeeper
 from engine.rest import render_rest, take_rest
+from engine import talk as talk_engine
 from engine.turn import advance_turn, prepare_turn
 from engine.persistence import list_runs, load_run, save_run
 from Core.Paths import SAVES_DIR
@@ -152,6 +153,10 @@ BARGAIN_REFUSE = "bargain:refuse"
 # Rest is not a verb -- it resolves nothing and rolls nothing -- so it has
 # its own code rather than being squeezed through the action menu.
 REST = "rest"
+# Conversation codes. Talking is several exchanges, so the loop needs its
+# own verbs while it is open.
+TALK_PREFIX = "talk:"
+TALK_END = "talk:end"
 
 
 @dataclass
@@ -257,19 +262,13 @@ class GameSession:
         world_text: str,
     ):
         self.id = uuid.uuid4().hex
-        self._turn_events: List[Any] = []
-        self._listeners: List[Any] = []
-        self._last_result = None
-        self._pending: Optional[PendingOffer] = None
-        self._last_rest = None
+        self._reset_transient()
         self.state = state
         self.client = client
         self.label = scenario_label
         self.world_text = world_text.strip()
         self.created_at = time.time()
-        self._options: Optional[ExploreOptions] = None
         self._events: List[Event] = []
-        self._lock = threading.RLock()
         self.run = build_run(state)
         self.keeper = ModelKeeper(client, self._character_block())
         intro = sanitize_prose(self.state.act.situation or "Act begins.")
@@ -369,9 +368,37 @@ class GameSession:
             if option.key == code:
                 intent = intent_from_option(option, described)
                 break
+        if intent is None and code.startswith(TALK_PREFIX):
+            # An exchange inside an open conversation. It is an ordinary
+            # parley Intent -- the loop is a wrapper around the one engine,
+            # not a second resolution system.
+            #
+            # The conversation may already have closed under it: it ends
+            # itself once spent, and a second click on a stale button must
+            # resolve as an ordinary parley rather than raise.
+            stat = code[len(TALK_PREFIX):].upper()
+            partner = self._talk.actor_name if self._talk else ""
+            intent = Intent(
+                verb=Verb.PARLEY,
+                depth=Depth.DESCRIBE if described else Depth.QUICK,
+                text=described or (f"talk to {partner}" if partner else "talk"),
+                stat_hint=stat if stat in core.SPECIAL_KEYS else "CHA",
+            )
         if intent is None:
             # Legacy numeric codes: the terminal harness and older tests.
             intent = intent_for(code, payload, self.run.stats)
+
+        # Picking Talk with someone present opens a conversation rather than
+        # resolving one check and ending, which is all it did before.
+        if (intent.verb is Verb.PARLEY and self._talk is None
+                and not code.startswith(TALK_PREFIX)):
+            partner = self._talk_partner()
+            if partner is not None:
+                self._talk = talk_engine.Conversation(
+                    actor_name=partner.name, opened_at=self.run.turn
+                )
+                ev.chapter(f"You fall into conversation with {partner.name}.")
+                raise _TurnHandled
 
         assessment = prepare_turn(self.run, intent, self.keeper)
         if assessment.bargain is not None:
@@ -400,6 +427,64 @@ class GameSession:
         seen = list(getattr(self.state.act, "actors", []) or [])
         seen += list(getattr(self.state.act, "undiscovered", []) or [])
         return [a.name for a in seen if getattr(a, "name", "")]
+
+    def _talk_partner(self):
+        """Who is here to talk to.
+
+        Nobody present is a legal state, not an error: Talk still resolves as
+        a single parley -- calling out, negotiating with the situation -- so
+        the option is never greyed out. Axiom A2.
+        """
+        for actor in getattr(self.state.act, "actors", []) or []:
+            if getattr(actor, "alive", True) and getattr(actor, "name", ""):
+                return actor
+        return None
+
+    def _actor_named(self, name: str):
+        for actor in (list(getattr(self.state.act, "actors", []) or [])
+                      + list(getattr(self.state.act, "undiscovered", []) or [])):
+            if getattr(actor, "name", "") == name:
+                return actor
+        return None
+
+    def _close_talk(self) -> None:
+        """End the conversation and cash in what it earned."""
+        conversation, self._talk = self._talk, None
+        if conversation is None:
+            return
+        actor = self._actor_named(conversation.actor_name)
+        if actor is None:
+            return
+        talk_engine.close(conversation, actor, self.run)
+        self.state.history.append(
+            f"Talked to {conversation.actor_name} "
+            f"({talk_engine.band(talk_engine.affinity_of(actor)).value})"
+        )
+
+    def _talk_payload(self) -> Optional[Dict[str, Any]]:
+        """The open conversation, if there is one."""
+        if self._talk is None:
+            return None
+        actor = self._actor_named(self._talk.actor_name)
+        affinity = talk_engine.affinity_of(actor) if actor else 0
+
+        # Charisma, plus the two approaches this character is actually best
+        # at. The old loop offered two stats picked without reference to the
+        # sheet, so a blunt character had no way of being blunt.
+        others = [key for key in core.SPECIAL_KEYS if key != "CHA"]
+        best = sorted(others, key=lambda k: (-self.run.stats.get(k, 5), others.index(k)))[:2]
+        return {
+            "actor": self._talk.actor_name,
+            "regard": talk_engine.band(affinity).value,
+            "affinity": affinity,
+            "exchanges": len(self._talk.exchanges),
+            "max_exchanges": self._talk.max_exchanges,
+            "spent": self._talk.spent,
+            "log": [x.text for x in self._talk.exchanges if x.text],
+            "options": [{"code": TALK_PREFIX + "CHA", "label": "Appeal", "stat": "CHA"}]
+                       + [{"code": TALK_PREFIX + k, "label": f"Try {k}", "stat": k} for k in best],
+            "end": TALK_END,
+        }
 
     def _bargain_payload(self) -> Optional[Dict[str, Any]]:
         """The standing offer, if there is one."""
@@ -450,6 +535,7 @@ class GameSession:
                 "turn": self.state.act.turns_taken,
                 "clocks": self._clock_payload(),
                 "bargain": self._bargain_payload(),
+                "talk": self._talk_payload(),
                 "campaign_goal": self.state.blueprint.campaign_goal,
                 "situation": self.state.act.situation,
                 "player": self.state.player,
@@ -465,6 +551,22 @@ class GameSession:
     def get_events(self, limit: int = 8) -> List[Event]:
         with self._lock:
             return list(self._events[-limit:])
+
+    def _reset_transient(self) -> None:
+        """Everything that is per-session rather than per-campaign.
+
+        One definition, called by every construction path. Sessions are also
+        built by `__new__` in tests, and each field added here used to have to
+        be remembered in three separate places -- which it repeatedly was not.
+        """
+        self._turn_events: List[Any] = []
+        self._listeners: List[Any] = []
+        self._options: Optional[List[MenuOption]] = None
+        self._last_result = None
+        self._last_rest = None
+        self._pending: Optional[PendingOffer] = None
+        self._talk: Optional[talk_engine.Conversation] = None
+        self._lock = threading.RLock()
 
     def _character_block(self) -> str:
         """Who the player is, handed to the Keeper with every assessment."""
@@ -592,19 +694,13 @@ class GameSession:
         state = load_run(Path(path))
         session = cls.__new__(cls)
         session.id = Path(path).parent.name
-        session._turn_events = []
-        session._listeners = []
+        session._reset_transient()
         session.state = state
         session.client = GemmaClient()
         session.label = getattr(state, "scenario_label", "") or "Campaign"
         session.world_text = ""
         session.created_at = time.time()
-        session._options = None
         session._events = []
-        session._lock = threading.RLock()
-        session._last_result = None
-        session._pending = None
-        session._last_rest = None
         session.run = build_run(state)
         session.keeper = ModelKeeper(session.client, session._character_block())
         resumed = sanitize_prose(
@@ -640,6 +736,15 @@ class GameSession:
                 with collecting() as bus, intercepted_io(inputs):
                     bus.subscribe(self._broadcast)
                     try:
+                        if code == TALK_END or (
+                            self._talk is not None and self._talk.spent
+                            and code.startswith(TALK_PREFIX)
+                        ):
+                            if self._talk is not None and self._talk.spent:
+                                ev.system("You have said enough for now.")
+                            self._close_talk()
+                            raise _TurnHandled
+
                         if code == REST:
                             self._rest()
                             # A night is time passing, so everything that
@@ -670,6 +775,21 @@ class GameSession:
                         )
                         consumed = result.consumed_turn
                         self._last_result = result
+                        # Only a conversation code is a conversation. Acting
+                        # on the ordinary menu with a conversation open is
+                        # walking away mid-sentence: it does not count as an
+                        # exchange, and it ends the conversation rather than
+                        # leaving it to catch the next unrelated roll.
+                        if self._talk is not None and result.resolution is not None:
+                            if code.startswith(TALK_PREFIX):
+                                partner = self._actor_named(self._talk.actor_name)
+                                if partner is not None:
+                                    talk_engine.apply_exchange(
+                                        self._talk, partner, result.resolution,
+                                        charisma=self.run.stats.get("CHA", 5),
+                                    )
+                            else:
+                                self._close_talk()
                         for line in render_result(result, self.run):
                             ev.prose(line)
 

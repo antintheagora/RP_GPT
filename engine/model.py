@@ -104,7 +104,11 @@ class CampaignBlueprint:
 class ActState:
     index:int
     turns_taken:int=1
-    turn_cap:int=field(default_factory=lambda: random.randint(8,13))
+    # Vestigial. This was a random 8-13 turn budget that ended the act
+    # whether or not anything had happened; acts end on clocks now and
+    # nothing reads it. Kept only so saves written before the change
+    # still load.
+    turn_cap:int=0
     goal_progress:int=0
     situation:str=""
     actors:List[Actor]=field(default_factory=list)

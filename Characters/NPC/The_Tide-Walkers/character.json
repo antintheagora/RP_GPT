@@ -1,0 +1,13 @@
+{
+  "name": "The Tide-Walkers",
+  "role": "npc",
+  "kind": "Faction",
+  "hp": 20,
+  "attack": 4,
+  "updated_at": 1786027984.0014951,
+  "last_seen": 1786027984.0014954,
+  "encounters": 1,
+  "personality_archetype": "serene",
+  "species": "human",
+  "comm_style": "speech"
+}

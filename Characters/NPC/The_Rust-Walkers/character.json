@@ -1,0 +1,15 @@
+{
+  "name": "The Rust-Walkers",
+  "role": "npc",
+  "kind": "Construct",
+  "hp": 14,
+  "attack": 3,
+  "updated_at": 1786029029.215178,
+  "last_seen": 1786029029.2151785,
+  "encounters": 2,
+  "desc": "Malfunctioning automated drones that attack anything moving.",
+  "personality": "Malfunctioning automated drones that attack anything moving.",
+  "personality_archetype": "inquisitive",
+  "species": "human",
+  "comm_style": "speech"
+}

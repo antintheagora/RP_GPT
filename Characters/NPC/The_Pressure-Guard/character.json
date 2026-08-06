@@ -1,0 +1,13 @@
+{
+  "name": "The Pressure-Guard",
+  "role": "npc",
+  "kind": "Automated Security",
+  "hp": 20,
+  "attack": 4,
+  "updated_at": 1786029037.1329596,
+  "last_seen": 1786029037.1329598,
+  "encounters": 1,
+  "personality_archetype": "stoic",
+  "species": "human",
+  "comm_style": "speech"
+}

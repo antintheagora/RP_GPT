@@ -334,18 +334,8 @@ def test_unbounded_input_loop_now_terminates():
     assert iterations < 50
 
 
-def test_last_chance_yields_rather_than_hanging():
-    """The most likely ending path in the game used to hang the server."""
-    from Core.Turn_And_Act_Flow import last_chance
-    from ui.webapp.game_service import intercepted_io
-
-    class Player:
-        def effective_stat(self, _key):
-            return 5
-
-    class State:
-        player = Player()
-        custom_stat = "STR"
-
-    with intercepted_io([]):
-        assert last_chance(State()) is False
+# Deleted with its subject. `last_chance` was the endgame fork, and its
+# unbounded input() loop was the most likely way to hang the server. There is
+# no such fork now -- a campaign ends when a clock fills -- and the class of
+# bug is still covered by the three InputFeeder tests above, which are what
+# actually stop an input() loop from spinning the server.

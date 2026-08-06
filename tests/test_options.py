@@ -120,27 +120,13 @@ def test_no_menu_anywhere_picks_stats_at_random():
     assert not offenders, f"stats are being dealt at random again: {offenders}"
 
 
-def test_the_last_roll_of_a_campaign_uses_your_best_stats():
-    """last_chance dealt three random stats for the endgame roll."""
-    from Core.Turn_And_Act_Flow import last_chance
-    from ui.webapp.game_service import intercepted_io
-    from engine.events import collecting
-
-    state = _state(STR=10, END=9, PER=8)
-    with collecting() as bus, intercepted_io([]):
-        last_chance(state)
-
-    offered = " ".join(e.text for e in bus.events)
-    assert "STR" in offered and "END" in offered and "PER" in offered
-    assert "CHA" not in offered, "dump stats should not be the endgame options"
-
-
-def test_talking_offers_the_approaches_you_are_good_at():
-    """talk_loop dealt two random non-CHA stats."""
-    import ast
-    from pathlib import Path
-
-    source = (Path(__file__).resolve().parent.parent
-              / "Core" / "Interactions.py").read_text(encoding="utf-8-sig")
-    assert "random.sample" not in source
-    assert "option_two, option_three = sorted(" in source
+# Deleted with their subjects.
+#
+# test_the_last_roll_of_a_campaign_uses_your_best_stats guarded `last_chance`,
+# the endgame fork. There is no such fork now: a campaign ends when a clock
+# fills, and the broader random.sample guard below still covers the bug it was
+# written for.
+#
+# test_talking_offers_the_approaches_you_are_good_at asserted on the source
+# text of talk_loop. The behaviour moved to the conversation loop and is
+# tested there by what it actually offers, rather than by grepping for a line.

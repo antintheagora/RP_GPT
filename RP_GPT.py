@@ -183,11 +183,8 @@ from Core.Image_Gen import (
 )
 from Core.Interactions import (
     pick_actor,
-    talk_loop,
-    combat_turn,
     use_item,
 )
-from Core.Terminal_HUD import header, hud
 from Core.AI_Dungeon_Master import (
     GemmaError,
     GemmaClient,
@@ -209,10 +206,6 @@ from Core.Random_Encounters import (
     encounter_flavor_prompt,
     handle_post_turn_beat,
 )
-from Core.Interludes import (
-    celebrate_break,
-    camp_interlude,
-)
 from Core.Journal import (
     maybe_journal_lore,
 )
@@ -228,24 +221,8 @@ from Core.Character_Registry import (
 )
 
 register_default_characters()
-from Core.Turn_And_Act_Flow import (
-    begin_act,
-    end_of_turn,
-    end_act_needed,
-    recap_and_transition,
-    try_advance,
-    last_chance,
-    game_loop,
-)
-from Core.Choice_Handler import (
-    ExploreOptions,
-    goal_lock_active,
-    make_explore_options,
-    render_menu,
-    process_choice,
-    ensure_custom_stat_per_turn,
-    open_journal,
-)
+from Core.Turn_And_Act_Flow import begin_act
+from Core.Choice_Handler import goal_lock_active
 
 # When running this file as a script (__main__), modules that dynamically
 # import 'RP_GPT' (e.g., Core.Turn_And_Act_Flow via _core()) might otherwise
@@ -387,8 +364,6 @@ def begin_act(state:GameState, idx:int):
     actual_idx = idx if idx in acts else max(acts.keys())
     plan = acts[actual_idx]
     state.act = ActState(index=actual_idx)
-    if state.turns_per_act_override:
-        state.act.turn_cap = state.turns_per_act_override
     state.act.situation=plan.intro_paragraph
     state.location_desc = plan.intro_paragraph.split(".")[0] if plan.intro_paragraph else ""
     for it in items_from_seed(plan.seed_items):
@@ -430,70 +405,6 @@ def begin_act(state:GameState, idx:int):
 # ---------- LOOP -------------
 # =============================
 
-def game_loop_legacy(state:GameState, g:GemmaClient):
-    while state.running:
-        header(); hud(state)
-        if state.act.turns_taken == 1:
-            _ev.prose("\n-- Situation --"); _ev.prose(wrap(state.act.situation)); _ev.prose("")
-        goal_lock = goal_lock_active(state, state.last_turn_success)
-
-        if state.mode==TurnMode.EXPLORE:
-            ex=make_explore_options(state, g, goal_lock); render_menu(state,ex)
-            ch=input("> ").strip()
-            consumed=process_choice(state,ch,ex,g)
-
-            # Talking shouldn't burn a turn (requested change)
-            if ch=="6":
-                consumed=False
-
-            if consumed:
-                # After action output, pause for the single post-turn beat
-                input("\n[Press Enter to continue]")
-
-                # Celebration break: after a success, sometimes offer a quick rest/interlude.
-                did_celebration_rest=False
-                if state.last_turn_success:
-                    did_celebration_rest = celebrate_break(state, g)
-
-                # If the player explicitly Rested via [0], run the camp interlude now.
-                if ch=="0":
-                    camp_interlude(state, g)
-
-                # Only spawn an encounter if the player didn't Rest or take the celebration rest
-                if ch!="0" and not did_celebration_rest:
-                    handle_post_turn_beat(state, g)
-
-                # Advance time
-                state.act.turns_taken+=1
-                end_of_turn(state,g)
-
-                # Append a short lore journal line most turns (non-spammy)
-                maybe_journal_lore(state, g)
-
-                if end_act_needed(state): 
-                    recap_and_transition(state,g,"turn/end")
-
-        elif state.mode==TurnMode.COMBAT:
-            if not state.last_enemy or not state.last_enemy.alive or state.last_enemy.hp<=0:
-                state.mode=TurnMode.EXPLORE; state.combat_turn_already_counted=False; continue
-            _=combat_turn(state,state.last_enemy,g,goal_lock)
-
-            input("\n[Press Enter to continue]")
-
-            state.act.turns_taken+=1
-            end_of_turn(state,g)
-
-            # Append a short lore journal line after combat turns too
-            maybe_journal_lore(state, g)
-
-            if end_act_needed(state): 
-                recap_and_transition(state,g,"turn/end")
-
-        endmsg=state.is_game_over()
-        if endmsg:
-            _ev.prose("\n"+endmsg)
-            if state.player.hp<=0: _ev.prose("\n"+wrap("Finale: The coil tightens. The world keeps what it has taken."))
-            state.running=False
 
 
 
@@ -501,49 +412,22 @@ def game_loop_legacy(state:GameState, g:GemmaClient):
 # ---------- MAIN -------------
 # =============================
 
-def _run_terminal_game():
-    global _GEMMA
-    _ev.system("[Mode] Starting terminal interface.")
-    _ev.prose("="*78); _ev.prose("RP-GPT6 — Gemma-Orchestrated RPG".center(78)); _ev.prose("="*78)
-    sc,label=pick_scenario()
-    extra_world = prompt_extra_world_details()
-    if extra_world:
-        set_extra_world_text(extra_world)
-    player=init_player()
-    model=input("Gemma model for Ollama? (default gemma3:12b) > ").strip() or "gemma3:12b"
-    g=GemmaClient(model=model); _GEMMA=g
-    bp=get_blueprint_interactive(g,label)
-    state=GameState(scenario=sc, scenario_label=label, player=player,
-                    blueprint=bp, pressure_name=bp.pressure_name)
-    begin_act(state,1)
-    _ev.chapter("\n--- Adventure Begins ---\n")
-    try:
-        queue_image_event(state, "startup", make_startup_prompt(state), actors=[state.player.name], extra={"act":1})
-        queue_image_event(state, "player_portrait", make_player_portrait_prompt(state.player), actors=[state.player.name], extra={"note":"initial portrait"})
-    except Exception:
-        pass
-    game_loop(state,g)
-    _ev.system("\nThanks for playing RP-GPT6.")
-
-def main():
-    # The pygame UI was removed: it could not import under this project's
-    # Python at all, and carrying a second, untestable implementation of every
-    # flow taxed every change. The web UI is the one that boots --
-    #   python -m flask --app ui.webapp.server:create_app run
-    # Salvaged pieces worth porting are in salvage/README.md.
-    _run_terminal_game()
-
-if __name__=="__main__":
-    try: 
-        main()
-    except KeyboardInterrupt: 
-        _ev.prose("\nExiting RP-GPT6. Goodbye!")
 
 
+def main() -> int:
+    """There is one way to run this game, and it is the web UI.
+
+    A terminal loop lived here until the engine rewrite left it driving a turn
+    pipeline that no longer existed -- it imported nine functions that had
+    since been deleted, and would not have survived its own first turn.
+    Carrying a second, untested implementation of every flow taxed every
+    change for nobody's benefit, which is why the pygame UI went the same way.
+    Salvage notes are in salvage/README.md.
+    """
+    print("Run the game with:")
+    print("    python -m flask --app ui.webapp.server:create_app run")
+    return 1
 
 
-
-
-
-
-
+if __name__ == "__main__":
+    raise SystemExit(main())
