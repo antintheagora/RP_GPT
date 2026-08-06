@@ -18,7 +18,7 @@ import time
 from dataclasses import fields, is_dataclass
 
 from engine.affinity import Faction, Ledger, Person
-from engine.director import Director, Stance
+from engine.director import Director, Reading, Stance
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -58,6 +58,10 @@ _TYPES = {
     "Person": Person,
     "Faction": Faction,
     "Director": Director,
+    # Nested inside Director. Registering the outer class alone rebuilt
+    # it with a plain dict here, and the next screen the player opened
+    # died on `.why`.
+    "Reading": Reading,
 }
 
 _ENUMS = {"Scenario": Scenario, "TurnMode": TurnMode, "Stance": Stance}

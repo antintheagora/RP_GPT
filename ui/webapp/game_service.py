@@ -585,8 +585,12 @@ class GameSession:
                 "pacing": {
                     "stance": self.run.director.stance.value,
                     "text": self.run.director.describe(),
-                    "why": (self.run.director.last_reading.why
-                            if self.run.director.last_reading else []),
+                    # getattr, not attribute access: a save written by an
+                    # older build can hold this as a plain dict, and the
+                    # screen refusing to open is a worse outcome than one
+                    # missing line of explanation.
+                    "why": list(getattr(self.run.director.last_reading,
+                                        "why", []) or []),
                 },
                 # Only the factions that have actually heard of you. The rest
                 # have no opinion, and showing "neutral" for a group that has

@@ -285,6 +285,7 @@ def test_pacing_survives_a_save(tmp_path):
                            "pressure_evolution": "y"}}}),
         pressure_name="p",
     )
+    state.director.update(_run())      # gives it a reading to lose
     state.director.stance = Stance.BUILDING
     state.director.held_for = 1
 
@@ -292,3 +293,24 @@ def test_pacing_survives_a_save(tmp_path):
                                  run_id="r", label="T"))
     assert restored.director.stance is Stance.BUILDING
     assert restored.director.held_for == 1
+
+    # The reading nested inside it has to rebuild too. Checking only the two
+    # scalars above passed while `last_reading` came back a plain dict, and
+    # the next screen the player opened died on `.why`.
+    assert restored.director.last_reading is not None
+    assert isinstance(restored.director.last_reading.why, list)
+    assert isinstance(restored.director.last_reading.comfort, int)
+
+
+def test_an_older_save_cannot_break_the_screen():
+    """A build that persisted the Director without its nested Reading left a
+    plain dict there, and opening the screen died on `.why`. The screen
+    refusing to open is a worse outcome than one missing line."""
+    from tests.test_menu_flow import _session
+
+    session = _session()
+    session.run.director.last_reading = {"comfort": 2, "why": ["stale"]}
+
+    payload = session.get_turn_payload()
+    assert payload["pacing"]["why"] == [], "a stale reading leaked through"
+    assert payload["pacing"]["text"]
