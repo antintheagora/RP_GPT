@@ -70,10 +70,17 @@ for turn in range(1, MAX_TURNS + 1):
     menu = session.ensure_options()
     option = menu[(turn - 1) % len(menu)]
     code = option.key
+    # Camp occasionally, the way a player would -- it is the only action that
+    # heals, and the only one that hands the world a free move.
+    camping = turn % 7 == 0
+    if camping:
+        code = gs.REST
     started = time.time()
     try:
         # "Something else" insists on a description, the same as in the UI.
-        described = {"intent": "improvise with what is to hand"} if option.depth is Depth.DESCRIBE else None
+        described = None if camping else (
+            {"intent": "improvise with what is to hand"}
+            if option.depth is Depth.DESCRIBE else None)
         result = session.apply_choice(code, described)
     except Exception as exc:
         failures.append((turn, f"{type(exc).__name__}: {exc}"))
@@ -111,7 +118,7 @@ for turn in range(1, MAX_TURNS + 1):
         f"  turn {turn:2d}  act {st.act.index}/{st.act_count}  "
         f"{elapsed:5.1f}s  hp {st.player.hp:3d}  "
         f"scene {len(st.act.actors):2d} +{len(st.act.undiscovered):2d} known  "
-        f"{_clocks(session)}  {option.label[:14]:14s} {out[:34]}{flag}"
+        f"{_clocks(session)}  {('CAMP' if camping else option.label)[:14]:14s} {out[:34]}{flag}"
     )
 
     # A finished campaign is a pass, not a reason to keep driving it. Without

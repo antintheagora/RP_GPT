@@ -139,18 +139,36 @@
     </div>
   </div>
 
-  <div class="grid gap-3 sm:grid-cols-2">
-    <form hx-post="{{ url_for('handle_action') }}" hx-swap="none">
-      <input type="hidden" name="action" value="rest" />
-      <button class="w-full rounded-xl bg-slate-800 px-4 py-3 font-semibold hover:bg-slate-700 transition">Camp + Rest</button>
-    </form>
-    <form hx-post="{{ url_for('handle_action') }}" hx-swap="none">
-      <input type="hidden" name="action" value="journal" />
-      <button class="w-full rounded-xl bg-slate-800 px-4 py-3 font-semibold hover:bg-slate-700 transition">Read Journal</button>
-    </form>
-  </div>
+  {# Rest is not an attempt at anything, so it is not a menu verb. It states
+     its price up front: the night is not free, and the danger clock is
+     visible directly above this button. #}
+  <form hx-post="{{ url_for('handle_action') }}" hx-swap="none">
+    <input type="hidden" name="action" value="rest" />
+    <button class="w-full rounded-xl bg-slate-800 px-4 py-3 text-left hover:bg-slate-700 transition">
+      <span class="font-semibold">Camp for the night</span>
+      <span class="block text-sm text-slate-400">
+        Recover, and dream. The world moves while you sleep{% if payload.clocks and payload.clocks|length > 1 %} — {{ payload.clocks[1].name }} advances{% endif %}.
+      </span>
+    </button>
+  </form>
 
   {% endif %}
+
+  {# Reading your own journal is not a die roll. It used to POST an action
+     that the engine resolved as a perception check and that showed you no
+     journal at all. #}
+  <details class="rounded-xl border border-slate-700/80 bg-night/80 p-4">
+    <summary class="cursor-pointer text-sm font-semibold">The journal so far</summary>
+    {% if payload.journal_tail %}
+      <ul class="mt-3 space-y-2 text-sm text-slate-300">
+        {% for entry in payload.journal_tail %}
+          <li class="border-l-2 border-slate-700 pl-3">{{ entry }}</li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="mt-3 text-sm text-slate-500">Nothing written down yet.</p>
+    {% endif %}
+  </details>
 
   {% if payload.game_over %}
     <div class="rounded-xl border border-red-500/60 bg-red-500/10 p-4">

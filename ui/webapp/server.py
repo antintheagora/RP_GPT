@@ -60,7 +60,7 @@ ROSTER_SECTIONS = [
 ]
 SPECIAL_STATS = ("STR", "PER", "END", "CHA", "INT", "AGI", "LUC")
 
-from .game_service import GameSession, GemmaError, SessionStore
+from .game_service import REST, GameSession, GemmaError, SessionStore
 
 
 def _world_dir(slug: str) -> Path:
@@ -864,9 +864,11 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
         if action in ("menu", "bargain"):
             code = request.form.get("choice")
         elif action == "rest":
-            code = "0"
-        elif action == "journal":
-            code = "j"
+            # Sleeping is not an attempt at anything, so it does not go
+            # through the menu. It used to map onto code "0", which the new
+            # engine reads as Withdraw: the button rolled an escape attempt
+            # and healed nothing.
+            code = REST
         elif action == "custom":
             code = "8"
         else:

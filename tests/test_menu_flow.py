@@ -200,3 +200,37 @@ def test_doing_something_else_abandons_a_standing_offer():
     assert session._pending.intent.verb is Verb.OBSERVE, (
         "the stale offer was answered by an action that never asked for it"
     )
+
+
+# =============================
+# ---------- RESTING ----------
+# =============================
+
+def test_the_camp_button_rests_instead_of_rolling_an_escape():
+    """The regression: rest survived the engine swap wired to the legacy code
+    map, where "0" means Withdraw. The button rolled to flee and healed nothing."""
+    session = _session()
+    session.run.condition.hp = 20
+    before_hp = session.run.condition.hp
+    before_danger = session.run.danger.filled
+
+    session.apply_choice(gs.REST)
+
+    assert session.run.condition.hp > before_hp, "camping healed nothing"
+    assert session.run.danger.filled > before_danger, "the night cost nothing"
+    assert session._last_rest is not None
+    assert session._last_result is None, "resting is not a roll"
+
+
+def test_resting_is_not_offered_as_a_menu_verb():
+    """It attempts nothing, so it has no bearing, no position and no roll."""
+    keys = {option.key for option in _session().ensure_options()}
+    assert gs.REST not in keys
+
+
+def test_a_reckoning_can_name_someone_the_campaign_actually_met():
+    session = _session()
+    session.state.act.actors = [
+        __import__("RP_GPT").Actor(name="Silas", kind="person", role="npc")
+    ]
+    assert "Silas" in session._ledger()

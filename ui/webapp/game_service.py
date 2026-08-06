@@ -20,6 +20,7 @@ from engine.actions import Depth, MenuOption, build_menu, intent_from_option
 from engine.bridge import build_run, intent_for, render_result, sync_back
 from engine.events import collecting
 from engine.keeper import ModelKeeper
+from engine.rest import render_rest, take_rest
 from engine.turn import advance_turn, prepare_turn
 from engine.persistence import list_runs, load_run, save_run
 from Core.Paths import SAVES_DIR
@@ -133,6 +134,10 @@ def generate_blueprint(g: GemmaClient, label: str, overrides: Optional[Dict[str,
     return core.blueprint_from_json(payload)
 
 
+class _TurnHandled(Exception):
+    """Internal: this action resolved itself and needs no roll."""
+
+
 class _OfferMade(Exception):
     """Internal: unwind out of the turn body with the offer standing.
 
@@ -144,6 +149,9 @@ class _OfferMade(Exception):
 
 BARGAIN_TAKE = "bargain:take"
 BARGAIN_REFUSE = "bargain:refuse"
+# Rest is not a verb -- it resolves nothing and rolls nothing -- so it has
+# its own code rather than being squeezed through the action menu.
+REST = "rest"
 
 
 @dataclass
@@ -253,6 +261,7 @@ class GameSession:
         self._listeners: List[Any] = []
         self._last_result = None
         self._pending: Optional[PendingOffer] = None
+        self._last_rest = None
         self.state = state
         self.client = client
         self.label = scenario_label
@@ -369,6 +378,28 @@ class GameSession:
             self._pending = PendingOffer(intent=intent, assessment=assessment)
             return None, None, False
         return intent, assessment, False
+
+    def _rest(self) -> None:
+        """Sleep. The old rest handed out 6-14 HP for nothing at all."""
+        ev.chapter("You make camp.")
+        result = take_rest(self.run, ledger=self._ledger())
+        self._last_rest = result
+        for line in render_rest(result):
+            ev.prose(line)
+        sync_back(self.run, self.state)
+        self.state.rested_this_turn = True
+        if self.run.danger and self.run.danger.full:
+            ev.chapter(f"{self.run.danger.name} got there first.")
+
+    def _ledger(self) -> List[str]:
+        """People this campaign could hold something against you for.
+
+        Everyone met so far. Once Affinity lands this narrows to those who
+        actually have a grievance, and a Reckoning becomes specific.
+        """
+        seen = list(getattr(self.state.act, "actors", []) or [])
+        seen += list(getattr(self.state.act, "undiscovered", []) or [])
+        return [a.name for a in seen if getattr(a, "name", "")]
 
     def _bargain_payload(self) -> Optional[Dict[str, Any]]:
         """The standing offer, if there is one."""
@@ -573,6 +604,7 @@ class GameSession:
         session._lock = threading.RLock()
         session._last_result = None
         session._pending = None
+        session._last_rest = None
         session.run = build_run(state)
         session.keeper = ModelKeeper(session.client, session._character_block())
         resumed = sanitize_prose(
@@ -608,6 +640,16 @@ class GameSession:
                 with collecting() as bus, intercepted_io(inputs):
                     bus.subscribe(self._broadcast)
                     try:
+                        if code == REST:
+                            self._rest()
+                            # A night is time passing, so everything that
+                            # decays with time decays: buffs run down, the
+                            # chronicle gets a line, and something may find
+                            # you at the fire.
+                            self._post_turn()
+                            consumed = True
+                            raise _TurnHandled
+
                         intent, assessment, take = self._stage_turn(code, payload)
                         if intent is None:
                             # A Bargain is on the table. The turn stops here
@@ -643,7 +685,7 @@ class GameSession:
                             ev.chapter(f"{self.run.danger.name} got there first.")
                     finally:
                         events = bus.events
-            except _OfferMade:
+            except (_OfferMade, _TurnHandled):
                 pass
             except TerminalInputRequired as exc:
                 blocked = str(exc)
