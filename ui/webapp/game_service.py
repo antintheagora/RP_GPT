@@ -508,7 +508,10 @@ class GameSession:
             + f"Write only {speaker}'s next line. Do not write {player}'s "
             + "words, and do not repeat anything already said above.",
         )
-        return sanitize_prose(self.client.text(prompt, tag="Talk", max_chars=220))
+        # 220 was too tight for a spoken line: the trim fell through to a
+        # word boundary and left "...every scavenger in these". A sentence of
+        # dialogue needs room to finish.
+        return sanitize_prose(self.client.text(prompt, tag="Talk", max_chars=340))
 
     def _talk_partner(self):
         """Who is here to talk to.

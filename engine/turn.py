@@ -334,6 +334,17 @@ def advance_turn(
     )
 
     # --- code applies ----------------------------------------------------
+    # Poised means you saw it coming and pulled back before committing.
+    # The spec is "no consequence, the action simply does not happen" -- the
+    # implementation had it exactly backwards, applying the consequence in
+    # full and making the *turn* free instead. So from a good position a
+    # critical failure cost nothing at all: no turn, nothing recorded, retry
+    # until it works. Six successes in a row in a live act, with every
+    # failure in between silently deleted.
+    if resolution.can_withdraw:
+        result.withdrew = True
+        ev.marginal("You see it going wrong and pull back before it does.")
+
     if intent.verb is Verb.OBSERVE:
         observation = apply_observation(
             run.scene, obstacle, intent.observe or ObserveTarget.OTHER,
@@ -349,7 +360,8 @@ def advance_turn(
         result.new_obstacle = _next_stage(run)
         result.tide_moves = _advance_tides(run, resolution)
         _strike(run, resolution, intent, result)
-        _apply_harm(run, resolution, intent, result, rng)
+        if not resolution.can_withdraw:
+            _apply_harm(run, resolution, intent, result, rng)
         _apply_assist_cost(run, resolution, result)
         # A finding "applies" to the attempt it was bought for, then it is
         # spent. Left standing, one free Observe permanently upgraded the
@@ -365,7 +377,10 @@ def advance_turn(
         if tick:
             result.ticks.append(tick)
 
-    result.consumed_turn = intent.costs_a_turn and not resolution.can_withdraw
+    # Pulling back still costs the turn. Avoiding the consequence is the
+    # reward for being well positioned; avoiding the *turn* made failure
+    # free, which is not a position, it is an undo button.
+    result.consumed_turn = intent.costs_a_turn
     if result.consumed_turn:
         run.turn += 1
         # Pacing reads the turn that just happened, then decides what the

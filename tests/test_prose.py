@@ -61,3 +61,44 @@ def test_the_situation_prompt_pins_the_point_of_view():
     prompt = next_situation_prompt(state, "success", "push on", goal_lock=False)
     assert "second person" in prompt
     assert "third person" in prompt
+
+
+def test_a_half_sentence_is_dropped_even_when_it_fits():
+    """Models stop mid-clause on their own, well inside any limit -- a recap
+    came back ending "...just enough to allow them to move toward the final".
+    Trimming only when the length limit was hit missed it entirely."""
+    text = ("You force the hatch and the water takes the stair. "
+            "Ahead the corridor bends toward the")
+    out = _Fixed(text).text("p", "t")
+    assert out.endswith("stair."), out
+
+
+def test_a_finished_paragraph_is_left_alone():
+    text = "You force the hatch. The water takes the stair."
+    assert _Fixed(text).text("p", "t") == text
+
+
+def test_a_fragment_with_nothing_to_fall_back_to_is_kept():
+    """Better a short odd line than an empty one."""
+    assert _Fixed("Ahead the corridor bends toward the").text("p", "t")
+
+
+def test_every_narrative_prompt_pins_the_point_of_view():
+    """Pinning it in one prompt just moved the problem: the situation was
+    fixed and the act recap immediately came back in third person."""
+    import RP_GPT as core
+    from Core.AI_Dungeon_Master import recap_prompt
+
+    state = core.GameState(
+        scenario=core.Scenario.APOCALYPSE, scenario_label="T",
+        player=core.Player(name="Wren"),
+        blueprint=core.blueprint_from_json({
+            "campaign_goal": "g", "pressure_name": "p",
+            "acts": {"1": {"goal": "a", "intro_paragraph": "x",
+                           "pressure_evolution": "y"}}}),
+        pressure_name="p",
+    )
+    for prompt in (recap_prompt(state, True),
+                   next_situation_prompt(state, "success", "push", goal_lock=False)):
+        assert "second person" in prompt
+        assert "third person" in prompt

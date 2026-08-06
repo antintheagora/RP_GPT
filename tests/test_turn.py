@@ -251,14 +251,44 @@ def test_observing_is_free_and_changes_a_number():
     pytest.fail("observing never improved anything")
 
 
-def test_a_withdrawal_from_poised_costs_no_turn():
+def test_pulling_back_from_poised_skips_the_consequence_not_the_turn():
+    """Changed after playing it, and worth stating plainly.
+
+    The spec says a failure from Poised means "no consequence, the action
+    simply does not happen". The code did the opposite of the first half and
+    over-delivered on the second: it applied the consequence in full and made
+    the *turn* free. So from a good position a critical failure cost nothing
+    at all -- no turn spent, nothing recorded, retry until it works. A live
+    act ran six successes in a row with every failure between them silently
+    deleted, and the pacing had no idea anything had gone wrong.
+
+    Now: the consequence does not land, which is what Poised buys. The turn
+    is spent, because avoiding the turn is not a position, it is an undo
+    button -- and a choice where one option is free is not a choice.
+    """
     run = _run(exits=["alley"])
     keeper = StubKeeper(bearing=Bearing.UPHILL, surprise=True)
     run.prepared = True
     for seed in range(120):
         result = advance_turn(run, _intent(), keeper, rng=random.Random(seed))
         if result.withdrew:
-            assert not result.consumed_turn
+            assert result.consumed_turn, "failing from Poised was free"
+            assert not result.damage, "the consequence landed anyway"
+            return
+    pytest.fail("never failed from Poised in 120 rolls")
+
+
+def test_a_poised_failure_is_visible_to_pacing():
+    """It was not: an unconsumed turn is never recorded, so the Director saw
+    a campaign of nothing but successes."""
+    run = _run(exits=["alley"])
+    keeper = StubKeeper(bearing=Bearing.UPHILL, surprise=True)
+    run.prepared = True
+    for seed in range(120):
+        result = advance_turn(run, _intent(), keeper, rng=random.Random(seed))
+        if result.withdrew:
+            assert run.director.outcomes, "the failure never reached pacing"
+            assert run.director.outcomes[-1] is True
             return
     pytest.fail("never failed from Poised in 120 rolls")
 

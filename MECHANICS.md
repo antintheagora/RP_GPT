@@ -323,6 +323,9 @@ Instead **the Keeper reports facts and code computes position.** Start at zero a
 | **−1** | Your approach has **Dire** or **Futile** bearing |
 | **−1** | A danger clock in this scene is over half full |
 
+> **Amended 2026-07-29, after playing it.** This read *"you may withdraw instead — no consequence, the action simply does not happen"*, and the build took that to mean the turn was not spent either. Combined with how easily Poised is reached — one Observe finding, or a companion stepping in — that made failure from a good position cost **nothing**: no turn, no record, retry until it works. A live act ran six successes in a row with every failure between them deleted, and pacing never saw a thing go wrong.
+> The consequence still does not land; that is what Position buys and it is unchanged. The turn is now spent. Avoiding the turn is not a position, it is an undo button, and a choice where one option is free is not a choice.
+
 ```
 score ≥ +1   →  CONTROLLED
 score  =  0   →  RISKY
@@ -337,7 +340,7 @@ Six of those eight are facts the engine already holds. Only **surprise** and **c
 
 | Position | Worst consequence available | On failure | On success |
 |---|---|---|---|
-| **Poised** | complication or clock tick only · wound cap **1** | **you may withdraw instead** — no consequence, the action simply does not happen | — |
+| **Poised** | complication or clock tick only · wound cap **1** | **you pull back** — the consequence does not land. The turn is still spent | — |
 | **Risky** | + harm, resource loss · wound cap **2** | the consequence lands | — |
 | **Desperate** | + new threat, door closes · wound cap **3** | the consequence lands harder | **+1 clock segment** |
 

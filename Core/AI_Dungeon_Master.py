@@ -57,6 +57,22 @@ def get_extra_world_text() -> str:
     return EXTRA_WORLD_TEXT
 
 
+def _drop_unfinished_tail(text: str) -> str:
+    """Cut a trailing half-sentence off a generation.
+
+    Models stop mid-clause on their own, well inside any length limit -- a
+    recap came back ending "...just enough to allow them to move toward the
+    final". Trimming only when the *limit* was hit therefore missed it. A
+    paragraph that stops mid-thought reads as a bug whatever caused it.
+    """
+    text = (text or "").rstrip()
+    if not text or text.endswith((".", "!", "?", '"', "'", "\u201d")):
+        return text
+    stop = max(text.rfind("."), text.rfind("!"), text.rfind("?"))
+    # Only if enough survives to still be worth reading.
+    return text[:stop + 1].rstrip() if stop > len(text) * 0.4 else text
+
+
 class GemmaError(RuntimeError):
     """Light wrapper for any Gemma/Ollama-specific issues."""
 
@@ -259,7 +275,7 @@ class GemmaClient:
         """
         output = self._run(prompt, tag)
         if not max_chars or len(output) <= max_chars:
-            return output
+            return _drop_unfinished_tail(output)
 
         cut = output[:max_chars]
         stop = max(cut.rfind(". "), cut.rfind("! "), cut.rfind("? "))
@@ -709,6 +725,16 @@ def _clocks(state) -> str:
     return f"{goal} (not yet begun)"
 
 
+# Every prose prompt says this, because fixing it in one prompt just moved
+# the problem: the situation was pinned to second person and the act recap
+# immediately came back as "Wren leans against a bulkhead, their breath...".
+# A reader notices the camera moving even when the writing is good.
+VOICE_RULE = (
+    "Address the player as \"you\", in second person. Never refer to them by "
+    "name, and never in the third person."
+)
+
+
 def _character(state) -> str:
     """The player, as the narrator needs to know them.
 
@@ -768,6 +794,7 @@ Between-act recap (3–5 sentences), mood: {mood}, for a {state.scenario_label} 
 Summarize the act, its effect on pressure "{blueprint.pressure_name}", and setup next act toward "{blueprint.campaign_goal}".
 Clocks: {_clocks(state)}. Scene phase {state.scene_phase}. Prior beats: {recent}.
 Rules: Do NOT include numeric meter lines. Complete sentences; no mid-word hyphenation. Plain text only.
+{VOICE_RULE}
 """
 
 
@@ -892,13 +919,6 @@ def next_situation_prompt(
     previous = state.act.situation
     intent_text = intent or "none"
     location = state.location_desc or "the current area"
-    # The point of view wandered turn to turn -- one situation addressed the
-    # player as "you", the next narrated "Wren ... their ... they". Pinned,
-    # because a reader notices the camera moving even when the prose is good.
-    voice_rule = (
-        "Address the player as \"you\", in second person, present tense. "
-        "Never refer to them by name or in the third person."
-    )
     lock_rule = (
         "Drive directly toward the act goal. Introduce a concrete waypoint, sightline, or puzzle ON that path; no unrelated new threats."
         if goal_lock and outcome == "success"
@@ -916,7 +936,7 @@ Write a new situation paragraph (2–4 sentences) for a {state.scenario_label} R
 - Scene phase: {state.scene_phase}
 
 Rules:
-{voice_rule}
+{VOICE_RULE}
 - If SUCCESS: advance logically (new room/route/clue/NPC); {lock_rule}
 - If FAIL: evolve the obstacle/complication; hint a new angle; avoid repetition.
 - Do NOT restate numeric meters. Complete sentences; no mid-word hyphenation. Plain text only.
