@@ -377,3 +377,106 @@ def test_a_save_with_no_obstacles_still_opens_one():
     state = _state()
     state.act.obstacles = []
     assert build_run(state).scene.obstacle("main") is not None
+
+
+# =============================
+# ---- AN ACT IS A SEQUENCE ---
+# =============================
+
+def _stage_run():
+    from engine.character import Condition
+    from engine.clocks import Clock, ClockBoard, ClockKind
+    from engine.model import SPECIAL_KEYS
+    from engine.scene import Obstacle, Scene
+    from engine.turn import Run
+
+    scene = Scene(id="s", name="A vault", description="")
+    scene.description = "The outer door hangs open on a bent hinge. Beyond it the stair drops into black water."
+    scene.add(Obstacle(id="main", name="The outer door"))
+    return Run(
+        scene=scene, condition=Condition(endurance=5, strength=5),
+        stats={k: 5 for k in SPECIAL_KEYS},
+        clocks=ClockBoard([
+            Clock.for_act("project", "The Vault Opens", ClockKind.PROJECT),
+            Clock.for_act("danger", "They Arrive", ClockKind.DANGER),
+        ]),
+    )
+
+
+def test_an_act_does_not_stay_one_problem_the_whole_way():
+    """An act had a single obstacle, rated once by one model call at the
+    start. If that call put the player's best stat at Ideal, every remaining
+    turn was a formality -- six successes running against a target of four.
+    Nothing varied across an act at all."""
+    from engine.turn import _next_stage
+
+    run = _stage_run()
+    assert _next_stage(run) == "", "it moved on before anything had happened"
+
+    run.clocks.tick("project", 4)          # halfway on an 8-segment clock
+    name = _next_stage(run)
+
+    assert name, "the act never presented a second problem"
+    assert run.scene.obstacle("main").resolved
+    assert not run.scene.obstacle("stage2").resolved
+
+
+def test_the_second_problem_comes_from_the_fiction():
+    """Named from the scene as it currently reads, so the back half of an act
+    follows from what the front half did to it."""
+    from engine.turn import _next_stage
+
+    run = _stage_run()
+    run.clocks.tick("project", 4)
+    assert "outer door" in _next_stage(run).lower()
+
+
+def test_the_name_is_a_name_and_not_a_paragraph():
+    """Slicing prose at eighty characters produced "You stumble through the
+    heavy steam, your movements fluid and graceful even as a"."""
+    from engine.turn import _next_stage
+
+    run = _stage_run()
+    run.scene.description = (
+        "You stumble through the heavy steam, your movements fluid and "
+        "graceful even as a racking cough forces you to pause against a "
+        "rusted pillar for a long moment of respite before going on."
+    )
+    run.clocks.tick("project", 4)
+    name = _next_stage(run)
+
+    assert len(name) <= 60, name
+    assert not name.endswith(("as a", "the", "and", "of")), name
+    assert name[0].isupper()
+
+
+def test_prose_with_nothing_short_in_it_falls_back_to_the_clock():
+    from engine.turn import _next_stage
+
+    run = _stage_run()
+    run.scene.description = "x" * 400
+    run.clocks.tick("project", 4)
+    assert _next_stage(run) == run.project.name
+
+
+def test_the_second_problem_is_rated_fresh():
+    """What worked on the outer door is not what works on the vault."""
+    from engine.resolve import Bearing
+    from engine.turn import _next_stage
+
+    run = _stage_run()
+    run.scene.obstacle("main").rate({"INT": Bearing.IDEAL}, 4)
+    run.clocks.tick("project", 4)
+    _next_stage(run)
+
+    assert not run.scene.obstacle("stage2").is_rated()
+
+
+def test_the_handover_happens_once():
+    from engine.turn import _next_stage
+
+    run = _stage_run()
+    run.clocks.tick("project", 4)
+    assert _next_stage(run)
+    for _ in range(5):
+        assert _next_stage(run) == "", "it kept opening new problems"

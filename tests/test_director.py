@@ -314,3 +314,13 @@ def test_an_older_save_cannot_break_the_screen():
     payload = session.get_turn_payload()
     assert payload["pacing"]["why"] == [], "a stale reading leaked through"
     assert payload["pacing"]["text"]
+
+
+def test_the_pacing_line_never_claims_events():
+    """"It is all happening at once" was printed over an empty board with the
+    danger clock on one segment. A line that claims events the player cannot
+    see reads as the game talking to itself; these describe pressure."""
+    for stance in Stance:
+        text = Director(stance=stance).describe().lower()
+        assert "happening" not in text, text
+        assert text.strip().endswith((".", "!"))

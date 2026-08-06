@@ -438,9 +438,16 @@ class GameSession:
         ev.chapter("You make camp.")
         result = take_rest(self.run, ledger=self._ledger())
         self._last_rest = result
-        for line in render_rest(result):
-            ev.prose(line)
+        # take_rest already announces the night through the event bus, so
+        # re-emitting the rendered lines printed every one of them twice --
+        # the same fault the turn path had, missed here because rest does not
+        # go through advance_turn.
         sync_back(self.run, self.state)
+        # A rest is not a roll, and the last roll may be several turns old.
+        # Leaving it set had the night re-narrate a success that had already
+        # been narrated, so the scene described finding the thing you had
+        # found while the clock still read zero.
+        self._last_result = None
         self.state.rested_this_turn = True
         if self.run.danger and self.run.danger.full:
             ev.chapter(f"{self.run.danger.name} got there first.")

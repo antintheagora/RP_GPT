@@ -222,3 +222,40 @@ def test_resolve_never_leaves_its_bounds():
 def test_the_night_is_described_to_the_player():
     lines = render_rest(take_rest(_run(), rng=random.Random(8)))
     assert lines, "the player was told nothing about their own night"
+
+
+# =============================
+# ------ HOW IT READS ---------
+# =============================
+
+def test_a_night_is_reported_once():
+    """take_rest announces the night through the event bus, and the session
+    also emitted the rendered lines -- so every line of a camp printed twice.
+    The same fault the turn path had, missed here because rest does not go
+    through advance_turn."""
+    import ui.webapp.game_service as gs
+    from tests.test_menu_flow import _session
+
+    session = _session()
+    session.run.condition.hp = 10
+    output = session.apply_choice(gs.REST)["output"]
+
+    lines = [line for line in output.splitlines() if line.strip()]
+    assert len(lines) == len(set(lines)), f"a line printed twice:\n{output}"
+
+
+def test_camping_does_not_re_narrate_the_last_roll():
+    """`_last_result` survived a rest, so the night re-ran scene evolution
+    against a roll several turns old -- the scene described finding the thing
+    you had already found, while the clock still read zero."""
+    import ui.webapp.game_service as gs
+    from engine.actions import Verb
+    from tests.test_menu_flow import _session
+
+    session = _session()
+    option = next(o for o in session.ensure_options() if o.verb is Verb.OTHER)
+    session.apply_choice(option.key, {"intent": "force the hatch"})
+    assert session._last_result is not None
+
+    session.apply_choice(gs.REST)
+    assert session._last_result is None, "the night still held an old roll"

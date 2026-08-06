@@ -213,13 +213,17 @@ class Director:
 
     def describe(self) -> str:
         """One line, for the player, in their own terms."""
+        # Describes how hard the world is leaning, not what has happened.
+        # "It is all happening at once" was printed over an empty board with
+        # a danger clock on one segment, and a line that claims events the
+        # player cannot see reads as the game talking to itself.
         if self.stance is Stance.QUIET:
-            return "It is quiet. Nothing is looking for you."
+            return "Nothing is looking for you."
         if self.stance is Stance.BUILDING:
-            return "Something is gathering."
+            return "Something is taking an interest."
         if self.stance is Stance.PEAK:
-            return "It is all happening at once."
-        return "The worst of it is past."
+            return "The world is not going to let this be easy."
+        return "The pressure is off you, for now."
 
 
 __all__ = [

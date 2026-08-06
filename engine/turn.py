@@ -119,6 +119,7 @@ class TurnResult:
     reputation_shifted: str = ""
     stance: str = ""
     stance_changed: bool = False
+    new_obstacle: str = ""
     act_complete: bool = False
     act_failed: bool = False
     consumed_turn: bool = False
@@ -345,6 +346,7 @@ def advance_turn(
         ev.marginal(observation.text)
     else:
         result.ticks = _apply_clocks(run, resolution, intent)
+        result.new_obstacle = _next_stage(run)
         result.tide_moves = _advance_tides(run, resolution)
         _strike(run, resolution, intent, result)
         _apply_harm(run, resolution, intent, result, rng)
@@ -410,6 +412,62 @@ def _observe_target_stat(intent: Intent, assessment: Assessment) -> str:
         reverse=True,
     )
     return worst[0][0] if worst else "PER"
+
+
+def _next_stage(run: Run) -> str:
+    """Retire the problem in front of the player and open the next one.
+
+    An act had exactly one obstacle for its whole length, rated once by a
+    single model call at the start. So if that call came back with the
+    player's best stat at Ideal, every remaining turn of the act was a
+    formality -- six successes in a row against a target of four -- and if it
+    came back Dire the whole act was a slog. Nothing varied across an act at
+    all.
+
+    An act is a sequence of problems. When the project clock passes halfway
+    the first one gives way to the second, which is rated fresh: what worked
+    on the outer door is not what works on the vault.
+    """
+    project = run.project
+    if project is None or project.filled < project.segments // 2:
+        return ""
+
+    live = [o for o in run.scene.unresolved if o.id.startswith(("main", "stage"))]
+    if len(live) != 1:
+        return ""          # already moved on, or nothing to move on from
+    current = live[0]
+    if current.id != "main":
+        return ""          # one handover per act, at the halfway mark
+
+    current.resolved = True
+    name = _next_problem_name(run)
+    run.scene.add(Obstacle(id="stage2", name=name))
+    ev.chapter(f"That is behind you. Now: {name}")
+    return name
+
+
+def _next_problem_name(run: Run) -> str:
+    """What stands in the way now, in the fiction's own words.
+
+    Taken from the scene rather than invented, so the back half of an act
+    follows from what the front half did to it -- but only when a short,
+    whole clause can be had. Slicing a paragraph at eighty characters
+    produced "You stumble through the heavy steam, your movements fluid and
+    graceful even as a", which is not the name of anything.
+    """
+    text = (run.scene.description or "").strip()
+    for sentence in text.replace("!", ".").replace("?", ".").split("."):
+        clause = sentence.strip().split(",")[0].strip()
+        for opener in ("You ", "The ", "A "):
+            if clause.startswith(opener) and opener == "You ":
+                clause = clause[4:].strip()
+        if 12 <= len(clause) <= 60:
+            return clause[0].upper() + clause[1:]
+
+    # Nothing clean in the prose: the clock says what this act is about, and
+    # it was authored short on purpose.
+    project = run.project
+    return project.name if project else "What is left of it"
 
 
 def _apply_clocks(run: Run, resolution: Resolution,
