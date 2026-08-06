@@ -426,6 +426,112 @@ def image_prompt_from_state(
 # =============================
 
 
+def _clock_schema(what: str) -> Dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string", "description": what},
+            # Constrained rather than validated: a model handed "integer" will
+            # propose 5 or 10, and the clock module would silently snap it.
+            "segments": {"type": "integer", "enum": [4, 6, 8]},
+        },
+        "required": ["name", "segments"],
+    }
+
+
+def campaign_blueprint_schema(target_acts: int = 3) -> Dict[str, Any]:
+    """The shape a blueprint must have.
+
+    Passed to Ollama as `format`, which constrains decoding rather than
+    checking afterwards. The act clocks and the Tide are `required`, so a
+    model cannot quietly drop them and leave the bridge guessing -- which is
+    what it did before, inventing clocks out of `pressure_name` and reusing
+    `suggested_encounters` as Tide moves.
+    """
+    act = {
+        "type": "object",
+        "properties": {
+            "goal": {"type": "string"},
+            "intro_paragraph": {"type": "string"},
+            "pressure_evolution": {"type": "string"},
+            "suggested_encounters": {"type": "array", "items": {"type": "string"}},
+            "project_clock": _clock_schema("what the player is achieving"),
+            "danger_clock": _clock_schema("the bad thing that arrives when it fills"),
+            "tide": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "wants": {"type": "string"},
+                    "moves": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "minItems": 3,
+                        "maxItems": 5,
+                    },
+                    "if_completed": {"type": "string"},
+                },
+                "required": ["name", "wants", "moves"],
+            },
+            # Bounded on both ends. A schema that only says "array" is read as
+            # permission to send none: the first constrained blueprint came
+            # back with no cast at all, and every act opened empty.
+            "seed_actors": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 4,
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                        "kind": {"type": "string"},
+                        "hp": {"type": "integer"},
+                        "attack": {"type": "integer"},
+                        "disposition": {"type": "integer"},
+                        "personality": {"type": "string"},
+                    },
+                    "required": ["name", "kind"],
+                },
+            },
+            "seed_items": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 3,
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                        "tags": {"type": "array", "items": {"type": "string"}},
+                        "hp_delta": {"type": "integer"},
+                        "attack_delta": {"type": "integer"},
+                        "consumable": {"type": "boolean"},
+                        "notes": {"type": "string"},
+                    },
+                    "required": ["name", "tags"],
+                },
+            },
+        },
+        "required": [
+            "goal", "intro_paragraph", "pressure_evolution",
+            "project_clock", "danger_clock", "tide", "seed_actors",
+        ],
+    }
+    keys = [str(i) for i in range(1, max(1, min(5, target_acts)) + 1)]
+    return {
+        "type": "object",
+        "properties": {
+            "campaign_goal": {"type": "string"},
+            "pressure_name": {"type": "string"},
+            "pressure_logic": {"type": "string"},
+            "acts": {
+                "type": "object",
+                "properties": {key: act for key in keys},
+                "required": keys,
+            },
+        },
+        "required": ["campaign_goal", "pressure_name", "acts"],
+    }
+
+
 def campaign_blueprint_prompt(label: str, overrides: Optional[Dict[str, object]] = None) -> str:
     """Prompt Gemma for the campaign blueprint, honoring any user overrides."""
     if EXTRA_WORLD_TEXT:
@@ -459,44 +565,53 @@ def campaign_blueprint_prompt(label: str, overrides: Optional[Dict[str, object]]
     if user_lines:
         directives = "User directives:\n" + "\n".join(user_lines) + "\n"
 
+    act_keys = ", ".join(f'"{i}"' for i in range(1, target_acts + 1))
     return f"""
 Design a coherent {target_acts}-act plan for a {label} RPG.{extra}
 {directives}
-Acts dictionary must contain numeric-string keys "1" through "{target_acts}" in order.
+The acts object must contain exactly the keys {act_keys}, in order. Each act
+follows from the last and sets up the next.
 
-Output STRICT JSON ONLY:
-{{
-  "campaign_goal": "string",
-  "pressure_name": "string",
-  "pressure_logic": "string",
-  "acts": {{
-    "1": {{
-      "goal": "string",
-      "intro_paragraph": "1-3 sentences introducing location, stakes, NPCs; explicitly serving the campaign goal",
-      "pressure_evolution": "string",
-      "suggested_encounters": ["short phrases"],
-      "seed_actors": [{{"name":"string","kind":"string","hp":14,"attack":3,"disposition":0,"personality":"string"}}],
-      "seed_items": [{{"name":"string","tags":["weapon"],"hp_delta":0,"attack_delta":2,"special_mods":{{}},"goal_delta":0,"pressure_delta":0,"consumable":false,"notes":"string"}}]
-    }},
-    "2": {{
-      "goal": "string (follows act1 toward act3)",
-      "intro_paragraph": "1-3 sentences connecting act1 to act2 with explicit consequences from act1",
-      "pressure_evolution": "string",
-      "suggested_encounters": ["short phrases"],
-      "seed_actors": [{{"name":"string","kind":"string","hp":14,"attack":3,"disposition":0,"personality":"string"}}],
-      "seed_items": [{{"name":"string","tags":["weapon"],"hp_delta":0,"attack_delta":2,"special_mods":{{}},"goal_delta":0,"pressure_delta":0,"consumable":false,"notes":"string"}}]
-    }},
-    "3": {{
-      "goal": "string (payoff of prior acts)",
-      "intro_paragraph": "1-3 sentences setting stage for finale (acknowledge act2 results)",
-      "pressure_evolution": "string",
-      "suggested_encounters": ["short phrases"],
-      "seed_actors": [{{"name":"string","kind":"string","hp":14,"attack":3,"disposition":0,"personality":"string"}}],
-      "seed_items": [{{"name":"string","tags":["weapon"],"hp_delta":0,"attack_delta":2,"special_mods":{{}},"goal_delta":0,"pressure_delta":0,"consumable":false,"notes":"string"}}]
-    }}
-  }}
-}}
+Every act runs on two clocks and one Tide. Name them in the world's own
+language -- the player is shown these words.
+
+  project_clock  what the player is filling by succeeding. Name it as the
+                 thing they are achieving: "The Archive Door Opens", not
+                 "Progress". Its segments are how many good turns it should
+                 take: 4 for a single obstacle, 6 for a normal act, 8 for a
+                 hard one.
+
+  danger_clock   what fills when they fail. Name the specific bad thing that
+                 arrives when it is full: "The Patrol Reaches The Bridge",
+                 not "Danger". Same segment sizes.
+
+  tide           what the opposition does while the player is busy. `wants`
+                 is its goal in one line. `moves` are 3-5 concrete events, in
+                 escalating order, each one a thing that HAPPENS -- "the river
+                 road checkpoints go up", not "tension rises". They fire one
+                 at a time as the player loses ground. `if_completed` is what
+                 the world looks like if it runs all the way out.
+
+Write moves that change the player's situation, never moods or weather.
 """
+
+
+def _clocks(state) -> str:
+    """What is filling, in the campaign's own words.
+
+    These prompts used to say `Pressure "The Rising Tide" 62/100`. The number
+    was invented -- pressure rose two points every turn whether or not anything
+    happened -- and a percentage is not a thing a narrator can describe. A
+    clock is: eight segments, five filled, and each one was put there by
+    something that occurred in the fiction.
+    """
+    summary = (getattr(state, "clock_summary", "") or "").strip()
+    if summary:
+        return summary
+    # Before the first turn of an act there is nothing filled yet; name what
+    # is at stake rather than emitting a bare empty string.
+    goal = getattr(getattr(state, "act", None), "goal", "") or "the act's goal"
+    return f"{goal} (not yet begun)"
 
 
 def _character(state) -> str:
@@ -538,7 +653,7 @@ def turn_narration_prompt(state: "GameState", last_event: str, goal_lock: bool) 
 
 Write paragraph-length turn narration (2-3 sentences) for a {state.scenario_label} RPG.
 Act {state.act.index} goal "{plan.goal}" supports campaign "{blueprint.campaign_goal}".
-Pressure "{blueprint.pressure_name}" {state.pressure}/100; act progress {state.act.goal_progress}/100.
+Clocks: {_clocks(state)}
 Scene phase {state.scene_phase}; last outcome: {last_event}.
 Recent beats: {recent}
 Focus now on: {focus}
@@ -556,7 +671,7 @@ def recap_prompt(state: "GameState", success: bool) -> str:
 
 Between-act recap (3–5 sentences), mood: {mood}, for a {state.scenario_label} RPG.
 Summarize the act, its effect on pressure "{blueprint.pressure_name}", and setup next act toward "{blueprint.campaign_goal}".
-Progress {state.act.goal_progress}/100; pressure {state.pressure}/100; scene phase {state.scene_phase}. Prior beats: {recent}.
+Clocks: {_clocks(state)}. Scene phase {state.scene_phase}. Prior beats: {recent}.
 Rules: Do NOT include numeric meter lines. Complete sentences; no mid-word hyphenation. Plain text only.
 """
 
@@ -571,7 +686,7 @@ NPC reply <=180 chars (no quotes).
 NPC: {actor.name} ({actor.kind}), role {actor.role}, disp {actor.disposition} ({relationship}), archetype "{actor.personality_archetype or actor.personality}", comm "{actor.comm_style}".
 Style hint: {role_style_hint(actor)}
 {world_journal_prompt(state)}
-World: {state.scenario_label}. Pressure {blueprint.pressure_name} {state.pressure}/100. Player said: {user_line}
+World: {state.scenario_label}. Clocks: {_clocks(state)}. Player said: {user_line}
 Respond in character; be specific; reference stakes if natural. If comm is not 'speech', communicate via the style. No numeric meters.
 """
 
@@ -632,7 +747,7 @@ Provide microplans (STRICT JSON only) for a {state.scenario_label} RPG turn.
 Context:
 - Act goal: "{plan.goal}"
 - Campaign goal: "{blueprint.campaign_goal}"
-- Pressure "{blueprint.pressure_name}": {state.pressure}/100; progress {state.act.goal_progress}/100.
+- Clocks: {_clocks(state)}
 - Current situation: {situation}
 - Last printed focus: {last_focus}
 - Prior beats: {history}
@@ -664,7 +779,7 @@ def custom_action_outcome_prompt(
 
 Write 1–2 sentences for a {state.scenario_label} RPG describing the outcome of a custom action.
 Intent: {intent} (using {stat}). Outcome: {outcome}.
-Tie to Act {state.act.index} goal "{plan.goal}", campaign goal "{blueprint.campaign_goal}", and pressure "{blueprint.pressure_name}" at {state.pressure}/100.
+Tie to Act {state.act.index} goal "{plan.goal}", campaign goal "{blueprint.campaign_goal}", and the clocks now standing at: {_clocks(state)}.
 Rules: {focus} Do NOT write numeric meters. No second person; complete sentences; no mid-word hyphenation; plain text only.
 """
 
@@ -692,7 +807,7 @@ def next_situation_prompt(
 Write a new situation paragraph (2–4 sentences) for a {state.scenario_label} RPG in {location}.
 - Act {state.act.index} goal: "{plan.goal}"
 - Campaign goal: "{blueprint.campaign_goal}"
-- Pressure "{blueprint.pressure_name}": {state.pressure}/100; Act progress: {state.act.goal_progress}/100
+- Clocks: {_clocks(state)}
 - Previous situation (do NOT repeat verbatim): {previous}
 - Recent beats: {recent}
 - Player intent/result: {intent_text} -> {outcome.upper()}

@@ -80,12 +80,47 @@ def actors_from_seed(seed, act_index:int)->List[Actor]:
         out.append(actor)
     return out
 
+def _clock_spec(raw: Any, fallback: str) -> Dict[str, Any]:
+    """A clock the model named, tidied. Never trusted for its size."""
+    if not isinstance(raw, dict):
+        raw = {}
+    name = str(raw.get("name") or "").strip() or fallback
+    try:
+        segments = int(raw.get("segments") or 0)
+    except (TypeError, ValueError):
+        segments = 0
+    return {"name": name, "segments": segments}
+
+
+def _tide_spec(raw: Any) -> Dict[str, Any]:
+    """The opposition's plan: what it wants and the moves it makes.
+
+    Blank moves are dropped rather than fired as empty prose, and the list is
+    bounded -- a model handed an open array will write fifteen.
+    """
+    if not isinstance(raw, dict):
+        return {}
+    moves = [str(m).strip() for m in (raw.get("moves") or []) if str(m or "").strip()]
+    if not moves:
+        return {}
+    return {
+        "name": str(raw.get("name") or "").strip(),
+        "wants": str(raw.get("wants") or "").strip(),
+        "moves": moves[:6],
+        "if_completed": str(raw.get("if_completed") or "").strip(),
+    }
+
+
 def json_to_actplan(d:Dict[str,Any])->ActPlan:
+    goal = d.get("goal","")
     return ActPlan(
-        goal=d.get("goal",""), intro_paragraph=d.get("intro_paragraph",""),
+        goal=goal, intro_paragraph=d.get("intro_paragraph",""),
         pressure_evolution=d.get("pressure_evolution",""),
         suggested_encounters=d.get("suggested_encounters",[]) or [],
-        seed_actors=d.get("seed_actors",[]) or [], seed_items=d.get("seed_items",[]) or []
+        seed_actors=d.get("seed_actors",[]) or [], seed_items=d.get("seed_items",[]) or [],
+        project_clock=_clock_spec(d.get("project_clock"), goal or "Your progress"),
+        danger_clock=_clock_spec(d.get("danger_clock"), "The pressure"),
+        tide=_tide_spec(d.get("tide")),
     )
 
 def blueprint_from_json(j:Dict[str,Any])->CampaignBlueprint:

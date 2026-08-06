@@ -17,7 +17,7 @@ from typing import Dict, List, Optional
 
 from engine.actions import Depth, Intent, ObserveTarget, Verb
 from engine.character import Condition, WeaponWeight
-from engine.clocks import Clock, ClockBoard, ClockKind
+from engine.clocks import ACT_SEGMENTS, Clock, ClockBoard, ClockKind
 from engine.model import SPECIAL_KEYS
 from engine.scene import Obstacle, Scene
 from engine.tides import Tide, TideBoard
@@ -65,9 +65,10 @@ def weapon_of(player) -> WeaponWeight:
 def build_run(state) -> Run:
     """Construct a Run from a live GameState.
 
-    Clocks are named from the campaign's own language -- the act goal and the
-    pressure the blueprint invented -- so the player sees "The Rising Dark"
-    filling rather than a generic bar.
+    The clocks and the Tide come from the act plan, named by whoever designed
+    the act, so the player watches "The Archive Door Opens" fill rather than a
+    generic bar. Older saves have no clocks in them and fall back to the act
+    goal and the pressure name.
     """
     plan = state.blueprint.acts.get(state.act.index)
     goal = (getattr(plan, "goal", "") or "Find a way through").strip()
@@ -89,26 +90,47 @@ def build_run(state) -> Run:
         weapon=weapon_of(state.player),
     )
 
+    # The act's own clocks, named by whoever designed the act. Falling back to
+    # the goal and the pressure name only when an older save has no clocks in
+    # it -- those were never names a player could act on.
+    project_spec = getattr(plan, "project_clock", None) or {}
+    danger_spec = getattr(plan, "danger_clock", None) or {}
     clocks = ClockBoard([
-        Clock.for_act("project", goal, ClockKind.PROJECT),
-        Clock.for_act("danger", pressure, ClockKind.DANGER),
+        Clock(id="project", name=project_spec.get("name") or goal,
+              segments=project_spec.get("segments") or ACT_SEGMENTS,
+              kind=ClockKind.PROJECT),
+        Clock(id="danger", name=danger_spec.get("name") or pressure,
+              segments=danger_spec.get("segments") or ACT_SEGMENTS,
+              kind=ClockKind.DANGER),
     ])
     # Carry across whatever the old meters had accumulated, so a resumed run
-    # does not reset its own progress.
-    project_filled = round(getattr(state.act, "goal_progress", 0) / 100 * 8)
-    danger_filled = round(getattr(state, "pressure", 0) / 100 * 8)
-    if project_filled:
-        clocks.tick("project", project_filled)
-    if danger_filled:
-        clocks.tick("danger", danger_filled)
+    # does not reset its own progress. Scaled by each clock's real size --
+    # assuming eight put a 4-segment clock at double where it belonged.
+    for clock_id, percent in (
+        ("project", getattr(state.act, "goal_progress", 0)),
+        ("danger", getattr(state, "pressure", 0)),
+    ):
+        clock = clocks.get(clock_id)
+        filled = round((percent or 0) / 100 * clock.segments) if clock else 0
+        if filled:
+            clocks.tick(clock_id, filled)
 
+    # The opposition's plan, as written. `suggested_encounters` is the
+    # fallback for saves made before acts carried a Tide -- it is a list of
+    # scene ideas, not an escalating sequence, so it makes a poor one.
     tides = TideBoard()
-    encounters = list(getattr(plan, "suggested_encounters", []) or [])
-    if encounters:
+    spec = getattr(plan, "tide", None) or {}
+    moves = [str(m).strip() for m in (spec.get("moves") or []) if str(m or "").strip()]
+    if not moves:
+        moves = [str(e).strip() for e in
+                 (getattr(plan, "suggested_encounters", []) or []) if str(e).strip()][:4]
+    if moves:
         tides.add(Tide(
-            id="act_tide", name=pressure,
-            wants=getattr(state.blueprint, "campaign_goal", ""),
-            moves=[str(e).strip() for e in encounters if str(e).strip()][:4],
+            id="act_tide",
+            name=spec.get("name") or pressure,
+            wants=spec.get("wants") or getattr(state.blueprint, "campaign_goal", ""),
+            moves=moves,
+            if_completed=spec.get("if_completed", ""),
         ))
 
     return Run(
@@ -135,6 +157,11 @@ def sync_back(run: Run, state, result: Optional[TurnResult] = None) -> None:
         state.act.goal_progress = int(project.ratio * 100)
     if danger:
         state.pressure = int(danger.ratio * 100)
+    # What the narrator is told. A percentage is not describable; "five of
+    # eight, and each one put there by something that happened" is.
+    state.clock_summary = "; ".join(
+        clock.render() for clock in (project, danger) if clock
+    )
     state.act.turns_taken = run.turn
     state.player.hp = run.condition.hp
     if result is not None and result.resolution is not None:

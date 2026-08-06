@@ -89,6 +89,12 @@ class ActPlan:
     suggested_encounters:List[str]=field(default_factory=list)
     seed_actors:List[Dict[str,Any]]=field(default_factory=list)
     seed_items:List[Dict[str,Any]]=field(default_factory=list)
+    # What the two clocks are called, and what the opposition actually does.
+    # The bridge used to invent these from `pressure_name` and
+    # `suggested_encounters`; now the model that designed the act names them.
+    project_clock:Dict[str,Any]=field(default_factory=dict)
+    danger_clock:Dict[str,Any]=field(default_factory=dict)
+    tide:Dict[str,Any]=field(default_factory=dict)
 
 @dataclass
 class CampaignBlueprint:
@@ -154,6 +160,9 @@ class GameState:
     last_result_para:str=""
     last_situation_para:str=""
     last_turn_success:bool=False
+    # The clocks as the narrator is shown them, written by bridge.sync_back.
+    # Kept on state so prompt builders take only a GameState.
+    clock_summary:str=""
     # NEW: World Journal
     journal:List[str]=field(default_factory=list)
     journal_entry_count:int=0

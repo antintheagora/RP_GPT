@@ -28,6 +28,7 @@ from Core.AI_Dungeon_Master import (
     GemmaClient,
     GemmaError,
     campaign_blueprint_prompt,
+    campaign_blueprint_schema,
     set_extra_world_text,
 )
 
@@ -116,7 +117,19 @@ def _clean_str(value: Optional[str]) -> Optional[str]:
 
 def generate_blueprint(g: GemmaClient, label: str, overrides: Optional[Dict[str, Any]] = None):
     g.check_or_pull_model()
-    payload = g.json(campaign_blueprint_prompt(label, overrides), tag="Blueprint")
+    acts = 3
+    try:
+        acts = max(1, min(5, int((overrides or {}).get("acts") or 3)))
+    except (TypeError, ValueError):
+        pass
+    payload = g.json(
+        campaign_blueprint_prompt(label, overrides),
+        tag="Blueprint",
+        # Constrained decoding, so the act clocks and the Tide cannot be
+        # omitted. Without it the model dropped them and the bridge went back
+        # to inventing clocks from the pressure name.
+        schema=campaign_blueprint_schema(acts),
+    )
     return core.blueprint_from_json(payload)
 
 
