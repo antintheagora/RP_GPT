@@ -54,6 +54,10 @@ class Item:
 class Actor:
     name:str; kind:str; hp:int=10; attack:int=2; disposition:int=0; personality:str=""
     role:str="npc"  # "npc","enemy","companion"
+    # Who they answer to, or None for the unaffiliated. Reputation is
+    # tracked per faction, so without this every character in a campaign
+    # was unaffiliated and the whole layer was inert.
+    faction_id:Optional[str]=None
     discovered:bool=False
     alive:bool=True
     desc:str=""     # visual
@@ -104,6 +108,8 @@ class ActPlan:
 @dataclass
 class CampaignBlueprint:
     campaign_goal:str; pressure_name:str; pressure_logic:str; acts:Dict[int,ActPlan]
+    # The groups with a stake in this, as {id, name, wants}.
+    factions:List[Dict[str,Any]]=field(default_factory=list)
 
 @dataclass
 class ActState:

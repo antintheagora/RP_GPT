@@ -45,6 +45,12 @@ def sync_affinity(state, act: int) -> None:
     ledger = getattr(state, "ledger", None)
     if ledger is None:
         return
+
+    # Register the campaign's groups before anyone is linked to one, so a new
+    # character picks up whatever their faction's standing already is.
+    for entry in getattr(state.blueprint, "factions", []) or []:
+        ledger.add_faction(entry.get("id", ""), entry.get("name", ""))
+
     everyone = (list(getattr(state.act, "actors", []) or [])
                 + list(getattr(state.act, "undiscovered", []) or [])
                 + list(getattr(state, "companions", []) or []))

@@ -414,3 +414,193 @@ def test_the_penalty_is_charged_once():
     after_one = ledger.people["brutus"].affinity
     take_rest(run, rng=_random.Random(1))
     assert ledger.people["brutus"].affinity == after_one
+
+
+# =============================
+# --- REPUTATION, LIVE --------
+# =============================
+
+def _faction_campaign():
+    """A campaign whose blueprint names groups and puts people in them."""
+    import RP_GPT as core
+
+    acts = {"1": {
+        "goal": "Reach the archive", "intro_paragraph": "x",
+        "pressure_evolution": "y",
+        "seed_actors": [
+            {"name": "Vane", "kind": "enforcer", "hostile": True, "faction": "coven"},
+            {"name": "Edda", "kind": "trader", "hostile": False, "faction": "guild"},
+            {"name": "A Drifter", "kind": "hermit", "hostile": False, "faction": ""},
+        ],
+    }}
+    blueprint = core.blueprint_from_json({
+        "campaign_goal": "g", "pressure_name": "p", "acts": acts,
+        "factions": [
+            {"id": "coven", "name": "The Coven", "wants": "the archive sealed"},
+            {"id": "guild", "name": "The Salt Guild", "wants": "open water"},
+        ],
+    })
+    return core.GameState(
+        scenario=core.Scenario.APOCALYPSE, scenario_label="T",
+        player=core.Player(name="Wren"), blueprint=blueprint, pressure_name="p",
+    )
+
+
+def test_the_blueprint_declares_the_groups_in_play():
+    """Nothing did. Every character in every campaign was unaffiliated, so
+    Reputation had nothing to attach to and the whole layer sat inert."""
+    blueprint = _faction_campaign().blueprint
+    assert {f["id"] for f in blueprint.factions} == {"coven", "guild"}
+    assert blueprint.factions[0]["name"] == "The Coven"
+
+
+def test_seeded_characters_carry_the_group_they_answer_to():
+    from engine.blueprint import actors_from_seed
+
+    seeded = actors_from_seed(
+        _faction_campaign().blueprint.acts[1].seed_actors, 1)
+    memberships = {a.name: a.faction_id for a in seeded}
+    assert memberships["Vane"] == "coven"
+    assert memberships["Edda"] == "guild"
+    assert memberships["A Drifter"] is None, "unaffiliated stays unaffiliated"
+
+
+def test_beginning_an_act_registers_the_groups():
+    from Core.Turn_And_Act_Flow import begin_act
+
+    state = _faction_campaign()
+    begin_act(state, 1)
+    assert set(state.ledger.factions) == {"coven", "guild"}
+    assert not any(f.known for f in state.ledger.factions.values()), (
+        "a group you have not crossed has not heard of you"
+    )
+
+
+def test_killing_one_of_theirs_is_how_a_faction_hears_about_you():
+    """The gap this closes: Ledger.apply was written, tested, and called from
+    no live code at all."""
+    import random as _random
+
+    from engine.actions import Depth, Intent, Verb
+    from engine.character import Condition, WeaponWeight
+    from engine.clocks import Clock, ClockBoard, ClockKind
+    from engine.keeper import StubKeeper
+    from engine.model import SPECIAL_KEYS
+    from engine.resolve import Bearing
+    from engine.scene import Foe, Obstacle, Scene
+    from engine.turn import Run, advance_turn
+    from tests.test_combat import hit
+
+    ledger = Ledger()
+    ledger.add_faction("coven", "The Coven")
+
+    scene = Scene(id="s", name="A hall", description="")
+    scene.add(Obstacle(id="main", name="The way"))
+    scene.add_foe(Foe(name="Vane", hp=1, max_hp=1, faction_id="coven"))
+    scene.add_foe(Foe(name="A Witness", hp=20, max_hp=20, faction_id="coven"))
+
+    run = Run(scene=scene, condition=Condition(endurance=5, strength=5),
+              stats={k: 5 for k in SPECIAL_KEYS},
+              clocks=ClockBoard([Clock.for_act("project", "P", ClockKind.PROJECT)]),
+              ledger=ledger)
+
+    advance_turn(run, Intent(verb=Verb.ATTACK, depth=Depth.QUICK,
+                             stat_hint="STR", target="Vane",
+                             weapon=WeaponWeight.MEDIUM),
+                 StubKeeper(bearing=Bearing.IDEAL), rng=hit())
+
+    coven = ledger.factions["coven"]
+    assert coven.known, "they never heard about it"
+    assert coven.reputation < 0
+    assert coven.standing is not Standing.NEUTRAL or coven.reputation != 0
+
+
+def test_a_killing_nobody_saw_stays_between_you_and_the_dead():
+    """What gives stealth its payoff."""
+    import random as _random
+
+    from engine.actions import Depth, Intent, Verb
+    from engine.character import Condition, WeaponWeight
+    from engine.clocks import Clock, ClockBoard, ClockKind
+    from engine.keeper import StubKeeper
+    from engine.model import SPECIAL_KEYS
+    from engine.resolve import Bearing
+    from engine.scene import Foe, Obstacle, Scene
+    from engine.turn import Run, advance_turn
+    from tests.test_combat import hit
+
+    ledger = Ledger()
+    ledger.add_faction("coven", "The Coven")
+
+    scene = Scene(id="s", name="A hall", description="")
+    scene.add(Obstacle(id="main", name="The way"))
+    scene.add_foe(Foe(name="Vane", hp=1, max_hp=1, faction_id="coven"))
+
+    run = Run(scene=scene, condition=Condition(endurance=5, strength=5),
+              stats={k: 5 for k in SPECIAL_KEYS},
+              clocks=ClockBoard([Clock.for_act("project", "P", ClockKind.PROJECT)]),
+              ledger=ledger)
+
+    advance_turn(run, Intent(verb=Verb.ATTACK, depth=Depth.QUICK,
+                             stat_hint="STR", weapon=WeaponWeight.MEDIUM),
+                 StubKeeper(bearing=Bearing.IDEAL), rng=hit())
+
+    assert not ledger.factions["coven"].known
+    assert ledger.factions["coven"].reputation == 0
+    assert ledger.people["vane"].affinity < 0, "the dead still remember"
+
+
+def test_a_stranger_is_met_as_their_faction_has_heard():
+    """Reputation's whole purpose, and the only way it reaches a roll."""
+    from engine.scene import Foe, Scene
+    from engine.turn import Run, _standing_toward
+    from engine.character import Condition
+
+    ledger = Ledger()
+    faction = ledger.add_faction("coven", "The Coven")
+    faction.reputation = -60
+    faction.known = True
+
+    scene = Scene(id="s", name="A gate", description="")
+    scene.add_foe(Foe(name="A Stranger", faction_id="coven"))
+    run = Run(scene=scene, condition=Condition(endurance=5, strength=5),
+              ledger=ledger)
+
+    assert _standing_toward(run, "A Stranger") == -60
+    assert bearing_name_for(_standing_toward(run, "A Stranger")) == "dire"
+
+
+def test_a_faction_that_has_never_heard_of_you_says_nothing():
+    """Different from a faction that has heard of you and is indifferent."""
+    from engine.scene import Foe, Scene
+    from engine.turn import Run, _standing_toward
+    from engine.character import Condition
+
+    ledger = Ledger()
+    ledger.add_faction("coven", "The Coven").reputation = -60   # known stays False
+
+    scene = Scene(id="s", name="A gate", description="")
+    scene.add_foe(Foe(name="A Stranger", faction_id="coven"))
+    run = Run(scene=scene, condition=Condition(endurance=5, strength=5),
+              ledger=ledger)
+
+    assert _standing_toward(run, "A Stranger") is None
+
+
+def test_someone_you_know_answers_for_themselves():
+    """A personal relationship outranks what their group heard."""
+    from engine.scene import Foe, Scene
+    from engine.turn import Run, _standing_toward
+    from engine.character import Condition
+
+    ledger = Ledger()
+    faction = ledger.add_faction("coven", "The Coven")
+    faction.reputation, faction.known = -80, True
+    ledger.person("Vane", faction_id="coven").affinity = 70
+
+    scene = Scene(id="s", name="A gate", description="")
+    scene.add_foe(Foe(name="Vane", faction_id="coven"))
+    run = Run(scene=scene, condition=Condition(endurance=5, strength=5),
+              ledger=ledger)
+
+    assert _standing_toward(run, "Vane") == 70

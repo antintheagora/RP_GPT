@@ -75,6 +75,19 @@
 
   <div class="grid gap-4 sm:grid-cols-2">
     <div class="rounded-xl bg-night/80 border border-slate-700/80 p-4">
+      {# Only groups that have heard of you. A faction you have never crossed
+         has no opinion, and printing "neutral" would claim otherwise. #}
+      {% if payload.factions %}
+        <p class="text-xs uppercase tracking-wide text-slate-400">Word has spread</p>
+        <ul class="text-sm space-y-1 mt-1 mb-3">
+          {% for faction in payload.factions %}
+            <li class="flex justify-between gap-2">
+              <span>{{ faction.name }}</span>
+              <span class="capitalize {{ 'text-rose-300' if faction.reputation < 0 else 'text-sky-300' }}">{{ faction.standing }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
       <p class="text-xs uppercase tracking-wide text-slate-400">Marks</p>
       {% if cond and (cond.wounds.wounds or cond.scars or cond.virtues) %}
         <ul class="text-sm space-y-1 mt-1">

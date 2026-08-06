@@ -507,12 +507,20 @@ def campaign_blueprint_schema(target_acts: int = 3) -> Dict[str, Any]:
                         # guards, sentinels, wardens and automatons were all
                         # filed as harmless and no fight ever started.
                         "hostile": {"type": "boolean"},
+                        # The group they answer to, matching one of the
+                        # campaign's factions, or "" for the unaffiliated.
+                        "faction": {"type": "string"},
                         "hp": {"type": "integer"},
                         "attack": {"type": "integer"},
                         "disposition": {"type": "integer"},
                         "personality": {"type": "string"},
                     },
-                    "required": ["name", "kind", "hostile"],
+                    # `faction` is required, not merely permitted. Left
+                    # optional the model simply omitted it for half the cast,
+                    # exactly as it dropped seed_actors when that was only
+                    # described rather than demanded. An empty string is the
+                    # way to say "answers to nobody".
+                    "required": ["name", "kind", "hostile", "faction"],
                 },
             },
             "seed_items": {
@@ -546,13 +554,31 @@ def campaign_blueprint_schema(target_acts: int = 3) -> Dict[str, Any]:
             "campaign_goal": {"type": "string"},
             "pressure_name": {"type": "string"},
             "pressure_logic": {"type": "string"},
+            # Two or three groups with a stake in this. Reputation is
+            # per-faction, and with none declared there was nothing for it to
+            # attach to -- every character was unaffiliated and the entire
+            # layer sat inert.
+            "factions": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 4,
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "string"},
+                        "name": {"type": "string"},
+                        "wants": {"type": "string"},
+                    },
+                    "required": ["id", "name"],
+                },
+            },
             "acts": {
                 "type": "object",
                 "properties": {key: act for key in keys},
                 "required": keys,
             },
         },
-        "required": ["campaign_goal", "pressure_name", "acts"],
+        "required": ["campaign_goal", "pressure_name", "factions", "acts"],
     }
 
 
@@ -625,6 +651,12 @@ Write moves that change the player's situation, never moods or weather.
 
 Mark each seeded actor `hostile`: true if they would fight the player on
 sight, false otherwise. At least one act should have someone hostile in it.
+
+Name two to four `factions` for the campaign -- groups with a stake in what
+happens, each with a short lowercase `id`, a name the player would hear, and
+what it wants. Give every seeded actor a `faction` matching one of those ids,
+or "" if they answer to nobody. What the player does to one member is how the
+rest of that group comes to hear about them.
 
 Also write `seeded_facts`: 3-5 things that are TRUE RIGHT NOW and that the
 player does not know yet. Facts, not events -- a fact waits, an event

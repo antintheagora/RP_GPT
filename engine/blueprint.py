@@ -90,6 +90,7 @@ def actors_from_seed(seed, act_index:int)->List[Actor]:
             name=a.get("name","Stranger"), kind=a.get("kind","npc"),
             hp=hp, attack=atk, disposition=int(a.get("disposition",0)),
             personality=a.get("personality",""), role=role, discovered=False, alive=True,
+            faction_id=(str(a.get("faction") or "").strip() or None),
             desc=a.get("personality",""),
             species=species, comm_style=comm, personality_archetype=personality_roll()
         )
@@ -186,9 +187,20 @@ def blueprint_from_json(j:Dict[str,Any])->CampaignBlueprint:
     skipped = len(raw_acts) - len(items)
     if skipped:
         _log.warning("ignored %d act entr(ies) that were not objects", skipped)
+    factions = []
+    for raw in j.get("factions") or []:
+        if not isinstance(raw, dict):
+            continue
+        fid = str(raw.get("id") or "").strip().lower().replace(" ", "_")
+        name = str(raw.get("name") or "").strip()
+        if fid and name:
+            factions.append({"id": fid, "name": name,
+                             "wants": str(raw.get("wants") or "").strip()})
+
     return CampaignBlueprint(
         campaign_goal=j["campaign_goal"],
         pressure_name=j["pressure_name"],
         pressure_logic=j.get("pressure_logic", ""),
         acts=acts,
+        factions=factions,
     )

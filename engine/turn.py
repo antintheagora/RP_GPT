@@ -23,6 +23,7 @@ from engine import events as ev
 from engine.actions import Intent, ObserveTarget, Verb, apply_observation, bearing_after_gear
 from engine.affinity import (
     Ledger,
+    Move,
     assists_per_scene,
     bearing_name_for,
     takes_a_wound_for_you,
@@ -111,6 +112,7 @@ class TurnResult:
     damage_dealt: int = 0
     struck: str = ""
     felled: str = ""
+    reputation_shifted: str = ""
     act_complete: bool = False
     act_failed: bool = False
     consumed_turn: bool = False
@@ -150,6 +152,33 @@ def _person_in(intent: Intent, run: Run) -> str:
         if name:
             return name
     return ""
+
+
+def _standing_toward(run: Run, who: str) -> Optional[int]:
+    """How this person is disposed toward the player, or None if unknowable.
+
+    Someone you have met answers for themselves. A stranger answers for
+    whatever their faction has heard -- which is the point of Reputation and
+    the only way it ever reaches a roll. A faction that has never heard of
+    you says nothing at all, which is a different state from a faction that
+    has heard of you and is indifferent.
+    """
+    if run.ledger is None:
+        return None
+    if run.ledger.knows(who):
+        return run.ledger.person(who).affinity
+
+    faction_id = None
+    for foe in run.scene.foes:
+        if foe.name == who:
+            faction_id = foe.faction_id
+            break
+    if not faction_id:
+        return None
+    faction = run.ledger.factions.get(faction_id)
+    if faction is None or not faction.known:
+        return None
+    return faction.effective
 
 
 def assisting_companion(run: Run, position: str) -> Optional[str]:
@@ -244,10 +273,10 @@ def advance_turn(
     # and Bearing remains the only thing that moves a target number.
     if intent.verb is Verb.PARLEY and run.ledger is not None:
         who = (intent.target or "").strip() or _person_in(intent, run)
-        if who and run.ledger.knows(who):
-            assessment.bearings["CHA"] = Bearing(
-                bearing_name_for(run.ledger.person(who).affinity)
-            )
+        if who:
+            standing = _standing_toward(run, who)
+            if standing is not None:
+                assessment.bearings["CHA"] = Bearing(bearing_name_for(standing))
 
     # Gear can worsen the approach without forbidding it.
     if intent.weapon:
@@ -434,11 +463,41 @@ def _strike(run: Run, resolution: Resolution, intent: Intent,
     if not foe.alive:
         result.felled = foe.name
         ev.chapter(f"{foe.name} goes down.")
+        _word_gets_out(run, foe, result)
         # Putting down the thing in your way is progress, and it is the one
         # place a kill touches the act clock.
         tick = run.clocks.tick(run.project_id, 1)
         if tick:
             result.ticks.append(tick)
+
+
+def _word_gets_out(run: Run, foe, result: TurnResult) -> None:
+    """Killing one of theirs is how a faction comes to hear about you.
+
+    Nothing moved Reputation. `Ledger.apply` was written, tested and called
+    from no live code at all, so every faction in every campaign stayed
+    permanently unknown and the whole layer was inert.
+
+    A kill is witnessed unless nobody is left to witness it -- which is the
+    hook stealth eventually hangs on, and why this reads the scene rather
+    than assuming.
+    """
+    if run.ledger is None or not foe.faction_id:
+        return
+    witnesses = [f for f in run.scene.foes if f.alive] + [n for n, _ in run.companions]
+    run.ledger.apply(
+        foe.name,
+        Move.KILLED_LOVED,          # the magnitude the spec costs a kill at
+        charisma=run.stats.get("CHA", 5),
+        witnessed=bool(witnesses),
+        note=f"you killed {foe.name}",
+        faction_id=foe.faction_id,
+        act=run.act,
+    )
+    faction = run.ledger.factions.get(foe.faction_id)
+    if faction is not None and faction.known:
+        result.reputation_shifted = faction.name
+        ev.chapter(f"{faction.name} will hear about this.")
 
 
 def _apply_harm(run: Run, resolution: Resolution, intent: Intent,

@@ -119,6 +119,7 @@ class Foe:
     max_hp: int = 14
     threat: WeaponWeight = WeaponWeight.LIGHT
     strength: int = 5
+    faction_id: Optional[str] = None
 
     def __post_init__(self) -> None:
         self.max_hp = max(1, self.max_hp or self.hp)

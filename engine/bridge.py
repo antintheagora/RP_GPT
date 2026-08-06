@@ -103,6 +103,7 @@ def build_run(state) -> Run:
             max_hp=int(getattr(actor, "hp", 14) or 14),
             threat=threat_of(actor),
             strength=5 + int(getattr(actor, "attack", 3) or 3) // 2,
+            faction_id=getattr(actor, "faction_id", None),
         ))
     scene.add(Obstacle(id="main", name=goal))
     # Things that are true now and not yet known. Surfaced by looking, which
@@ -217,6 +218,7 @@ def sync_foes(run: Run, state) -> None:
             max_hp=int(getattr(actor, "hp", 14) or 14),
             threat=threat_of(actor),
             strength=5 + int(getattr(actor, "attack", 3) or 3) // 2,
+            faction_id=getattr(actor, "faction_id", None),
         ))
 
     # Someone who left, or was killed elsewhere, stops being in the fight.

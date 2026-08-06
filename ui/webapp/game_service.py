@@ -580,6 +580,16 @@ class GameSession:
                 "bargain": self._bargain_payload(),
                 "talk": self._talk_payload(),
                 "party": self._party_payload(),
+                # Only the factions that have actually heard of you. The rest
+                # have no opinion, and showing "neutral" for a group that has
+                # never met you would be a different, wrong claim.
+                "factions": [
+                    {"name": f.name, "standing": f.standing.value,
+                     "reputation": f.reputation}
+                    for f in (self.state.ledger.factions.values()
+                              if getattr(self.state, "ledger", None) else [])
+                    if f.known
+                ],
                 # The most recent picture that actually arrived. Nothing ever
                 # displayed one: the queued event carried the prompt and not
                 # the file, so there was nothing for a template to point at.
