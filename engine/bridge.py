@@ -20,6 +20,7 @@ from engine.character import Condition, WeaponWeight
 from engine.clocks import ACT_SEGMENTS, Clock, ClockBoard, ClockKind
 from engine.director import Director
 from engine.model import SPECIAL_KEYS
+from engine.resolve import DEFAULT_BASE_DIFFICULTY, Bearing
 from engine.scene import Foe, Obstacle, Scene
 from engine.tides import Tide, TideBoard
 from engine.turn import Run, TurnResult
@@ -61,6 +62,39 @@ def weapon_of(player) -> WeaponWeight:
             if order.index(guess) > order.index(best):
                 best = guess
     return best
+
+
+def obstacle_to_dict(obstacle: Obstacle) -> Dict:
+    """An obstacle as plain data, so a save can hold it."""
+    return {
+        "id": obstacle.id,
+        "name": obstacle.name,
+        "base_difficulty": obstacle.base_difficulty,
+        "bearings": {k: v.value for k, v in (obstacle.bearings or {}).items()},
+        "known": dict(obstacle.known or {}),
+        "revealed": list(obstacle.revealed or []),
+        "resolved": bool(obstacle.resolved),
+    }
+
+
+def obstacle_from_dict(entry: Dict) -> Obstacle:
+    """And back again, forgivingly -- a save may predate any field."""
+    bearings = {}
+    for stat, value in (entry.get("bearings") or {}).items():
+        try:
+            bearings[stat] = Bearing(value)
+        except ValueError:
+            continue
+    return Obstacle(
+        id=str(entry.get("id") or "main"),
+        name=str(entry.get("name") or "Something in the way"),
+        base_difficulty=int(entry.get("base_difficulty")
+                            or DEFAULT_BASE_DIFFICULTY),
+        bearings=bearings,
+        known=dict(entry.get("known") or {}),
+        revealed=list(entry.get("revealed") or []),
+        resolved=bool(entry.get("resolved")),
+    )
 
 
 def threat_of(actor) -> WeaponWeight:
@@ -106,7 +140,13 @@ def build_run(state) -> Run:
             strength=5 + int(getattr(actor, "attack", 3) or 3) // 2,
             faction_id=getattr(actor, "faction_id", None),
         ))
-    scene.add(Obstacle(id="main", name=goal))
+    # Restore what was learned here, or open a fresh obstacle.
+    saved = list(getattr(state.act, "obstacles", None) or [])
+    if saved:
+        for entry in saved:
+            scene.add(obstacle_from_dict(entry))
+    else:
+        scene.add(Obstacle(id="main", name=goal))
     # Things that are true now and not yet known. Surfaced by looking, which
     # is what finally makes Observe worth a turn -- until acts carried facts,
     # a successful observation had nothing to hand back but "nothing you did
@@ -235,6 +275,7 @@ def sync_back(run: Run, state, result: Optional[TurnResult] = None) -> None:
     """
     project, danger = run.project, run.danger
     state.act.clock_fill = {c.id: c.filled for c in run.clocks}
+    state.act.obstacles = [obstacle_to_dict(o) for o in run.scene.obstacles.values()]
     # One boolean where two 0-100 meters used to be. It decides whether the
     # encounter picker biases toward the act's own business, and that is the
     # only thing either meter was still read for.

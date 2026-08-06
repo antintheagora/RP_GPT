@@ -31,6 +31,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import List, Optional
 
+from Core.Logging import get_logger
 from engine import events as ev
 from engine.affinity import (
     TALKABLE,
@@ -42,6 +43,8 @@ from engine.affinity import (
     shift_for,
 )
 from engine.dice import Effect, Outcome
+
+_log = get_logger("talk")
 
 MAX_EXCHANGES = 5
 
@@ -73,6 +76,8 @@ class Exchange:
     move: Optional[Move] = None
     shift: int = 0
     text: str = ""
+    said: str = ""      # what the player put to them
+    reply: str = ""     # and what they said back
 
 
 @dataclass
@@ -122,7 +127,8 @@ def set_affinity(actor, value: int) -> int:
 
 
 def apply_exchange(conversation: Conversation, actor, resolution,
-                   charisma: int = 5, ledger: Optional[Ledger] = None) -> Exchange:
+                   charisma: int = 5, ledger: Optional[Ledger] = None,
+                   said: str = "", speak=None) -> Exchange:
     """Record one exchange and move how they feel about you.
 
     Written to the ledger as well as the actor, because the actor is only
@@ -147,8 +153,25 @@ def apply_exchange(conversation: Conversation, actor, resolution,
         move=move,
         shift=shift,
         text=_describe(actor, move, shift),
+        said=said,
     )
+
+    # The whole point of a conversation, and it was missing: talking to
+    # someone produced a target number and a shift in how they felt, and not
+    # one word from either party. `speak` is injected so the engine never
+    # imports a model client.
+    if speak is not None:
+        try:
+            exchange.reply = speak(actor, said, exchange) or ""
+        except Exception:                       # a silent NPC beats a dead turn
+            _log.debug("could not get a reply from %s",
+                       getattr(actor, "name", "?"), exc_info=True)
+
     conversation.exchanges.append(exchange)
+    if exchange.said:
+        ev.dialogue(f"You: {exchange.said}")
+    if exchange.reply:
+        ev.dialogue(f"{getattr(actor, 'name', 'They')}: {exchange.reply}")
     if exchange.text:
         ev.marginal(exchange.text)
     return exchange

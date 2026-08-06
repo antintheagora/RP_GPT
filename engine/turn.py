@@ -187,7 +187,8 @@ def _standing_toward(run: Run, who: str) -> Optional[int]:
     return faction.effective
 
 
-def assisting_companion(run: Run, position: str) -> Optional[str]:
+def assisting_companion(run: Run, position: str,
+                        exclude: str = "") -> Optional[str]:
     """Which companion lends a hand, if any.
 
     Charisma sets how many assists a scene has in it -- dumping it genuinely
@@ -198,8 +199,10 @@ def assisting_companion(run: Run, position: str) -> Optional[str]:
     """
     if run.assists_left <= 0:
         return None
+    # Nobody helps you talk to them. "Sable moves with you" while you are
+    # in conversation with Sable is nonsense, and it happened every time.
     willing = [(name, affinity) for name, affinity in run.companions
-               if will_assist(affinity, position)]
+               if will_assist(affinity, position) and name != exclude]
     if not willing:
         return None
     # The one who likes you most steps up first.
@@ -298,7 +301,9 @@ def advance_turn(
     # is computed once here on the engine's own facts and handed to resolve().
     facts = _position_facts(run, obstacle)
     provisional, _, _ = position_for(facts)
-    helper = assisting_companion(run, provisional.value)
+    helper = assisting_companion(run, provisional.value,
+                                 exclude=_person_in(intent, run)
+                                 if intent.verb is Verb.PARLEY else "")
     if helper:
         run.assists_used += 1
         result.assisted_by = helper
@@ -424,7 +429,10 @@ def _apply_clocks(run: Run, resolution: Resolution,
         tick = run.clocks.tick(run.project_id, resolution.clock_segments)
         if tick:
             ticks.append(tick)
-            ev.clock(tick.name + " " + run.project.render().split(" ", 1)[-1])
+            # render() already opens with the clock's name. Prefixing it
+            # again and trimming one word printed "The Blueprint is
+            # Recovered Blueprint is Recovered 1/6".
+            ev.clock(run.project.render())
 
     opposing = opposing_segments_for(
         resolution.roll.outcome.value,

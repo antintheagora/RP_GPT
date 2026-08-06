@@ -173,7 +173,10 @@ REST = "rest"
 # Conversation codes. Talking is several exchanges, so the loop needs its
 # own verbs while it is open.
 TALK_PREFIX = "talk:"
-TALK_END = "talk:end"
+# Not "talk:end": END is also a SPECIAL, so the code for leaving a
+# conversation and the code for pushing with Endurance differed only by
+# case. It worked, and it read like a mistake.
+TALK_END = "talk:leave"
 
 
 @dataclass
@@ -452,6 +455,54 @@ class GameSession:
         seen += list(getattr(self.state.act, "undiscovered", []) or [])
         return [a.name for a in seen if getattr(a, "name", "")]
 
+    def _speak(self, actor, said: str, exchange) -> str:
+        """What they say back.
+
+        A conversation used to produce a target number and a shift in how
+        someone felt, and not one word from either party. This is the one
+        model call a conversation makes, and it earns it -- talking is the
+        feature, and dice are not dialogue.
+        """
+        from Core.AI_Dungeon_Master import talk_reply_prompt
+
+        # Tell the model how the attempt landed, so a fumble does not come
+        # back sounding warm.
+        went = ("well" if exchange.shift > 0 else
+                "badly" if exchange.shift < 0 else "without landing")
+        line = said or f"[approaches, leading with {exchange.stat}]"
+
+        # What has already been said in this conversation. Without it the
+        # model re-answers the opening every time: two exchanges in a row came
+        # back as near-identical riffs on the same frame, because as far as it
+        # knew each was the first thing anyone had said.
+        # Both parties named, every line. "They said / You replied" left it to
+        # the model to work out which of the two it was, and it got it wrong:
+        # the second exchange of a conversation came back as the *player's*
+        # line, attributed to the NPC.
+        player = getattr(self.state.player, "name", "the traveller")
+        speaker = getattr(actor, "name", "They")
+        history = ""
+        if self._talk is not None and self._talk.exchanges:
+            recent = []
+            for past in self._talk.exchanges[-3:]:
+                if past.said:
+                    recent.append(f"{player}: {past.said}")
+                if past.reply:
+                    recent.append(f"{speaker}: {past.reply}")
+            if recent:
+                history = ("Earlier in this conversation:\n"
+                           + "\n".join(recent) + "\n\n")
+
+        prompt = talk_reply_prompt(
+            self.state, actor,
+            history
+            + f"{player}: {line}\n"
+            + f"(How it landed: {went}.)\n"
+            + f"Write only {speaker}'s next line. Do not write {player}'s "
+            + "words, and do not repeat anything already said above.",
+        )
+        return sanitize_prose(self.client.text(prompt, tag="Talk", max_chars=220))
+
     def _talk_partner(self):
         """Who is here to talk to.
 
@@ -725,6 +776,8 @@ class GameSession:
             except Exception:
                 _log.debug("%s failed; turn continues", label, exc_info=True)
 
+        self._evolve_situation()
+
         # After the beat, not before it: the beat is what walks someone into
         # the scene, and syncing first meant a hostile only became a foe on
         # the turn *after* they arrived. Seeded enemies start `undiscovered`,
@@ -761,6 +814,43 @@ class GameSession:
             # shows and all a save needs to point at.
             self._images = self._images[-12:]
             self.state.last_image_path = result.path
+
+    def _evolve_situation(self) -> None:
+        """Move the scene on.
+
+        The situation was written once at act start and never touched again,
+        so the same three sentences sat at the top of the screen for a whole
+        act while the clocks filled underneath them. Nothing about where the
+        player was standing ever changed until the act did.
+
+        Rewritten only on turns that moved something, not on every turn: a
+        scene that churns on every click reads as noise, and this is a model
+        call on the turn's critical path.
+        """
+        result = self._last_result
+        if result is None or result.resolution is None:
+            return
+        moved = bool(result.ticks or result.tide_moves or result.felled
+                     or result.stance_changed)
+        if not moved:
+            return
+
+        from Core.AI_Dungeon_Master import next_situation_prompt
+
+        outcome = "success" if result.resolution.succeeded else "fail"
+        try:
+            text = sanitize_prose(self.client.text(
+                next_situation_prompt(self.state, outcome,
+                                      result.intent.text, goal_lock=False),
+                tag="Situation", max_chars=420,
+            ))
+        except Exception:
+            _log.debug("could not move the scene on", exc_info=True)
+            return
+        if text:
+            self.state.act.situation = text
+            self.state.last_situation_para = text
+            self.run.scene.description = text
 
     def _recall(self, scene) -> str:
         """What the people in this scene remember about the player.
@@ -986,6 +1076,8 @@ class GameSession:
                                         self._talk, partner, result.resolution,
                                         charisma=self.run.stats.get("CHA", 5),
                                         ledger=self.state.ledger,
+                                        said=(payload.get("intent") or "").strip(),
+                                        speak=self._speak,
                                     )
                             else:
                                 self._close_talk()
@@ -1028,8 +1120,11 @@ class GameSession:
             # so closing the window -- or any uncaught exception -- destroyed
             # the campaign outright.
             self.save()
-            if consumed:
-                self._options = None
+            # Always, not only on a turn that was consumed. Observing is free,
+            # and observing is exactly what puts a new approach on the menu --
+            # so the thing you just worked out did not appear until you had
+            # spent a turn on something else. The menu costs no model call.
+            self._options = None
             return {
                 "consumed": consumed,
                 "offered": offered,

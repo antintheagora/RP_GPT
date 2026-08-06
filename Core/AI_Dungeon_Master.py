@@ -250,13 +250,29 @@ class GemmaClient:
         raise GemmaError(f"{tag} failed after {self.max_retries} attempts: {last}") from last
 
     def text(self, prompt: str, tag: str, max_chars: Optional[int] = None) -> str:
-        """Return prose. ``max_chars`` truncates on a word boundary, not mid-word."""
+        """Return prose, ending on a finished sentence.
+
+        This trimmed to a word boundary, which is not the same thing: a
+        situation came back reading "...leading toward the." Cutting at the
+        last full stop costs a few words and reads like writing rather than
+        like a truncation.
+        """
         output = self._run(prompt, tag)
-        if max_chars and len(output) > max_chars:
-            cut = output[:max_chars]
-            space = cut.rfind(" ")
-            output = (cut[:space] if space > max_chars * 0.6 else cut).rstrip()
-        return output
+        if not max_chars or len(output) <= max_chars:
+            return output
+
+        cut = output[:max_chars]
+        stop = max(cut.rfind(". "), cut.rfind("! "), cut.rfind("? "))
+        if stop == -1:
+            for ending in (".", "!", "?"):
+                stop = max(stop, cut.rfind(ending))
+        if stop > max_chars * 0.4:
+            return cut[:stop + 1].rstrip()
+
+        # Nothing sentence-shaped to cut at; fall back to a word boundary
+        # rather than slicing a word in half.
+        space = cut.rfind(" ")
+        return (cut[:space] if space > max_chars * 0.6 else cut).rstrip()
 
     def json(self, prompt: str, tag: str, schema: Optional[Dict] = None) -> Any:
         """Return parsed JSON, retrying the *generation* when parsing fails.
@@ -433,7 +449,10 @@ def _clock_schema(what: str) -> Dict[str, Any]:
             "name": {"type": "string", "description": what},
             # Constrained rather than validated: a model handed "integer" will
             # propose 5 or 10, and the clock module would silently snap it.
-            "segments": {"type": "integer", "enum": [4, 6, 8]},
+            # Six or eight. A standard success is worth two segments, so
+            # a 4-segment act is over in two good turns -- four is the
+            # size for a single obstacle, not for an act.
+            "segments": {"type": "integer", "enum": [6, 8]},
         },
         "required": ["name", "segments"],
     }
@@ -628,8 +647,7 @@ language -- the player is shown these words.
   project_clock  what the player is filling by succeeding. Name it as the
                  thing they are achieving: "The Archive Door Opens", not
                  "Progress". Its segments are how many good turns it should
-                 take: 4 for a single obstacle, 6 for a normal act, 8 for a
-                 hard one.
+                 take: 6 for a normal act, 8 for a hard one.
 
   danger_clock   what fills when they fail. Name the specific bad thing that
                  arrives when it is full: "The Patrol Reaches The Bridge",
@@ -874,6 +892,13 @@ def next_situation_prompt(
     previous = state.act.situation
     intent_text = intent or "none"
     location = state.location_desc or "the current area"
+    # The point of view wandered turn to turn -- one situation addressed the
+    # player as "you", the next narrated "Wren ... their ... they". Pinned,
+    # because a reader notices the camera moving even when the prose is good.
+    voice_rule = (
+        "Address the player as \"you\", in second person, present tense. "
+        "Never refer to them by name or in the third person."
+    )
     lock_rule = (
         "Drive directly toward the act goal. Introduce a concrete waypoint, sightline, or puzzle ON that path; no unrelated new threats."
         if goal_lock and outcome == "success"
@@ -891,6 +916,7 @@ Write a new situation paragraph (2–4 sentences) for a {state.scenario_label} R
 - Scene phase: {state.scene_phase}
 
 Rules:
+{voice_rule}
 - If SUCCESS: advance logically (new room/route/clue/NPC); {lock_rule}
 - If FAIL: evolve the obstacle/complication; hint a new angle; avoid repetition.
 - Do NOT restate numeric meters. Complete sentences; no mid-word hyphenation. Plain text only.

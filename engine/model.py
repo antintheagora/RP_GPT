@@ -124,6 +124,11 @@ class ActState:
     # what a clock is -- resuming used to rebuild it from a percentage, so a
     # 6-segment clock at 5/6 came back as 83%, rounded to 5, only by luck.
     clock_fill:Dict[str,int]=field(default_factory=dict)
+    # What the player has worked out about this act's obstacles, and the
+    # difficulty the Keeper set for them. Held only on the Run before, and
+    # the Run is rebuilt from this -- so every observation's benefit and
+    # the whole scene cache evaporated the moment a campaign was reloaded.
+    obstacles:List[Dict[str,Any]]=field(default_factory=list)
     situation:str=""
     actors:List[Actor]=field(default_factory=list)
     undiscovered:List[Actor]=field(default_factory=list)

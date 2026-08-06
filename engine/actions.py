@@ -186,8 +186,36 @@ def build_menu(scene: Scene, player, *, strength: Optional[int] = None) -> List[
             stat=OBSERVE_STAT[target], detail=target.value,
         ))
 
+    options.extend(learned_options(scene))
     options.append(MenuOption(Verb.OTHER, "Something else", key="other",
                               depth=Depth.DESCRIBE))
+    return options
+
+
+def learned_options(scene: Scene) -> List[MenuOption]:
+    """Approaches the player worked out, offered back to them.
+
+    Observing told you the answer and then gave you no way to use it. A
+    weakness check would return "a way in: AGI is exactly what this needs"
+    while the menu -- which is built from verbs, not stats -- had no AGI
+    option anywhere on it. What you learned is recorded on the obstacle; this
+    is the other half, putting it back in front of the player.
+    """
+    options: List[MenuOption] = []
+    seen = set()
+    for obstacle in scene.unresolved:
+        for stat, why in (obstacle.known or {}).items():
+            if stat in seen:
+                continue
+            seen.add(stat)
+            options.append(MenuOption(
+                Verb.OTHER,
+                f"Use what you found: {stat}",
+                key=f"learned:{stat}",
+                stat=stat,
+                detail=stat,
+                note=why,
+            ))
     return options
 
 
@@ -312,7 +340,7 @@ def bearing_after_gear(bearing, weapon: Optional[WeaponWeight], strength: int):
 
 __all__ = [
     "Verb", "Depth", "ObserveTarget", "MenuOption", "Intent",
-    "build_menu", "weapon_options", "intent_from_option",
+    "build_menu", "learned_options", "weapon_options", "intent_from_option",
     "ObserveResult", "apply_observation", "bearing_after_gear",
     "DEFAULT_STAT", "OBSERVE_STAT",
 ]

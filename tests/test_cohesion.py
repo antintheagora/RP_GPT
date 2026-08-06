@@ -269,3 +269,111 @@ def test_dying_still_ends_it_wherever_you_are():
     session = _session_at(1, 3)
     session.state.player.hp = 0
     assert session.state.is_game_over() == "You died."
+
+
+# =============================
+# ---- WHAT YOU WORKED OUT ----
+# =============================
+
+def test_an_approach_you_found_is_offered_back_to_you():
+    """Observing told you the answer and gave you no way to use it. A
+    weakness check returned "a way in: AGI is exactly what this needs" while
+    the menu -- built from verbs, not stats -- had no AGI option on it."""
+    from engine.actions import build_menu, learned_options
+    from engine.scene import Obstacle, Scene
+    import RP_GPT as core
+
+    scene = Scene(id="s", name="A door", description="")
+    obstacle = scene.add(Obstacle(id="main", name="The sealed door"))
+    obstacle.expose_weakness("AGI", reason="a gap in the grating")
+
+    keys = {o.key for o in build_menu(scene, core.Player(name="Wren"))}
+    assert "learned:AGI" in keys
+
+    found = learned_options(scene)[0]
+    assert found.stat == "AGI"
+    assert "grating" in found.note
+
+
+def test_nothing_learned_means_nothing_extra_on_the_menu():
+    from engine.actions import learned_options
+    from engine.scene import Obstacle, Scene
+
+    scene = Scene(id="s", name="A door", description="")
+    scene.add(Obstacle(id="main", name="The sealed door"))
+    assert learned_options(scene) == []
+
+
+def test_the_same_approach_is_not_offered_twice():
+    from engine.actions import learned_options
+    from engine.scene import Obstacle, Scene
+
+    scene = Scene(id="s", name="A hall", description="")
+    for i in (1, 2):
+        obstacle = scene.add(Obstacle(id=f"o{i}", name=f"Thing {i}"))
+        obstacle.expose_weakness("AGI", reason="the same gap")
+    assert len(learned_options(scene)) == 1
+
+
+def test_what_you_just_learned_appears_immediately():
+    """The menu was rebuilt only on a consumed turn, and observing is free --
+    so the approach you had just worked out did not show up until you had
+    spent a turn on something else."""
+    from engine.actions import ObserveTarget, Verb
+
+    session = _session_at(1, 1)
+    session.run.scene.obstacle("main").expose_weakness("AGI", reason="a gap")
+
+    observe = next(o for o in session.ensure_options()
+                   if o.verb is Verb.OBSERVE)
+    session.apply_choice(observe.key)
+
+    assert any(o.key == "learned:AGI" for o in session.ensure_options())
+
+
+def test_what_you_learned_about_a_place_survives_a_reload(tmp_path):
+    """Found by playing: obstacles lived only on the Run, and the Run is
+    rebuilt from GameState -- so every observation's benefit and the whole
+    scene cache evaporated the moment a campaign was reloaded. Worse than
+    losing a bonus: the door stopped being hard for the same reason it was
+    hard before, which is what the cache exists to guarantee."""
+    from engine.persistence import load_run, save_run
+    from engine.resolve import Bearing
+
+    state = _state()
+    run = build_run(state)
+    obstacle = run.scene.obstacle("main")
+    obstacle.rate({"STR": Bearing.DIRE, "AGI": Bearing.SOUND}, 14)
+    obstacle.expose_weakness("AGI", reason="a gap in the grating")
+    sync_back(run, state)
+
+    restored = load_run(save_run(state, root=tmp_path, world="w",
+                                 run_id="r", label="T"))
+    back = build_run(restored).scene.obstacle("main")
+
+    assert back.known.get("AGI") == "a gap in the grating"
+    assert back.is_rated(), "the scene cache was thrown away"
+    assert back.base_difficulty == 14
+    assert back.bearing_for("AGI") is Bearing.IDEAL
+
+
+def test_an_approach_you_found_is_still_offered_after_a_reload(tmp_path):
+    from engine.actions import learned_options
+    from engine.persistence import load_run, save_run
+
+    state = _state()
+    run = build_run(state)
+    run.scene.obstacle("main").expose_weakness("AGI", reason="a gap")
+    sync_back(run, state)
+
+    restored = load_run(save_run(state, root=tmp_path, world="w",
+                                 run_id="r", label="T"))
+    keys = {o.key for o in learned_options(build_run(restored).scene)}
+    assert "learned:AGI" in keys
+
+
+def test_a_save_with_no_obstacles_still_opens_one():
+    """Older saves predate the field entirely."""
+    state = _state()
+    state.act.obstacles = []
+    assert build_run(state).scene.obstacle("main") is not None

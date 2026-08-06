@@ -207,12 +207,16 @@ def test_the_schema_makes_the_clocks_impossible_to_omit():
         assert field in act["required"], f"{field} could be dropped silently"
 
 
-def test_the_schema_only_permits_clock_sizes_the_engine_supports():
+def test_an_act_clock_is_never_short_enough_to_end_in_two_turns():
+    """A standard success is worth two segments, so a 4-segment act is over
+    in two good turns. Four is the size for a single obstacle."""
     schema = campaign_blueprint_schema(1)
     act = schema["properties"]["acts"]["properties"]["1"]
     for key in ("project_clock", "danger_clock"):
         allowed = act["properties"][key]["properties"]["segments"]["enum"]
-        assert tuple(allowed) == LEGAL_SEGMENTS
+        assert 4 not in allowed
+        assert set(allowed) <= set(LEGAL_SEGMENTS)
+        assert set(allowed) == {6, 8}
 
 
 @pytest.mark.parametrize("acts", [1, 3, 5])

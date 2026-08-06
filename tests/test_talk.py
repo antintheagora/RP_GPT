@@ -267,3 +267,83 @@ def test_walking_away_mid_sentence_ends_the_conversation():
     assert talk_engine.affinity_of(session.state.act.actors[0]) == before, (
         "looking at the room moved how someone felt about you"
     )
+
+
+# =============================
+# -------- DIALOGUE -----------
+# =============================
+
+def test_a_conversation_produces_words():
+    """Playing it turned up the flattest thing in the game: talking to
+    someone gave a target number and a shift in how they felt, and not one
+    word from either party."""
+    from engine.dice import Effect, Outcome, Roll
+
+    actor = _actor()
+    conversation = Conversation(actor_name=actor.name)
+
+    class _Resolution:
+        stat = "CHA"
+        roll = Roll(roll=18, target=8, stat="CHA",
+                    outcome=Outcome.SUCCESS, effect=Effect.STANDARD)
+        effect = Effect.STANDARD
+
+    exchange = talk_engine.apply_exchange(
+        conversation, actor, _Resolution(),
+        said="I need to know who sent you.",
+        speak=lambda a, s, x: "Nobody sends me anywhere.",
+    )
+    assert exchange.said == "I need to know who sent you."
+    assert exchange.reply == "Nobody sends me anywhere."
+
+
+def test_the_reply_knows_how_the_attempt_landed():
+    """A fumble that comes back sounding warm is worse than silence."""
+    from engine.dice import Effect, Outcome, Roll
+
+    seen = {}
+
+    class _Resolution:
+        stat = "CHA"
+        roll = Roll(roll=1, target=8, stat="CHA",
+                    outcome=Outcome.CRITICAL_FAILURE, effect=Effect.LIMITED)
+        effect = Effect.LIMITED
+
+    def _speak(actor, said, exchange):
+        seen["shift"] = exchange.shift
+        return "..."
+
+    talk_engine.apply_exchange(Conversation(actor_name="Silas"), _actor(),
+                               _Resolution(), said="hello", speak=_speak)
+    assert seen["shift"] < 0, "the voice was not told the attempt fumbled"
+
+
+def test_a_silent_npc_beats_a_dead_turn():
+    """The model failing must not take the conversation down with it."""
+    from engine.dice import Effect, Outcome, Roll
+
+    class _Resolution:
+        stat = "CHA"
+        roll = Roll(roll=18, target=8, stat="CHA",
+                    outcome=Outcome.SUCCESS, effect=Effect.STANDARD)
+        effect = Effect.STANDARD
+
+    def _explode(actor, said, exchange):
+        raise RuntimeError("the model is down")
+
+    exchange = talk_engine.apply_exchange(
+        Conversation(actor_name="Silas"), _actor(), _Resolution(),
+        said="hello", speak=_explode)
+    assert exchange.reply == ""
+    assert exchange.shift > 0, "the mechanical half still happened"
+
+
+def test_nobody_helps_you_talk_to_them():
+    """"Sable moves with you" while you are in conversation with Sable."""
+    from engine.turn import assisting_companion
+    from tests.test_menu_flow import _session
+
+    session = _session()
+    session.run.companions = [("Sable", 60)]
+    assert assisting_companion(session.run, "risky") == "Sable"
+    assert assisting_companion(session.run, "risky", exclude="Sable") is None
