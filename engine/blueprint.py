@@ -113,6 +113,12 @@ def _tide_spec(raw: Any) -> Dict[str, Any]:
 
 def json_to_actplan(d:Dict[str,Any])->ActPlan:
     goal = d.get("goal","")
+    raw_tides = d.get("tides")
+    if not isinstance(raw_tides, list):
+        # Older blueprints carried a single `tide`.
+        raw_tides = [d.get("tide")] if d.get("tide") else []
+    tides = [spec for spec in (_tide_spec(t) for t in raw_tides) if spec]
+
     return ActPlan(
         goal=goal, intro_paragraph=d.get("intro_paragraph",""),
         pressure_evolution=d.get("pressure_evolution",""),
@@ -120,7 +126,9 @@ def json_to_actplan(d:Dict[str,Any])->ActPlan:
         seed_actors=d.get("seed_actors",[]) or [], seed_items=d.get("seed_items",[]) or [],
         project_clock=_clock_spec(d.get("project_clock"), goal or "Your progress"),
         danger_clock=_clock_spec(d.get("danger_clock"), "The pressure"),
-        tide=_tide_spec(d.get("tide")),
+        tides=tides,
+        seeded_facts=[str(f).strip() for f in (d.get("seeded_facts") or [])
+                      if str(f or "").strip()][:5],
     )
 
 def blueprint_from_json(j:Dict[str,Any])->CampaignBlueprint:

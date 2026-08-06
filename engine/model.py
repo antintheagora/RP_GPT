@@ -94,7 +94,12 @@ class ActPlan:
     # `suggested_encounters`; now the model that designed the act names them.
     project_clock:Dict[str,Any]=field(default_factory=dict)
     danger_clock:Dict[str,Any]=field(default_factory=dict)
-    tide:Dict[str,Any]=field(default_factory=dict)
+    # Several forces with different agendas, not one. With a single Tide the
+    # player has no pressure to choose between, and the choosing is where the
+    # organic feeling comes from.
+    tides:List[Dict[str,Any]]=field(default_factory=list)
+    # True now, not yet known. Surfaced by looking, never scheduled.
+    seeded_facts:List[str]=field(default_factory=list)
 
 @dataclass
 class CampaignBlueprint:
@@ -172,6 +177,8 @@ class GameState:
     last_result_para:str=""
     last_situation_para:str=""
     last_turn_success:bool=False
+    # Seeded facts already surfaced, so a reload does not re-reveal them.
+    revealed_facts:List[str]=field(default_factory=list)
     # Everyone met and every faction heard of, for the whole campaign.
     # Deliberately on GameState and not ActState: begin_act builds a fresh
     # act each time, which is why no character in this game had ever

@@ -637,9 +637,14 @@ Acts are chapters and they stay. The blueprint's three-act spine is good bones.
 
 ## 5.4 Cohesion: what is planned, and what is improvised
 
-Agreed 2026-07-29. Not yet built -- the callback half needs the ledger
-(Phase 3). Recorded here because it decides the shape of Phase 2's blueprint
-prompt.
+Agreed 2026-07-29. Built. Acts emit two or three Tides and three to five
+seeded facts under a constrained schema; facts surface through Observe, which
+until then had nothing to hand back but *"nothing you did not already know"*;
+and the ledger feeds callback into every Keeper assessment.
+
+Still open: the Director ([§13.2](#132-the-director)), deferred by decision —
+so the third guarantee below (*the world pushes when the player is
+comfortable*) is not yet mechanised. The first two are.
 
 The old build evolved purely turn by turn: each beat followed sensibly from
 the last, and twenty turns later there was no arc. Nothing had been set up, so

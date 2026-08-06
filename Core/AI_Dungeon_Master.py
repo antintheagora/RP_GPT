@@ -457,20 +457,37 @@ def campaign_blueprint_schema(target_acts: int = 3) -> Dict[str, Any]:
             "suggested_encounters": {"type": "array", "items": {"type": "string"}},
             "project_clock": _clock_schema("what the player is achieving"),
             "danger_clock": _clock_schema("the bad thing that arrives when it fills"),
-            "tide": {
-                "type": "object",
-                "properties": {
-                    "name": {"type": "string"},
-                    "wants": {"type": "string"},
-                    "moves": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "minItems": 3,
-                        "maxItems": 5,
+            "tides": {
+                # Two or three, not one. Structure comes from the clocks; the
+                # organic feeling comes from which pressure the player chooses
+                # to walk toward, and with a single Tide there is no choice.
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 3,
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                        "wants": {"type": "string"},
+                        "moves": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "minItems": 3,
+                            "maxItems": 5,
+                        },
+                        "if_completed": {"type": "string"},
                     },
-                    "if_completed": {"type": "string"},
+                    "required": ["name", "wants", "moves"],
                 },
-                "required": ["name", "wants", "moves"],
+            },
+            "seeded_facts": {
+                # True now, not yet known. A fact costs almost nothing and
+                # does not demand to happen, so it cannot railroad -- it
+                # waits until the player does something that surfaces it.
+                "type": "array",
+                "minItems": 3,
+                "maxItems": 5,
+                "items": {"type": "string"},
             },
             # Bounded on both ends. A schema that only says "array" is read as
             # permission to send none: the first constrained blueprint came
@@ -512,7 +529,8 @@ def campaign_blueprint_schema(target_acts: int = 3) -> Dict[str, Any]:
         },
         "required": [
             "goal", "intro_paragraph", "pressure_evolution",
-            "project_clock", "danger_clock", "tide", "seed_actors",
+            "project_clock", "danger_clock", "tides", "seeded_facts",
+            "seed_actors",
         ],
     }
     keys = [str(i) for i in range(1, max(1, min(5, target_acts)) + 1)]
@@ -585,14 +603,32 @@ language -- the player is shown these words.
                  arrives when it is full: "The Patrol Reaches The Bridge",
                  not "Danger". Same segment sizes.
 
-  tide           what the opposition does while the player is busy. `wants`
-                 is its goal in one line. `moves` are 3-5 concrete events, in
-                 escalating order, each one a thing that HAPPENS -- "the river
-                 road checkpoints go up", not "tension rises". They fire one
-                 at a time as the player loses ground. `if_completed` is what
-                 the world looks like if it runs all the way out.
+  tides          two or three forces that act while the player is busy, each
+                 with its own agenda. `wants` is its goal in one line.
+                 `moves` are 3-5 concrete events, in escalating order, each
+                 one a thing that HAPPENS -- "the river road checkpoints go
+                 up", not "tension rises". They fire one at a time as the
+                 player loses ground. `if_completed` is what the world looks
+                 like if it runs all the way out.
+
+                 Give them different agendas. Two forces that want the same
+                 thing are one force, and the player has nothing to choose
+                 between.
 
 Write moves that change the player's situation, never moods or weather.
+
+Also write `seeded_facts`: 3-5 things that are TRUE RIGHT NOW and that the
+player does not know yet. Facts, not events -- a fact waits, an event
+demands to happen.
+
+  good:  "The foreman is the Coven's informant."
+         "The pump house floods at high tide."
+         "Sable knows the woman in the archive."
+  bad:   "The foreman will betray them in act two."   (that is a plan)
+         "A storm arrives."                           (that is an event)
+
+They may be discovered in any order, by any route, or never at all. Do not
+write facts that only make sense if discovered in sequence.
 """
 
 

@@ -82,6 +82,13 @@ def build_run(state) -> Run:
                   (getattr(a, "role", "") or "").lower() == "enemy" and getattr(a, "alive", True)],
     )
     scene.add(Obstacle(id="main", name=goal))
+    # Things that are true now and not yet known. Surfaced by looking, which
+    # is what finally makes Observe worth a turn -- until acts carried facts,
+    # a successful observation had nothing to hand back but "nothing you did
+    # not already know".
+    already = set(getattr(state, "revealed_facts", []) or [])
+    scene.facts = [f for f in (getattr(plan, "seeded_facts", []) or [])
+                   if f and f not in already]
 
     stats = stats_of(state.player)
     condition = Condition(
@@ -119,19 +126,28 @@ def build_run(state) -> Run:
     # fallback for saves made before acts carried a Tide -- it is a list of
     # scene ideas, not an escalating sequence, so it makes a poor one.
     tides = TideBoard()
-    spec = getattr(plan, "tide", None) or {}
-    moves = [str(m).strip() for m in (spec.get("moves") or []) if str(m or "").strip()]
-    if not moves:
-        moves = [str(e).strip() for e in
-                 (getattr(plan, "suggested_encounters", []) or []) if str(e).strip()][:4]
-    if moves:
+    specs = list(getattr(plan, "tides", []) or [])
+    for index, spec in enumerate(specs):
+        moves = [str(m).strip() for m in (spec.get("moves") or []) if str(m or "").strip()]
+        if not moves:
+            continue
         tides.add(Tide(
-            id="act_tide",
+            id=f"tide{index + 1}",
             name=spec.get("name") or pressure,
             wants=spec.get("wants") or getattr(state.blueprint, "campaign_goal", ""),
             moves=moves,
             if_completed=spec.get("if_completed", ""),
         ))
+    if not tides.active:
+        # Saves made before acts carried Tides. `suggested_encounters` is a
+        # list of scene ideas rather than an escalating plan, so it makes a
+        # poor one -- but it beats an act with nothing pushing back.
+        moves = [str(e).strip() for e in
+                 (getattr(plan, "suggested_encounters", []) or []) if str(e).strip()][:4]
+        if moves:
+            tides.add(Tide(id="act_tide", name=pressure,
+                           wants=getattr(state.blueprint, "campaign_goal", ""),
+                           moves=moves))
 
     return Run(
         scene=scene,
@@ -170,6 +186,13 @@ def sync_back(run: Run, state, result: Optional[TurnResult] = None) -> None:
     )
     state.act.turns_taken = run.turn
     state.player.hp = run.condition.hp
+    # Facts leave the scene as they surface. Recording them on the campaign
+    # keeps a reload from revealing the same one twice.
+    seeded = set(getattr(state.blueprint.acts.get(state.act.index), "seeded_facts", []) or [])
+    still_hidden = set(run.scene.facts)
+    for fact in seeded - still_hidden:
+        if fact not in state.revealed_facts:
+            state.revealed_facts.append(fact)
     if result is not None and result.resolution is not None:
         # Read by goal_lock_active in four places, which decide whether the
         # menu pushes toward the act goal. Nothing set it after the swap, so

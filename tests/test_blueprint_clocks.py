@@ -34,16 +34,27 @@ ACT = {
     "pressure_evolution": "y",
     "project_clock": {"name": "The Archive Door Opens", "segments": 6},
     "danger_clock": {"name": "The Patrol Reaches The Bridge", "segments": 4},
-    "tide": {
-        "name": "The Ironclad Patrol",
-        "wants": "to find who burned the tithe barn",
-        "moves": [
-            "checkpoints go up on the river road",
-            "a friend of yours is taken for questioning",
-            "they raid the safehouse",
-        ],
-        "if_completed": "the quarter belongs to them",
-    },
+    "tides": [
+        {
+            "name": "The Ironclad Patrol",
+            "wants": "to find who burned the tithe barn",
+            "moves": [
+                "checkpoints go up on the river road",
+                "a friend of yours is taken for questioning",
+                "they raid the safehouse",
+            ],
+            "if_completed": "the quarter belongs to them",
+        },
+        {
+            "name": "The Rising Water",
+            "wants": "to reclaim the lower quarter",
+            "moves": ["the cellars flood", "the west stair is impassable"],
+        },
+    ],
+    "seeded_facts": [
+        "The foreman is the Coven's informant.",
+        "The pump house floods at high tide.",
+    ],
     "suggested_encounters": ["a beggar", "a locked gate"],
 }
 
@@ -67,7 +78,7 @@ def test_the_act_carries_the_clocks_the_model_named():
     plan = _state().blueprint.acts[1]
     assert plan.project_clock["name"] == "The Archive Door Opens"
     assert plan.danger_clock["name"] == "The Patrol Reaches The Bridge"
-    assert plan.tide["moves"][0] == "checkpoints go up on the river road"
+    assert plan.tides[0]["moves"][0] == "checkpoints go up on the river road"
 
 
 def test_a_missing_clock_falls_back_rather_than_crashing():
@@ -75,12 +86,32 @@ def test_a_missing_clock_falls_back_rather_than_crashing():
     plan = _state({"goal": "Reach the archive", "intro_paragraph": "x",
                    "pressure_evolution": "y"}).blueprint.acts[1]
     assert plan.project_clock["name"] == "Reach the archive"
-    assert plan.tide == {}
+    assert plan.tides == []
 
 
 def test_blank_tide_moves_are_dropped():
-    act = dict(ACT, tide=dict(ACT["tide"], moves=["real", "  ", None, "also real"]))
-    assert _state(act).blueprint.acts[1].tide["moves"] == ["real", "also real"]
+    act = dict(ACT, tides=[dict(ACT["tides"][0],
+                                moves=["real", "  ", None, "also real"])])
+    assert _state(act).blueprint.acts[1].tides[0]["moves"] == ["real", "also real"]
+
+
+def test_an_act_runs_more_than_one_force():
+    """Structure comes from the clocks; the organic feeling comes from which
+    pressure the player walks toward. One Tide is no choice at all."""
+    run = build_run(_state())
+    assert len(run.tides.active) == 2
+    assert {t.name for t in run.tides.active} == {"The Ironclad Patrol", "The Rising Water"}
+
+
+def test_seeded_facts_reach_the_scene_unrevealed():
+    run = build_run(_state())
+    assert "The foreman is the Coven's informant." in run.scene.facts
+
+
+def test_a_revealed_fact_does_not_come_back_on_reload():
+    state = _state()
+    state.revealed_facts = ["The pump house floods at high tide."]
+    assert "The pump house floods at high tide." not in build_run(state).scene.facts
 
 
 # =============================
@@ -105,7 +136,7 @@ def test_the_tide_is_the_written_plan_not_the_encounter_list():
 
 def test_an_act_without_a_tide_still_falls_back_to_encounters():
     act = dict(ACT)
-    act.pop("tide")
+    act.pop("tides")
     run = build_run(_state(act))
     assert run.tides.active[0].moves == ["a beggar", "a locked gate"]
 
@@ -159,7 +190,8 @@ def test_a_clock_summary_is_offered_even_before_the_first_turn():
 def test_the_schema_makes_the_clocks_impossible_to_omit():
     schema = campaign_blueprint_schema(3)
     act = schema["properties"]["acts"]["properties"]["1"]
-    for field in ("goal", "project_clock", "danger_clock", "tide"):
+    for field in ("goal", "project_clock", "danger_clock", "tides",
+                  "seeded_facts"):
         assert field in act["required"], f"{field} could be dropped silently"
 
 
@@ -185,5 +217,6 @@ def test_the_schema_is_serialisable():
 
 def test_the_prompt_asks_for_events_not_moods():
     prompt = campaign_blueprint_prompt("dark fantasy", {"acts": 3})
-    assert "project_clock" in prompt and "danger_clock" in prompt and "tide" in prompt
+    assert "project_clock" in prompt and "danger_clock" in prompt
+    assert "tides" in prompt and "seeded_facts" in prompt
     assert "never moods" in prompt

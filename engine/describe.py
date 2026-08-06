@@ -136,3 +136,42 @@ def character_block(player, condition=None, *, name_only: bool = False) -> str:
 __all__ = [
     "TRAITS", "traits_for", "trait_sentence", "appearance_of", "character_block",
 ]
+
+
+def recall_block(ledger, names, limit: int = 3) -> str:
+    """What the people standing here remember about you.
+
+    The cheapest source of cohesion is not predicting -- it is remembering.
+    To a reader, foreshadowing and callback are nearly indistinguishable, and
+    callback is strictly cheaper: foreshadowing that goes unused is dead
+    weight, while a callback only fires when the material already exists.
+
+        Captain Marius is here. The officer whose patrol you humiliated in
+        the Ashfall, whose sister you left in the burning mill.
+
+    None of that was planned. It is a few rows and a query.
+
+    Someone with no history is left out entirely rather than padded with
+    "you have not met them" -- an empty line costs prompt budget and tells
+    the narrator nothing.
+    """
+    if ledger is None:
+        return ""
+
+    lines = []
+    for name in names or []:
+        if not name or not ledger.knows(name):
+            continue
+        person = ledger.person(name)
+        if not person.memory and person.affinity == 0:
+            continue
+        recent = "; ".join(person.memory[-limit:])
+        detail = f" Between you: {recent}." if recent else ""
+        lines.append(f"- {person.name} regards you as {person.regard.value}.{detail}")
+
+    if not lines:
+        return ""
+    return "What they remember:\n" + "\n".join(lines)
+
+
+__all__ = __all__ + ["recall_block"]

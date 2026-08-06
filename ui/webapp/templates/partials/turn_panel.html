@@ -88,6 +88,27 @@
     </div>
   </div>
 
+  {# The forces in play. Not a plot -- each is a pressure with an ordered list
+     of moves, every one conditional on the player not intervening. The story
+     is what happens when they collide with one; the collision is never
+     authored. #}
+  {% if payload.tides %}
+    <div class="rounded-xl bg-night/80 border border-slate-700/80 p-4">
+      <p class="text-xs uppercase tracking-wide text-slate-400 mb-2">What is moving</p>
+      <ul class="space-y-2 text-sm">
+        {% for tide in payload.tides %}
+          <li>
+            <div class="flex justify-between gap-2">
+              <span class="font-semibold">{{ tide.name }}</span>
+              <span class="text-slate-500 tabular-nums">{{ tide.filled }} / {{ tide.segments }}</span>
+            </div>
+            {% if tide.wants %}<p class="text-slate-400">It wants {{ tide.wants }}.</p>{% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
   <div class="rounded-xl bg-night/80 border border-slate-700/80 p-4 space-y-2">
     <p class="text-xs uppercase tracking-wide text-slate-400">Situation</p>
     <p class="text-slate-100 leading-relaxed">{{ payload.situation or 'Waiting for the first spark of adventure.' }}</p>

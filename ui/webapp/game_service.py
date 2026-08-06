@@ -270,7 +270,7 @@ class GameSession:
         self.created_at = time.time()
         self._events: List[Event] = []
         self.run = build_run(state)
-        self.keeper = ModelKeeper(client, self._character_block())
+        self.keeper = ModelKeeper(client, self._character_block(), self._recall)
         intro = sanitize_prose(self.state.act.situation or "Act begins.")
         if intro:
             self._append_event(intro)
@@ -556,6 +556,15 @@ class GameSession:
                 "bargain": self._bargain_payload(),
                 "talk": self._talk_payload(),
                 "party": self._party_payload(),
+                # Every force in play, so the player can see which pressures
+                # exist and choose which to walk toward. The structure comes
+                # from the clocks; the choosing is where the story does.
+                "tides": [
+                    {"name": tide.name, "wants": tide.wants,
+                     "filled": tide.clock.filled, "segments": tide.clock.segments,
+                     "next": tide.next_move or ""}
+                    for tide in self.run.tides.active
+                ],
                 "campaign_goal": self.state.blueprint.campaign_goal,
                 "situation": self.state.act.situation,
                 "player": self.state.player,
@@ -627,6 +636,20 @@ class GameSession:
             except Exception:
                 _log.debug("%s failed; turn continues", label, exc_info=True)
 
+    def _recall(self, scene) -> str:
+        """What the people in this scene remember about the player.
+
+        Handed to the Keeper on every assessment. Callback is the cheapest
+        cohesion there is -- it only ever fires when the material already
+        exists, so nothing is wasted on setups that never pay off.
+        """
+        from engine.describe import recall_block
+
+        present = [getattr(a, "name", "") for a in
+                   (getattr(self.state.act, "actors", []) or [])]
+        present += list(getattr(scene, "hostiles", []) or [])
+        return recall_block(getattr(self.state, "ledger", None), present)
+
     def _advance_act(self) -> None:
         """The act's project clock filled. Recap it, then move on or end."""
         from Core.AI_Dungeon_Master import recap_prompt
@@ -656,7 +679,7 @@ class GameSession:
         state.stall_count = 0
         begin_act(state, state.act.index + 1)
         self.run = build_run(state)
-        self.keeper = ModelKeeper(self.client, self._character_block())
+        self.keeper = ModelKeeper(self.client, self._character_block(), self._recall)
         ev.chapter(sanitize_prose(state.act.situation or f"Act {state.act.index}."))
 
     # ------------------------------------------------------------ streaming
@@ -722,7 +745,8 @@ class GameSession:
         session.created_at = time.time()
         session._events = []
         session.run = build_run(state)
-        session.keeper = ModelKeeper(session.client, session._character_block())
+        session.keeper = ModelKeeper(session.client, session._character_block(),
+                                     session._recall)
         resumed = sanitize_prose(
             getattr(state, "last_situation_para", "") or state.act.situation or "The story resumes."
         )

@@ -40,8 +40,13 @@ VERB_FRAMING: Dict[Verb, str] = {
 
 
 def assess_prompt(intent: Intent, scene: Scene, obstacle: Optional[Obstacle],
-                  character: str = "") -> str:
-    """Ask for facts about the fiction. Nothing mechanical."""
+                  character: str = "", recall: str = "") -> str:
+    """Ask for facts about the fiction. Nothing mechanical.
+
+    `recall` carries what the people present remember of the player. It is
+    the cheapest cohesion there is: the Keeper rates talking your way past a
+    guard differently when it knows the guard is someone you betrayed.
+    """
     obstacle_line = (
         f"What stands in the way: {obstacle.name}." if obstacle
         else "There is no single obstacle; judge the situation as a whole."
@@ -52,7 +57,8 @@ def assess_prompt(intent: Intent, scene: Scene, obstacle: Optional[Obstacle],
             f"{stat} -- {why}" for stat, why in obstacle.known.items()
         )
 
-    return f"""{character}
+    recall_block = ("\n" + recall + "\n") if recall else ""
+    return f"""{character}{recall_block}
 The player is {VERB_FRAMING.get(intent.verb, 'acting')}.
 They said: "{intent.text}"
 
@@ -88,9 +94,12 @@ Do not decide whether they succeed. Do not give numbers or odds.
 class ModelKeeper:
     """Asks a GemmaClient. Falls back rather than failing a turn."""
 
-    def __init__(self, client, character_block: str = "") -> None:
+    def __init__(self, client, character_block: str = "", recall=None) -> None:
         self.client = client
         self.character_block = character_block
+        # A callable, not a string: who is present changes turn to turn, and
+        # a snapshot taken when the session opened would be stale by act two.
+        self.recall = recall
         self.calls = 0
 
     def assess(self, intent: Intent, scene: Scene,
@@ -107,8 +116,15 @@ class ModelKeeper:
 
         self.calls += 1
         try:
+            recall = ""
+            if self.recall is not None:
+                try:
+                    recall = self.recall(scene) or ""
+                except Exception:
+                    _log.debug("could not render recall", exc_info=True)
             payload = self.client.json(
-                assess_prompt(intent, scene, obstacle, self.character_block),
+                assess_prompt(intent, scene, obstacle,
+                              self.character_block, recall),
                 tag="Assess",
                 schema=ASSESS_SCHEMA,
             )
