@@ -48,6 +48,33 @@
       {% endif %}
     </div>
     <div class="rounded-xl bg-night/80 border border-slate-700/80 p-4">
+      {# Who is with you and what they think of you. Charisma decides how many
+         will step in; Affinity decides whether this one will. #}
+      <div class="flex items-baseline justify-between gap-2">
+        <p class="text-xs uppercase tracking-wide text-slate-400">With you</p>
+        {% if payload.party and payload.party.assists_total %}
+          <p class="text-xs text-slate-500">{{ payload.party.assists_left }} / {{ payload.party.assists_total }} assists left</p>
+        {% endif %}
+      </div>
+      {% if payload.party and payload.party.members %}
+        <ul class="text-sm space-y-1 mt-1">
+          {% for member in payload.party.members %}
+            <li class="flex justify-between gap-2">
+              <span>{{ member.name }}</span>
+              <span class="capitalize text-slate-400">{{ member.regard }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% elif payload.party and not payload.party.assists_total %}
+        <p class="text-sm text-slate-500 mt-1">Nobody follows you anywhere. (Charisma {{ player.stats.CHA }}.)</p>
+      {% else %}
+        <p class="text-sm text-slate-500 mt-1">Alone, for now.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl bg-night/80 border border-slate-700/80 p-4">
       <p class="text-xs uppercase tracking-wide text-slate-400">Marks</p>
       {% if cond and (cond.wounds.wounds or cond.scars or cond.virtues) %}
         <ul class="text-sm space-y-1 mt-1">

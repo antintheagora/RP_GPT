@@ -30,6 +30,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Dict, List, Optional, Tuple
 
+from engine.affinity import ASSIST_TARGET_BONUS
 from engine.dice import Effect, Outcome, Roll, roll_against
 from engine.model import SPECIAL_KEYS
 
@@ -360,6 +361,7 @@ def resolve(
     luck: int = 5,
     take_bargain: bool = False,
     push: bool = False,
+    assist: bool = False,
     rng: Optional[random.Random] = None,
 ) -> Resolution:
     """Roll one action. Pure apart from the RNG, which is injectable.
@@ -391,6 +393,10 @@ def resolve(
         target += assessment.bargain.target_bonus
     if push:
         target -= 3
+    if assist:
+        # An assist is two separate benefits: better odds here, and a softer
+        # worst case through the +1 it already contributes to position.
+        target += ASSIST_TARGET_BONUS
     target = max(2, min(20, target))
 
     result = roll_against(target, assessment.stat, luck=luck, rng=rng)

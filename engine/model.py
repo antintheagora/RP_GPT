@@ -136,6 +136,14 @@ def queue_image_event(state:'GameState', kind:str, prompt:str, actors:Optional[L
     # duplicated state.image_events, and file I/O has no business in the data
     # model -- `import engine` must work with stdout closed and no writable cwd.
 
+def _new_ledger():
+    """Imported at call time: engine.affinity imports the registry, which
+    imports this module, and a top-level import would be a cycle."""
+    from engine.affinity import Ledger
+
+    return Ledger()
+
+
 @dataclass
 class GameState:
     scenario:Scenario; scenario_label:str; player:Player; blueprint:CampaignBlueprint
@@ -164,6 +172,11 @@ class GameState:
     last_result_para:str=""
     last_situation_para:str=""
     last_turn_success:bool=False
+    # Everyone met and every faction heard of, for the whole campaign.
+    # Deliberately on GameState and not ActState: begin_act builds a fresh
+    # act each time, which is why no character in this game had ever
+    # remembered anything about the player.
+    ledger: 'Ledger' = field(default_factory=lambda: _new_ledger())
     # The clocks as the narrator is shown them, written by bridge.sync_back.
     # Kept on state so prompt builders take only a GameState.
     clock_summary:str=""

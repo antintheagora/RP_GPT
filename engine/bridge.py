@@ -141,7 +141,13 @@ def build_run(state) -> Run:
         tides=tides,
         act=state.act.index,
         turn=getattr(state.act, "turns_taken", 0),
-        companion_available=bool(getattr(state, "companions", [])),
+        # The party as (name, affinity). `companion_available` was a single
+        # boolean for the whole party, so who they were and what they thought
+        # of you made no difference to anything.
+        companions=[(c.name, int(getattr(c, "disposition", 0) or 0))
+                    for c in (getattr(state, "companions", []) or [])
+                    if getattr(c, "name", "") and getattr(c, "alive", True)],
+        ledger=getattr(state, "ledger", None),
     )
 
 

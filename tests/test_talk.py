@@ -107,11 +107,13 @@ def test_a_good_conversation_buys_a_better_next_attempt():
     assert session.run.prepared, "the hint has to actually apply to something"
 
 
-def test_a_trusted_friend_will_stand_with_you():
+def test_a_trusted_friend_joins_the_party():
+    """Not a blanket "companion available" flag -- they join with what they
+    think of you, and each assist is decided against that number."""
     session = _with_cast(disposition=60)
     talk_engine.close(Conversation(actor_name="Silas"),
                       session.state.act.actors[0], session.run)
-    assert session.run.companion_available
+    assert ("Silas", 60) in session.run.companions
 
 
 def test_talking_your_way_to_nemesis_puts_them_in_the_scene():
@@ -146,15 +148,38 @@ def test_picking_talk_opens_a_conversation_rather_than_rolling_once():
     assert session._last_result is None, "opening a conversation is not a roll"
 
 
-def test_each_exchange_moves_how_they_feel_about_you():
+def test_an_exchange_is_recorded_against_the_conversation():
+    """Deterministic half: the exchange happens whatever the dice said."""
     session = _with_cast()
     option = next(o for o in session.ensure_options() if o.verb is Verb.PARLEY)
     session.apply_choice(option.key)
 
-    before = talk_engine.affinity_of(session.state.act.actors[0])
     session.apply_choice(gs.TALK_PREFIX + "CHA")
-    assert talk_engine.affinity_of(session.state.act.actors[0]) != before
     assert len(session._talk.exchanges) == 1
+
+
+def test_a_successful_exchange_moves_how_they_feel_about_you():
+    """The outcome half, driven directly rather than through an unseeded roll.
+
+    Asserting on a live exchange made this depend on one d20: it passed at
+    roughly seventy percent and looked deterministic until an unrelated
+    refactor shifted the RNG.
+    """
+    from engine.dice import Effect, Outcome, Roll
+
+    actor = _actor()
+    conversation = Conversation(actor_name=actor.name)
+
+    class _Resolution:
+        stat = "CHA"
+        roll = Roll(roll=18, target=8, stat="CHA",
+                    outcome=Outcome.SUCCESS, effect=Effect.STANDARD)
+        effect = Effect.STANDARD
+
+    exchange = talk_engine.apply_exchange(conversation, actor, _Resolution(), charisma=5)
+    assert exchange.move is Move.COURTESY
+    assert exchange.shift == 2
+    assert talk_engine.affinity_of(actor) == 2
 
 
 def test_a_conversation_costs_no_turn():

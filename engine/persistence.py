@@ -16,6 +16,8 @@ import json
 import logging
 import time
 from dataclasses import fields, is_dataclass
+
+from engine.affinity import Faction, Ledger, Person
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -51,6 +53,9 @@ _TYPES = {
     "Item": Item,
     "Player": Player,
     "Stats": Stats,
+    "Ledger": Ledger,
+    "Person": Person,
+    "Faction": Faction,
 }
 
 _ENUMS = {"Scenario": Scenario, "TurnMode": TurnMode}

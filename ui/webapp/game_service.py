@@ -486,6 +486,25 @@ class GameSession:
             "end": TALK_END,
         }
 
+    def _party_payload(self) -> Dict[str, Any]:
+        """Who is with you, how they feel, and how much help that is worth.
+
+        Companions used to be dialogue props -- `hp` and `attack` fields that
+        appeared in zero calculations. The player could not see, and had no
+        reason to care, what anyone thought of them.
+        """
+        from engine.affinity import assists_per_scene, band
+
+        return {
+            "assists_left": self.run.assists_left,
+            "assists_total": assists_per_scene(self.run.stats.get("CHA", 5)),
+            "members": [
+                {"name": name, "affinity": affinity,
+                 "regard": band(affinity).value}
+                for name, affinity in self.run.companions
+            ],
+        }
+
     def _bargain_payload(self) -> Optional[Dict[str, Any]]:
         """The standing offer, if there is one."""
         if self._pending is None or self._pending.bargain is None:
@@ -536,6 +555,7 @@ class GameSession:
                 "clocks": self._clock_payload(),
                 "bargain": self._bargain_payload(),
                 "talk": self._talk_payload(),
+                "party": self._party_payload(),
                 "campaign_goal": self.state.blueprint.campaign_goal,
                 "situation": self.state.act.situation,
                 "player": self.state.player,
@@ -787,6 +807,7 @@ class GameSession:
                                     talk_engine.apply_exchange(
                                         self._talk, partner, result.resolution,
                                         charisma=self.run.stats.get("CHA", 5),
+                                        ledger=self.state.ledger,
                                     )
                             else:
                                 self._close_talk()

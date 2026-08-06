@@ -24,6 +24,7 @@ from enum import Enum
 from typing import List, Optional
 
 from engine import events as ev
+from engine.affinity import neglected_companions
 from engine.clocks import ClockTick
 from engine.tides import TideMove
 
@@ -56,6 +57,7 @@ class RestResult:
     hp_regained: int = 0
     resolve_now: int = 0
     healed: List[str] = field(default_factory=list)
+    neglected: List[str] = field(default_factory=list)
     dream: Optional[Dream] = None
     dream_text: str = ""
     foretold: str = ""            # the Tide move a premonition revealed
@@ -102,6 +104,15 @@ def take_rest(run, *, rng: Optional[random.Random] = None,
         ev.harm(f"You recover {result.hp_regained}.")
     for name in result.healed:
         ev.marginal(f"{name} has closed.")
+
+    # Anyone hurt helping you who was never seen to. The night is when you
+    # would have had the chance, so this is where it is charged for.
+    if run.ledger is not None:
+        result.neglected = neglected_companions(
+            run.ledger, run.stats.get("CHA", 5)
+        )
+        for name in result.neglected:
+            ev.marginal(f"{name} notices you never saw to their wound.")
 
     # --- 2. the dream ----------------------------------------------------
     dream = pick_dream(run, rng, ledger)

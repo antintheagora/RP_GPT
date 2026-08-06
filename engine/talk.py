@@ -32,84 +32,22 @@ from enum import Enum
 from typing import List, Optional
 
 from engine import events as ev
+from engine.affinity import (
+    TALKABLE,
+    Ledger,
+    Move,
+    Regard,
+    band,
+    clamp,
+    shift_for,
+)
 from engine.dice import Effect, Outcome
 
 MAX_EXCHANGES = 5
 
-
-class Regard(str, Enum):
-    """How one person feels about you, as a word rather than a number."""
-
-    DEVOTED = "devoted"
-    TRUSTED = "trusted"
-    WARM = "warm"
-    NEUTRAL = "neutral"
-    WARY = "wary"
-    HOSTILE = "hostile"
-    NEMESIS = "nemesis"
-
-
-# Neutral is the widest band on purpose: people stay unremarkable about you
-# unless something happens. Devoted and Nemesis are the narrowest -- earned.
-_BANDS = [
-    (80, Regard.DEVOTED),
-    (50, Regard.TRUSTED),
-    (20, Regard.WARM),
-    (-19, Regard.NEUTRAL),
-    (-49, Regard.WARY),
-    (-79, Regard.HOSTILE),
-]
-
-
-def band(affinity: int) -> Regard:
-    for floor, regard in _BANDS:
-        if affinity >= floor:
-            return regard
-    return Regard.NEMESIS
-
-
-class Move(str, Enum):
-    """The closed list. Nothing outside this may move Affinity."""
-
-    COURTESY = "a courtesy"
-    GAVE = "gave them something they needed"
-    KEPT_PROMISE = "kept a promise"
-    HELPED_AT_COST = "significant help at real cost to you"
-    SAVED_LIFE = "saved their life"
-    INSULT = "an insult"
-    REFUSED = "refused them in genuine need"
-    BROKE_PROMISE = "broke a promise"
-    BETRAYED = "betrayed them"
-    KILLED_LOVED = "killed someone they loved"
-
-
-SHIFT = {
-    Move.COURTESY: 2,
-    Move.GAVE: 5,
-    Move.KEPT_PROMISE: 10,
-    Move.HELPED_AT_COST: 15,
-    Move.SAVED_LIFE: 30,
-    Move.INSULT: -5,
-    Move.REFUSED: -10,
-    Move.BROKE_PROMISE: -20,
-    Move.BETRAYED: -35,
-    Move.KILLED_LOVED: -50,
-}
-
-# What a conversation alone can reach. The rest of the list is earned by
-# doing things, not by saying them.
-TALKABLE = {Move.COURTESY, Move.GAVE, Move.INSULT}
-
-
-def shift_for(move: Move, charisma: int = 5) -> int:
-    """Charisma scales what you cause -- in both directions.
-
-    A charismatic person's barbs land harder too, which is why this is not
-    clamped to positive moves.
-    """
-    return round(SHIFT[move] * (1 + (charisma - 5) / 10))
-
-
+# The bands, the closed list of moves and the Charisma scaling all live in
+# engine/affinity.py: they are not conversation concepts. A conversation is
+# one of the things that moves Affinity, not where Affinity is defined.
 def move_for(outcome: Outcome, effect: Optional[Effect]) -> Optional[Move]:
     """What an exchange counted as.
 
@@ -179,18 +117,29 @@ def affinity_of(actor) -> int:
 
 
 def set_affinity(actor, value: int) -> int:
-    value = max(-100, min(100, int(value)))
-    actor.disposition = value
-    return value
+    actor.disposition = clamp(value)
+    return actor.disposition
 
 
 def apply_exchange(conversation: Conversation, actor, resolution,
-                   charisma: int = 5) -> Exchange:
-    """Record one exchange and move how they feel about you."""
+                   charisma: int = 5, ledger: Optional[Ledger] = None) -> Exchange:
+    """Record one exchange and move how they feel about you.
+
+    Written to the ledger as well as the actor, because the actor is only
+    this act's copy of a person: the ledger is what survives the act ending,
+    the save being closed, and the character being seeded again later.
+
+    A conversation is not witnessed by a faction. Talking to one of their
+    people in a doorway is not news, so it moves Affinity and nothing else.
+    """
     move = move_for(resolution.roll.outcome, resolution.effect)
     shift = shift_for(move, charisma) if move in TALKABLE else 0
     if shift:
         set_affinity(actor, affinity_of(actor) + shift)
+        if ledger is not None and move is not None:
+            person = ledger.person(getattr(actor, "name", ""))
+            person.affinity = affinity_of(actor)
+            person.remember(move.value)
 
     exchange = Exchange(
         stat=resolution.stat,
@@ -243,8 +192,12 @@ def close(conversation: Conversation, actor, run=None) -> TalkOutcome:
         outcome.text = f"{outcome.actor_name} tells you something worth knowing."
     if regard in (Regard.TRUSTED, Regard.DEVOTED):
         outcome.will_assist = True
-        if run is not None:
-            run.companion_available = True
+        if run is not None and outcome.actor_name:
+            # Into the party, with what they think of you -- an assist is
+            # decided per action by that number, not by a blanket flag.
+            names = {name for name, _ in run.companions}
+            if outcome.actor_name not in names:
+                run.companions.append((outcome.actor_name, affinity))
         outcome.text = f"{outcome.actor_name} will stand with you."
     if regard is Regard.NEMESIS:
         outcome.turned_hostile = True
@@ -259,8 +212,9 @@ def close(conversation: Conversation, actor, run=None) -> TalkOutcome:
 
 
 __all__ = [
-    "Regard", "Move", "SHIFT", "TALKABLE", "MAX_EXCHANGES",
-    "Conversation", "Exchange", "TalkOutcome",
-    "band", "shift_for", "move_for", "apply_exchange", "close",
-    "affinity_of", "set_affinity",
+    "MAX_EXCHANGES", "Conversation", "Exchange", "TalkOutcome",
+    "move_for", "apply_exchange", "close", "affinity_of", "set_affinity",
+    # Re-exported so a caller working on a conversation does not have to
+    # know which module the bands live in.
+    "Regard", "Move", "TALKABLE", "band", "shift_for",
 ]

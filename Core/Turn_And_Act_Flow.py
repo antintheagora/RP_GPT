@@ -30,6 +30,41 @@ from Core.AI_Dungeon_Master import (
 from Core.Scene_Evolution import evolve_situation
 
 
+def sync_affinity(state, act: int) -> None:
+    """Make every character in this act remember the campaign so far.
+
+    Actors are rebuilt from seed data each act, so anyone re-encountered
+    arrived with a blank `disposition` and no recollection of what you had
+    done to them. The ledger is the campaign's memory; an actor object is
+    just this act's copy of a person, and this is where the two are joined.
+
+    It runs both ways. Someone met for the first time is written into the
+    ledger with whatever standing their faction gives them; someone already
+    there has their remembered Affinity written back onto the actor.
+    """
+    ledger = getattr(state, "ledger", None)
+    if ledger is None:
+        return
+    everyone = (list(getattr(state.act, "actors", []) or [])
+                + list(getattr(state.act, "undiscovered", []) or [])
+                + list(getattr(state, "companions", []) or []))
+    for actor in everyone:
+        name = getattr(actor, "name", "")
+        if not name:
+            continue
+        faction = getattr(actor, "faction_id", None)
+        if ledger.knows(name):
+            actor.disposition = ledger.person(name, act=act).affinity
+        else:
+            # First meeting: the authored disposition is the starting point,
+            # unless their faction has an opinion of you already.
+            person = ledger.person(name, faction_id=faction, act=act)
+            if person.affinity == 0 and getattr(actor, "disposition", 0):
+                person.affinity = int(actor.disposition)
+            else:
+                actor.disposition = person.affinity
+
+
 def _core():
     """Import the main module at call time to access shared types safely."""
     import RP_GPT as core  # type: ignore
@@ -185,6 +220,7 @@ def begin_act(state, idx: int):
     state.act.undiscovered.extend(
         a for a in seeded if (a.name or "").lower() not in known_names
     )
+    sync_affinity(state, idx)
     state.last_actor = state.companions[0] if state.companions else None
     state.history.append(f"Act {idx} opened: {plan.goal}")
     try:

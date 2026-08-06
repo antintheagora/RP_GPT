@@ -16,11 +16,18 @@ and the model never touches steps two or three.
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Dict, List, Optional, Protocol
 
 from engine import events as ev
 from engine.actions import Intent, ObserveTarget, Verb, apply_observation, bearing_after_gear
+from engine.affinity import (
+    Ledger,
+    assists_per_scene,
+    bearing_name_for,
+    takes_a_wound_for_you,
+    will_assist,
+)
 from engine.character import Condition, Scar, Virtue, WeaponWeight, damage_for, earns_virtue
 from engine.clocks import ClockBoard, ClockKind, ClockTick, opposing_segments_for
 from engine.dice import Effect, Outcome
@@ -31,6 +38,7 @@ from engine.resolve import (
     Consequence,
     Position,
     PositionFacts,
+    position_for,
     Resolution,
     resolve,
 )
@@ -63,8 +71,17 @@ class Run:
     danger_id: str = "danger"
     act: int = 1
     turn: int = 0
-    companion_available: bool = False
     prepared: bool = False        # a Study result or Observe finding applies
+    # The party, as (name, affinity). How many will help in a scene is
+    # Charisma; whether a given one helps with *this* is Affinity.
+    companions: List[tuple] = field(default_factory=list)
+    assists_used: int = 0
+    wound_taken_for_you: bool = False
+    ledger: Optional[Ledger] = None
+
+    @property
+    def assists_left(self) -> int:
+        return max(0, assists_per_scene(self.stats.get('CHA', 5)) - self.assists_used)
 
     @property
     def project(self):
@@ -89,6 +106,8 @@ class TurnResult:
     scar: Optional[Scar] = None
     virtue: Optional[Virtue] = None
     observation: str = ""
+    assisted_by: str = ""
+    companion_hurt: str = ""
     act_complete: bool = False
     act_failed: bool = False
     consumed_turn: bool = False
@@ -103,11 +122,50 @@ def _position_facts(run: Run, obstacle: Optional[Obstacle]) -> PositionFacts:
     """The engine-held half of the position inputs."""
     return PositionFacts(
         prepared=run.prepared,
-        companion_assisting=run.companion_available,
+        # Not `companion_available`: having a friend nearby is not the same
+        # as their stepping in, and the flat +1 for merely owning a companion
+        # applied on every roll of the campaign. Set only when one actually
+        # assists, a few lines below.
+        companion_assisting=False,
         carrying_serious_harm=run.condition.wounds.carries_serious,
         danger_clock_over_half=run.clocks.any_danger_over_half(),
         agile_reposition=run.stats.get("AGI", 5) >= 8 and bool(run.scene.exits),
     )
+
+
+def _person_in(intent: Intent, run: Run) -> str:
+    """Who a parley is aimed at, when the Intent did not name anyone.
+
+    The scene knows who is standing there; with nobody named and nobody
+    present this returns "" and the bearing is left to the Keeper, which is
+    the right answer for talking at a situation rather than a person.
+    """
+    for name in run.scene.hostiles:
+        if name:
+            return name
+    for name, _ in run.companions:
+        if name:
+            return name
+    return ""
+
+
+def assisting_companion(run: Run, position: str) -> Optional[str]:
+    """Which companion lends a hand, if any.
+
+    Charisma sets how many assists a scene has in it -- dumping it genuinely
+    costs you help, which is a real build consequence rather than a rounding
+    error. Affinity decides whether this particular person is willing: someone
+    merely neutral about you will help, but will not follow you into a
+    Desperate action.
+    """
+    if run.assists_left <= 0:
+        return None
+    willing = [(name, affinity) for name, affinity in run.companions
+               if will_assist(affinity, position)]
+    if not willing:
+        return None
+    # The one who likes you most steps up first.
+    return max(willing, key=lambda pair: pair[1])[0]
 
 
 def _obstacle_for(run: Run, intent: Intent, keeper: Keeper) -> Optional[Obstacle]:
@@ -160,6 +218,17 @@ def advance_turn(
     if intent.stat_hint and intent.stat_hint in SPECIAL_KEYS:
         assessment.stat = intent.stat_hint
 
+    # When the obstacle is a person, how they feel about you sets the baseline
+    # bearing of talking to them. This is the one place Affinity and Bearing
+    # meet, and it runs one way: Affinity is an input, Bearing is the output,
+    # and Bearing remains the only thing that moves a target number.
+    if intent.verb is Verb.PARLEY and run.ledger is not None:
+        who = (intent.target or "").strip() or _person_in(intent, run)
+        if who and run.ledger.knows(who):
+            assessment.bearings["CHA"] = Bearing(
+                bearing_name_for(run.ledger.person(who).affinity)
+            )
+
     # Gear can worsen the approach without forbidding it.
     if intent.weapon:
         assessment.bearings[assessment.stat] = bearing_after_gear(
@@ -170,13 +239,25 @@ def advance_turn(
     if push and not run.condition.spend(2):
         push = False        # not enough Resolve; the attempt goes ahead unpushed
 
+    # Position has to be known before anyone decides whether to help, so it
+    # is computed once here on the engine's own facts and handed to resolve().
+    facts = _position_facts(run, obstacle)
+    provisional, _, _ = position_for(facts)
+    helper = assisting_companion(run, provisional.value)
+    if helper:
+        run.assists_used += 1
+        result.assisted_by = helper
+        facts = replace(facts, companion_assisting=True)
+        ev.marginal(f"{helper} moves with you.")
+
     resolution = resolve(
         assessment,
         run.stats.get(assessment.stat, 5),
-        _position_facts(run, obstacle),
+        facts,
         luck=run.stats.get("LUC", 5),
         take_bargain=take_bargain,
         push=push,
+        assist=bool(helper),
         rng=rng,
     )
     result.resolution = resolution
@@ -206,6 +287,7 @@ def advance_turn(
         result.ticks = _apply_clocks(run, resolution, intent)
         result.tide_moves = _advance_tides(run, resolution)
         _apply_harm(run, resolution, intent, result, rng)
+        _apply_assist_cost(run, resolution, result)
         # A finding "applies" to the attempt it was bought for, then it is
         # spent. Left standing, one free Observe permanently upgraded the
         # position of every later roll in the act.
@@ -326,6 +408,38 @@ def _apply_harm(run: Run, resolution: Resolution, intent: Intent,
         run.condition.settle()
 
 
+def _apply_assist_cost(run: Run, resolution: Resolution,
+                       result: TurnResult) -> None:
+    """What calling on someone costs them.
+
+    On a clean or critical failure the companion takes the consequence in
+    your place. Someone Trusted or better will take a wound level for you,
+    once in a scene; anyone else takes a level-1 wound of their own.
+
+    Neglecting them afterwards costs more than the favour was worth, which is
+    the point: calling on people has a price, and ignoring what it cost them
+    has a bigger one.
+    """
+    if not result.assisted_by or resolution.succeeded:
+        return
+    if resolution.roll.outcome not in (Outcome.FAILURE, Outcome.CRITICAL_FAILURE):
+        return
+
+    affinity = dict(run.companions).get(result.assisted_by, 0)
+    if takes_a_wound_for_you(affinity) and not run.wound_taken_for_you:
+        run.wound_taken_for_you = True
+        result.companion_hurt = result.assisted_by
+        ev.harm(f"{result.assisted_by} takes it instead of you.")
+    else:
+        result.companion_hurt = result.assisted_by
+        ev.harm(f"{result.assisted_by} is hurt helping you.")
+
+    if run.ledger is not None and result.companion_hurt:
+        person = run.ledger.person(result.companion_hurt)
+        person.remember("took a hit helping you")
+        person.hurt_untreated = True
+
+
 def _apply_resolve(run: Run, resolution: Resolution, result: TurnResult,
                    rng: random.Random) -> None:
     if resolution.consequence and not resolution.succeeded:
@@ -346,4 +460,5 @@ def _pick(enum_cls, held, rng: random.Random):
     return rng.choice(remaining) if remaining else None
 
 
-__all__ = ["Run", "TurnResult", "Keeper", "advance_turn", "prepare_turn"]
+__all__ = ["Run", "TurnResult", "Keeper", "advance_turn", "prepare_turn",
+           "assisting_companion"]

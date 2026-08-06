@@ -140,6 +140,15 @@ everyone = list(session.state.act.actors) + list(session.state.act.undiscovered)
 print(f"cast in scene     : {len(session.state.act.actors)}")
 print(f"known to the world: {len(session.state.act.undiscovered)}")
 print(f"distinct names    : {len({a.name for a in everyone})} of {len(everyone)} entries")
+ledger = getattr(session.state, "ledger", None)
+if ledger is not None:
+    people = sorted(ledger.people.values(), key=lambda p: -abs(p.affinity))
+    print(f"relationships     : {len(people)}")
+    for person in people[:5]:
+        print(f"    {person.name[:22]:22s} {person.affinity:+4d} {person.regard.value:<9s}"
+              f" {'; '.join(person.memory[-2:])[:40]}")
+    known = [f.name for f in ledger.factions.values() if f.known]
+    print(f"factions aware    : {known or 'none'}")
 print(f"total wall clock  : {time.time() - t0:.0f}s")
 print(f"failures          : {failures or 'NONE'}")
 print("=" * 70)
