@@ -858,10 +858,11 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
     def handle_action():
         session = _require_session()
         action = request.form.get("action")
-        if action == "special":
+        # "menu" carries the option's own key -- attack:Rusty Knife,
+        # observe:weakness, parley. The numeric codes below are the few
+        # buttons that are not scene options.
+        if action in ("menu", "bargain"):
             code = request.form.get("choice")
-        elif action == "observe":
-            code = "4"
         elif action == "rest":
             code = "0"
         elif action == "journal":
@@ -874,9 +875,12 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
             abort(400, description="Missing choice code")
         payload = {
             "stat": request.form.get("custom_stat"),
-            "intent": request.form.get("custom_intent"),
+            # Describe: the player's own words for what they attempt. Sent by
+            # both the custom-move box and the per-option describe box, so one
+            # field serves both.
+            "intent": request.form.get("custom_intent") or request.form.get("describe"),
         }
-        result = session.apply_choice(code, payload if action == "custom" else None)
+        result = session.apply_choice(code, payload)
         html = render_template("partials/log_panel.html", events=session.get_events(), payload=session.get_turn_payload())
         return _action_response(html)
 

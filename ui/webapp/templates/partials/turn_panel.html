@@ -1,37 +1,71 @@
 {% set player = payload.player %}
+{% set cond = payload.condition %}
 <div class="ninebox" style="--img: url('{{ url_for('static', filename='ui/nine_slice.png') }}'); --slice: 128px; --gap: 12px;">
   <div class="nf tl"></div><div class="nf t"></div><div class="nf tr"></div>
   <div class="nf l"></div><div class="nf c"></div><div class="nf r"></div>
   <div class="nf bl"></div><div class="nf b"></div><div class="nf br"></div>
   <div class="nine-content p-6 space-y-5">
+
   <div class="flex flex-wrap items-center justify-between gap-3">
     <div>
-      <p class="text-sm text-slate-400">Act {{ payload.act_index }} • Turn {{ payload.turn }} / {{ payload.turn_cap }}</p>
+      <p class="text-sm text-slate-400">Act {{ payload.act_index }} of {{ payload.act_count }} &bull; Turn {{ payload.turn }}</p>
       <h2 class="text-2xl font-semibold text-white">{{ payload.act_goal }}</h2>
     </div>
-    <div class="text-right">
-      <p class="text-sm text-slate-400">{{ payload.pressure_name }}</p>
-      <p class="text-lg font-semibold">{{ payload.pressure }} / 100</p>
-    </div>
   </div>
+
+  {# Clocks, not percentages. A player can count segments and know exactly how
+     many more good turns they need; "62 / 100" told them nothing they could
+     act on. #}
+  <div class="grid gap-3 sm:grid-cols-2">
+    {% for clock in payload.clocks %}
+      <div class="rounded-xl bg-night/80 border border-slate-700/80 p-4">
+        <p class="text-xs uppercase tracking-wide {{ 'text-rose-300' if clock.kind == 'danger' else 'text-emerald-300' }}">
+          {{ 'Closing in' if clock.kind == 'danger' else 'Your progress' }}
+        </p>
+        <p class="text-lg font-semibold">{{ clock.name }}</p>
+        <div class="mt-2 flex gap-1" aria-label="{{ clock.filled }} of {{ clock.segments }} filled">
+          {% for i in range(clock.segments) %}
+            <span class="h-3 flex-1 rounded-sm {{ (('bg-rose-400' if clock.kind == 'danger' else 'bg-emerald-400') if i < clock.filled else 'bg-slate-800') }}"></span>
+          {% endfor %}
+        </div>
+        <p class="text-sm mt-1 text-slate-400">{{ clock.filled }} / {{ clock.segments }}</p>
+      </div>
+    {% endfor %}
+  </div>
+
   <div class="grid gap-4 sm:grid-cols-2">
     <div class="rounded-xl bg-night/80 border border-slate-700/80 p-4">
       <p class="text-xs uppercase tracking-wide text-slate-400">Adventurer</p>
       <p class="text-lg font-semibold">{{ player.name }}</p>
-      <p class="text-sm text-slate-400">HP {{ player.hp }} • ATK {{ player.attack }}</p>
+      {% if cond %}
+        <p class="text-sm text-slate-400">
+          HP {{ cond.hp }} / {{ cond.max_hp }}
+          {% if cond.raw_damage %}<span class="text-amber-300">&bull; {{ cond.raw_damage }} still winnable back</span>{% endif %}
+        </p>
+        <p class="text-sm text-slate-400">Resolve {{ cond.resolve }} / {{ cond.max_resolve }}</p>
+      {% else %}
+        <p class="text-sm text-slate-400">HP {{ player.hp }}</p>
+      {% endif %}
     </div>
     <div class="rounded-xl bg-night/80 border border-slate-700/80 p-4">
-      <p class="text-xs uppercase tracking-wide text-slate-400">Goal progress</p>
-      <div class="mt-2 h-2 w-full rounded bg-slate-800">
-        <div class="h-full rounded bg-emerald-400" style="width: {{ payload.goal_progress }}%"></div>
-      </div>
-      <p class="text-sm mt-1">{{ payload.goal_progress }} / 100</p>
+      <p class="text-xs uppercase tracking-wide text-slate-400">Marks</p>
+      {% if cond and (cond.wounds.wounds or cond.scars or cond.virtues) %}
+        <ul class="text-sm space-y-1 mt-1">
+          {% for wound in cond.wounds.wounds %}<li class="text-rose-300">{{ wound.name }}</li>{% endfor %}
+          {% for scar in cond.scars %}<li class="text-amber-300">{{ scar.value }}</li>{% endfor %}
+          {% for virtue in cond.virtues %}<li class="text-sky-300">{{ virtue.value }}</li>{% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-sm text-slate-500 mt-1">Unmarked, so far.</p>
+      {% endif %}
     </div>
   </div>
+
   <div class="rounded-xl bg-night/80 border border-slate-700/80 p-4 space-y-2">
     <p class="text-xs uppercase tracking-wide text-slate-400">Situation</p>
     <p class="text-slate-100 leading-relaxed">{{ payload.situation or 'Waiting for the first spark of adventure.' }}</p>
   </div>
+
   <div>
     <p class="text-xs uppercase tracking-wide text-slate-400 mb-2">SPECIAL spread</p>
     <div class="grid grid-cols-7 gap-2 text-center text-sm">
@@ -43,30 +77,69 @@
       {% endfor %}
     </div>
   </div>
-  <div>
-    <div class="flex items-center justify-between mb-2">
-      <p class="text-xs uppercase tracking-wide text-slate-400">Action palette</p>
-      <p class="text-xs text-slate-500">Talk / combat coming in the next pass.</p>
-    </div>
-    <div class="space-y-3">
-      {% for option in payload.options %}
-        <form hx-post="{{ url_for('handle_action') }}" hx-swap="none" class="rounded-xl border border-slate-700/80 bg-night/80 hover:border-ember/80 transition">
-          <input type="hidden" name="action" value="special" />
-          <input type="hidden" name="choice" value="{{ option.code }}" />
-          <button type="submit" class="w-full text-left px-4 py-3">
-            <p class="text-sm text-slate-400">{{ option.stat }}</p>
-            <p class="text-lg font-semibold">{{ option.label }}</p>
-            {% if option.hint %}<p class="text-sm text-slate-300 mt-1">{{ option.hint }}</p>{% endif %}
-          </button>
+
+  {# A standing Bargain takes over the panel: it has to be answered before the
+     dice, so leaving the ordinary menu clickable underneath would let the
+     player walk past a decision the engine is waiting on. #}
+  {% if payload.bargain %}
+    <div class="rounded-xl border border-amber-500/70 bg-amber-500/10 p-5 space-y-3">
+      <p class="text-xs uppercase tracking-wide text-amber-300">A bargain</p>
+      <p class="text-lg text-amber-50">{{ payload.bargain.text }}</p>
+      <p class="text-sm text-amber-200/80">Better odds now. It costs you: {{ payload.bargain.cost }}. The cost lands whether you succeed or not.</p>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <form hx-post="{{ url_for('handle_action') }}" hx-swap="none">
+          <input type="hidden" name="action" value="bargain" />
+          <input type="hidden" name="choice" value="{{ payload.bargain.take }}" />
+          <button class="w-full rounded-lg bg-amber-400 text-night font-semibold py-3 button-glow">Take it</button>
         </form>
+        <form hx-post="{{ url_for('handle_action') }}" hx-swap="none">
+          <input type="hidden" name="action" value="bargain" />
+          <input type="hidden" name="choice" value="{{ payload.bargain.refuse }}" />
+          <button class="w-full rounded-lg bg-slate-800 font-semibold py-3 hover:bg-slate-700 transition">Refuse</button>
+        </form>
+      </div>
+    </div>
+  {% else %}
+
+  <div>
+    <p class="text-xs uppercase tracking-wide text-slate-400 mb-2">What do you do?</p>
+    <div class="space-y-2">
+      {% for option in payload.options %}
+        <div class="rounded-xl border border-slate-700/80 bg-night/80 hover:border-ember/80 transition">
+          {% if not option.must_describe %}
+            {# Quick: one click, the game fills in the details. #}
+            <form hx-post="{{ url_for('handle_action') }}" hx-swap="none">
+              <input type="hidden" name="action" value="menu" />
+              <input type="hidden" name="choice" value="{{ option.code }}" />
+              <button type="submit" class="w-full text-left px-4 py-3">
+                <p class="text-sm text-slate-400">{{ option.verb }} &bull; {{ option.stat }}</p>
+                <p class="text-lg font-semibold">{{ option.label }}</p>
+                {% if option.note %}<p class="text-sm text-amber-300/90 mt-1">{{ option.note }}</p>{% endif %}
+              </button>
+            </form>
+          {% endif %}
+          {# Describe: your own words, read by the Keeper. Same Intent, same
+             pipeline -- it is not a different game, just a longer sentence. #}
+          <details class="px-4 {{ 'pb-3' if not option.must_describe else 'py-3' }}">
+            <summary class="cursor-pointer text-sm text-slate-400 hover:text-slate-200">
+              {% if option.must_describe %}<span class="text-lg font-semibold text-slate-100 block">{{ option.label }}</span>{% endif %}
+              Describe it yourself
+            </summary>
+            <form hx-post="{{ url_for('handle_action') }}" hx-swap="none" class="mt-2 space-y-2">
+              <input type="hidden" name="action" value="menu" />
+              <input type="hidden" name="choice" value="{{ option.code }}" />
+              <textarea name="describe" rows="2" required
+                        class="w-full rounded-md bg-slate-800 border-slate-700 text-sm"
+                        placeholder="What do you actually try?"></textarea>
+              <button class="w-full rounded-lg bg-ember/90 text-night font-semibold py-2 button-glow">Do it</button>
+            </form>
+          </details>
+        </div>
       {% endfor %}
     </div>
   </div>
-  <div class="grid gap-3 sm:grid-cols-3">
-    <form hx-post="{{ url_for('handle_action') }}" hx-swap="none">
-      <input type="hidden" name="action" value="observe" />
-      <button class="w-full rounded-xl bg-slate-800/80 px-4 py-3 font-semibold hover:bg-slate-700 transition">Observe</button>
-    </form>
+
+  <div class="grid gap-3 sm:grid-cols-2">
     <form hx-post="{{ url_for('handle_action') }}" hx-swap="none">
       <input type="hidden" name="action" value="rest" />
       <button class="w-full rounded-xl bg-slate-800 px-4 py-3 font-semibold hover:bg-slate-700 transition">Camp + Rest</button>
@@ -76,29 +149,9 @@
       <button class="w-full rounded-xl bg-slate-800 px-4 py-3 font-semibold hover:bg-slate-700 transition">Read Journal</button>
     </form>
   </div>
-  <div class="rounded-xl border border-slate-700/80 bg-night/80 p-4">
-    <details>
-      <summary class="cursor-pointer text-sm font-semibold">Custom move ({{ 'available' if payload.custom_available else 'spent' }})</summary>
-      {% if payload.custom_available %}
-        <form hx-post="{{ url_for('handle_action') }}" hx-swap="none" class="mt-3 space-y-3 text-sm">
-          <input type="hidden" name="action" value="custom" />
-          <label class="block">SPECIAL focus
-            <select name="custom_stat" class="mt-1 w-full rounded-md bg-slate-800 border-slate-700">
-              {% for code in ['STR','PER','END','CHA','INT','AGI','LUC'] %}
-                <option value="{{ code }}">{{ code }}</option>
-              {% endfor %}
-            </select>
-          </label>
-          <label class="block">Intent
-            <textarea name="custom_intent" rows="2" class="mt-1 w-full rounded-md bg-slate-800 border-slate-700" placeholder="Describe what you attempt."></textarea>
-          </label>
-          <button class="w-full rounded-lg bg-ember/90 text-night font-semibold py-2 button-glow">Roll it</button>
-        </form>
-      {% else %}
-        <p class="mt-3 text-sm text-slate-400">All custom charges spent this act.</p>
-      {% endif %}
-    </details>
-  </div>
+
+  {% endif %}
+
   {% if payload.game_over %}
     <div class="rounded-xl border border-red-500/60 bg-red-500/10 p-4">
       <p class="text-lg font-semibold text-red-200">{{ payload.game_over_text }}</p>

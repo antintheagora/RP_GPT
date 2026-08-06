@@ -17,6 +17,8 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 os.environ["RP_GPT_NONINTERACTIVE"] = "1"
 os.environ["RP_GPT_DISABLE_SPINNER"] = "1"
 
+import ui.webapp.game_service as gs  # noqa: E402
+from engine.actions import Depth  # noqa: E402
 from ui.webapp.game_service import GameSession  # noqa: E402
 
 MAX_TURNS = 24
@@ -60,18 +62,31 @@ def _clocks(session) -> str:
 acts_seen = {session.state.act.index}
 turns_done = 0
 failures = []
-codes = ["1", "2", "3", "4"]  # special actions + observe
-
 for turn in range(1, MAX_TURNS + 1):
-    code = codes[(turn - 1) % len(codes)]
+    # Drive the real menu, which is what a player clicks. Rotating through it
+    # rather than sending fixed codes means the harness exercises whatever the
+    # scene actually offers -- weapons when there is something to fight,
+    # Withdraw when there is a way out.
+    menu = session.ensure_options()
+    option = menu[(turn - 1) % len(menu)]
+    code = option.key
     started = time.time()
     try:
-        result = session.apply_choice(code)
+        # "Something else" insists on a description, the same as in the UI.
+        described = {"intent": "improvise with what is to hand"} if option.depth is Depth.DESCRIBE else None
+        result = session.apply_choice(code, described)
     except Exception as exc:
         failures.append((turn, f"{type(exc).__name__}: {exc}"))
         print(f"  turn {turn:2d}  RAISED {type(exc).__name__}: {exc}")
         traceback.print_exc()
         break
+
+    # A Bargain holds the turn until it is answered. Alternate take/refuse so
+    # both branches get exercised over a campaign rather than only one.
+    if result.get("offered"):
+        answer = gs.BARGAIN_TAKE if turn % 2 else gs.BARGAIN_REFUSE
+        print(f"  turn {turn:2d}  bargain offered -> {answer.split(':')[1]}")
+        result = session.apply_choice(answer)
 
     elapsed = time.time() - started
     st = session.state
@@ -96,7 +111,7 @@ for turn in range(1, MAX_TURNS + 1):
         f"  turn {turn:2d}  act {st.act.index}/{st.act_count}  "
         f"{elapsed:5.1f}s  hp {st.player.hp:3d}  "
         f"scene {len(st.act.actors):2d} +{len(st.act.undiscovered):2d} known  "
-        f"{_clocks(session)}  {out[:40]}{flag}"
+        f"{_clocks(session)}  {option.label[:14]:14s} {out[:34]}{flag}"
     )
 
     # A finished campaign is a pass, not a reason to keep driving it. Without

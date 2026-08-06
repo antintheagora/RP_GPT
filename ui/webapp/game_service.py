@@ -16,10 +16,11 @@ from typing import Any, Dict, List, Optional
 
 import RP_GPT as core
 from engine import events as ev
+from engine.actions import Depth, MenuOption, build_menu, intent_from_option
 from engine.bridge import build_run, intent_for, render_result, sync_back
 from engine.events import collecting
 from engine.keeper import ModelKeeper
-from engine.turn import advance_turn
+from engine.turn import advance_turn, prepare_turn
 from engine.persistence import list_runs, load_run, save_run
 from Core.Paths import SAVES_DIR
 from pathlib import Path
@@ -29,7 +30,7 @@ from Core.AI_Dungeon_Master import (
     campaign_blueprint_prompt,
     set_extra_world_text,
 )
-from Core.Choice_Handler import ExploreOptions, goal_lock_active, make_explore_options
+
 from Core.Helpers import sanitize_prose
 from Core.Journal import maybe_journal_lore
 from Core.Random_Encounters import handle_post_turn_beat
@@ -119,6 +120,38 @@ def generate_blueprint(g: GemmaClient, label: str, overrides: Optional[Dict[str,
     return core.blueprint_from_json(payload)
 
 
+class _OfferMade(Exception):
+    """Internal: unwind out of the turn body with the offer standing.
+
+    Not an error. It exists so the one exit path -- collect events, log them,
+    save -- runs for an offered turn exactly as it does for a rolled one,
+    rather than being duplicated at an early return.
+    """
+
+
+BARGAIN_TAKE = "bargain:take"
+BARGAIN_REFUSE = "bargain:refuse"
+
+
+@dataclass
+class PendingOffer:
+    """A turn stopped between the Keeper and the dice.
+
+    The Bargain has to be answered *before* the roll -- you are buying odds,
+    not an outcome -- so the turn is held here while the player decides. The
+    assessment is carried across rather than re-requested: asking the model
+    twice for the same situation would be both slow and free to contradict
+    itself.
+    """
+
+    intent: Any
+    assessment: Any
+
+    @property
+    def bargain(self):
+        return self.assessment.bargain
+
+
 @dataclass
 class Event:
     id: str
@@ -206,6 +239,7 @@ class GameSession:
         self._turn_events: List[Any] = []
         self._listeners: List[Any] = []
         self._last_result = None
+        self._pending: Optional[PendingOffer] = None
         self.state = state
         self.client = client
         self.label = scenario_label
@@ -278,40 +312,104 @@ class GameSession:
         if len(self._events) > 40:
             self._events = self._events[-40:]
 
-    def ensure_options(self) -> ExploreOptions:
-        if self.state.mode != core.TurnMode.EXPLORE:
-            raise RuntimeError("Non-explore mode not supported in web UI yet.")
+    def ensure_options(self) -> List[MenuOption]:
+        """The verb menu for this scene.
+
+        This used to ask the model for three SPECIAL labels, which meant the
+        menu was whatever the model felt like offering and Attack, Talk and
+        Withdraw were never on it. The menu is now built from the scene and
+        what the player is carrying -- no model call, and the same options
+        every time the same situation comes up.
+        """
         if self._options is None:
-            goal_lock = goal_lock_active(self.state, getattr(self.state, "last_turn_success", False))
-            self._options = make_explore_options(self.state, self.client, goal_lock)
+            self._options = build_menu(self.run.scene, self.state.player)
         return self._options
+
+    def _stage_turn(self, code: str, payload: Dict[str, Any]):
+        """Decide what this click means, and whether the dice may roll yet.
+
+        Returns (intent, assessment, take_bargain). An intent of None means a
+        Bargain is standing and the turn is waiting on an answer.
+        """
+        # Answering a standing offer: the intent and the Keeper's reading were
+        # both settled last click and are reused as-is.
+        if self._pending is not None and code in (BARGAIN_TAKE, BARGAIN_REFUSE):
+            offer, self._pending = self._pending, None
+            return offer.intent, offer.assessment, code == BARGAIN_TAKE
+
+        # Anything else abandons a standing offer rather than leaving it to
+        # attach itself to an unrelated action later.
+        self._pending = None
+
+        described = (payload.get("intent") or "").strip()
+        intent = None
+        for option in self.ensure_options():
+            if option.key == code:
+                intent = intent_from_option(option, described)
+                break
+        if intent is None:
+            # Legacy numeric codes: the terminal harness and older tests.
+            intent = intent_for(code, payload, self.run.stats)
+
+        assessment = prepare_turn(self.run, intent, self.keeper)
+        if assessment.bargain is not None:
+            self._pending = PendingOffer(intent=intent, assessment=assessment)
+            return None, None, False
+        return intent, assessment, False
+
+    def _bargain_payload(self) -> Optional[Dict[str, Any]]:
+        """The standing offer, if there is one."""
+        if self._pending is None or self._pending.bargain is None:
+            return None
+        bargain = self._pending.bargain
+        return {
+            "text": bargain.text,
+            "cost": bargain.cost.value.replace("_", " "),
+            "take": BARGAIN_TAKE,
+            "refuse": BARGAIN_REFUSE,
+        }
+
+    def _clock_payload(self) -> List[Dict[str, Any]]:
+        """Both clocks, as something countable rather than a percentage."""
+        out = []
+        for clock, kind in ((self.run.project, "project"), (self.run.danger, "danger")):
+            if clock is None:
+                continue
+            out.append({
+                "name": clock.name, "filled": clock.filled,
+                "segments": clock.segments, "kind": kind,
+                "render": clock.render(),
+            })
+        return out
 
     def get_turn_payload(self) -> Dict[str, Any]:
         with self._lock:
             plan = self.state.blueprint.acts[self.state.act.index]
-            options = []
-            if self.state.mode == core.TurnMode.EXPLORE:
-                ex = self.ensure_options()
-                for idx, (stat, _) in enumerate(ex.specials, start=1):
-                    options.append(
-                        {
-                            "code": str(idx),
-                            "label": f"{stat} action",
-                            "stat": stat,
-                            "hint": (ex.microplan.get(stat) or "").strip(),
-                        }
-                    )
+            options = [
+                {
+                    "code": option.key,
+                    "label": option.label,
+                    "verb": option.verb.value,
+                    "stat": option.stat,
+                    "detail": option.detail,
+                    "note": option.note,
+                    "enabled": option.enabled,
+                    # Every option can be described; OTHER insists on it.
+                    "must_describe": option.depth is Depth.DESCRIBE,
+                }
+                for option in self.ensure_options()
+            ]
             data = {
                 "act_index": self.state.act.index,
+                "act_count": self.state.act_count,
                 "act_goal": plan.goal,
                 "turn": self.state.act.turns_taken,
-                "turn_cap": self.state.act.turn_cap,
-                "goal_progress": self.state.act.goal_progress,
-                "pressure": self.state.pressure,
-                "pressure_name": self.state.pressure_name,
+                "clocks": self._clock_payload(),
+                "bargain": self._bargain_payload(),
                 "campaign_goal": self.state.blueprint.campaign_goal,
                 "situation": self.state.act.situation,
                 "player": self.state.player,
+                "condition": self.run.condition,
                 "options": options,
                 "custom_available": max(0, 3 - self.state.act.custom_uses) > 0,
                 "journal_tail": list(self.state.journal[-6:]),
@@ -461,6 +559,7 @@ class GameSession:
         session._events = []
         session._lock = threading.RLock()
         session._last_result = None
+        session._pending = None
         session.run = build_run(state)
         session.keeper = ModelKeeper(session.client, session._character_block())
         resumed = sanitize_prose(
@@ -482,6 +581,7 @@ class GameSession:
                     self.state.custom_stat = stat
                 inputs.extend(["", intent or "improvise using SPECIAL"])
             consumed = False
+            offered = False
             events: List[Any] = []
             blocked: Optional[str] = None
             try:
@@ -495,10 +595,23 @@ class GameSession:
                 with collecting() as bus, intercepted_io(inputs):
                     bus.subscribe(self._broadcast)
                     try:
+                        intent, assessment, take = self._stage_turn(code, payload)
+                        if intent is None:
+                            # A Bargain is on the table. The turn stops here
+                            # until it is answered -- you buy odds before the
+                            # dice, never after.
+                            offered = True
+                            ev.system(
+                                f"A bargain: {self._pending.bargain.text} "
+                                "-- take it, or refuse."
+                            )
+                            raise _OfferMade
                         result = advance_turn(
                             self.run,
-                            intent_for(code, payload, self.run.stats),
+                            intent,
                             self.keeper,
+                            assessment=assessment,
+                            take_bargain=take,
                         )
                         consumed = result.consumed_turn
                         self._last_result = result
@@ -517,6 +630,8 @@ class GameSession:
                             ev.chapter(f"{self.run.danger.name} got there first.")
                     finally:
                         events = bus.events
+            except _OfferMade:
+                pass
             except TerminalInputRequired as exc:
                 blocked = str(exc)
 
@@ -535,6 +650,7 @@ class GameSession:
                 self._options = None
             return {
                 "consumed": consumed,
+                "offered": offered,
                 "output": output_text,
                 "game_over": bool(self.state.is_game_over()),
                 "game_over_text": self.state.is_game_over(),

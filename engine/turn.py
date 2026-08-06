@@ -120,6 +120,16 @@ def _obstacle_for(run: Run, intent: Intent, keeper: Keeper) -> Optional[Obstacle
     return unresolved[0] if unresolved else None
 
 
+def prepare_turn(run: Run, intent: Intent, keeper: Keeper) -> Assessment:
+    """The Keeper's half of a turn, taken early.
+
+    Split out so a front end can show the player a Bargain and wait for an
+    answer without paying for a second assessment. Feed the result straight
+    back into `advance_turn(..., assessment=...)`.
+    """
+    return keeper.assess(intent, run.scene, _obstacle_for(run, intent, keeper))
+
+
 def advance_turn(
     run: Run,
     intent: Intent,
@@ -127,6 +137,7 @@ def advance_turn(
     *,
     take_bargain: bool = False,
     push: bool = False,
+    assessment: Optional[Assessment] = None,
     rng: Optional[random.Random] = None,
 ) -> TurnResult:
     """Resolve one player action, end to end."""
@@ -135,7 +146,8 @@ def advance_turn(
     obstacle = _obstacle_for(run, intent, keeper)
 
     # --- the Keeper reports facts, once per obstacle ---------------------
-    assessment = keeper.assess(intent, run.scene, obstacle) if obstacle or True else None
+    if assessment is None:
+        assessment = keeper.assess(intent, run.scene, obstacle)
     if obstacle is not None and not obstacle.is_rated():
         obstacle.rate(assessment.bearings, assessment.base_difficulty)
 
@@ -191,9 +203,13 @@ def advance_turn(
         run.prepared = run.prepared or bool(observation.stat_improved)
         ev.marginal(observation.text)
     else:
-        result.ticks = _apply_clocks(run, resolution)
+        result.ticks = _apply_clocks(run, resolution, intent)
         result.tide_moves = _advance_tides(run, resolution)
         _apply_harm(run, resolution, intent, result, rng)
+        # A finding "applies" to the attempt it was bought for, then it is
+        # spent. Left standing, one free Observe permanently upgraded the
+        # position of every later roll in the act.
+        run.prepared = False
 
     _apply_resolve(run, resolution, result, rng)
 
@@ -244,9 +260,20 @@ def _observe_target_stat(intent: Intent, assessment: Assessment) -> str:
     return worst[0][0] if worst else "PER"
 
 
-def _apply_clocks(run: Run, resolution: Resolution) -> List[ClockTick]:
+def _apply_clocks(run: Run, resolution: Resolution,
+                  intent: Optional[Intent] = None) -> List[ClockTick]:
+    """Move the clocks.
+
+    A free action cannot fill the project clock. Talking costs no turn by
+    design, and while it never should -- conversation is one of the better
+    ideas already in the game -- free *progress* is strictly dominant: a
+    successful Talk added segments at no cost, so the whole menu collapsed to
+    "keep talking". A free action can still make things worse, which is what
+    the danger clock below is for.
+    """
     ticks: List[ClockTick] = []
-    if resolution.clock_segments and run.project:
+    free = intent is not None and not intent.costs_a_turn
+    if resolution.clock_segments and run.project and not free:
         tick = run.clocks.tick(run.project_id, resolution.clock_segments)
         if tick:
             ticks.append(tick)
@@ -319,4 +346,4 @@ def _pick(enum_cls, held, rng: random.Random):
     return rng.choice(remaining) if remaining else None
 
 
-__all__ = ["Run", "TurnResult", "Keeper", "advance_turn"]
+__all__ = ["Run", "TurnResult", "Keeper", "advance_turn", "prepare_turn"]

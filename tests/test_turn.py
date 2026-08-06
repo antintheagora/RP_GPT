@@ -292,3 +292,68 @@ def test_the_pipeline_is_deterministic_under_a_seed():
     b = advance_turn(_run(), _intent(), StubKeeper(), rng=random.Random(42))
     assert a.resolution.roll.roll == b.resolution.roll.roll
     assert a.resolution.clock_segments == b.resolution.clock_segments
+
+
+# =============================
+# ------ FREE ACTIONS ---------
+# =============================
+
+def _talk_run(bearing=Bearing.IDEAL):
+    """A run where the project clock is empty and talking always goes well."""
+    from engine.bridge import stats_of  # noqa: F401  (kept close to the real path)
+
+    scene = Scene(id="s", name="A hall", description="")
+    scene.add(Obstacle(id="main", name="The sealed door"))
+    run = Run(
+        scene=scene,
+        condition=Condition(endurance=5, strength=5),
+        stats={key: 10 for key in SPECIAL_KEYS},
+        clocks=ClockBoard([
+            Clock.for_act("project", "Open it", ClockKind.PROJECT),
+            Clock.for_act("danger", "The tide", ClockKind.DANGER),
+        ]),
+    )
+    return run
+
+
+def test_talking_is_free_and_therefore_cannot_make_progress():
+    """The exploit a live playthrough found: a successful Talk cost no turn
+    and still added segments, so the whole menu collapsed to "keep talking"."""
+    run = _talk_run()
+    keeper = StubKeeper(bearing=Bearing.IDEAL)
+    rng = random.Random(1)
+
+    for _ in range(25):
+        result = advance_turn(
+            run, Intent(verb=Verb.PARLEY, depth=Depth.QUICK, stat_hint="CHA"),
+            keeper, rng=rng,
+        )
+        assert not result.consumed_turn, "talking never costs a turn, by design"
+
+    assert run.project.filled == 0, "free actions must not fill the project clock"
+    assert run.turn == 0
+
+
+def test_a_free_action_can_still_make_things_worse():
+    """Free does not mean consequence-free: a botched conversation counts."""
+    run = _talk_run()
+    keeper = StubKeeper(bearing=Bearing.FUTILE)
+    rng = random.Random(7)
+
+    for _ in range(25):
+        advance_turn(run, Intent(verb=Verb.PARLEY, depth=Depth.QUICK, stat_hint="CHA"),
+                     keeper, rng=rng)
+
+    assert run.danger.filled > 0, "the danger clock still moves on a failure"
+
+
+def test_an_observation_is_spent_when_it_applies():
+    """The spec says a finding "applies" -- to the attempt it was bought for.
+    Left standing it permanently upgraded the position of every later roll."""
+    run = _talk_run()
+    run.prepared = True
+
+    advance_turn(run, Intent(verb=Verb.ATTACK, depth=Depth.QUICK, stat_hint="STR"),
+                 StubKeeper(bearing=Bearing.SOUND), rng=random.Random(3))
+
+    assert not run.prepared, "one Observe must not improve every roll in the act"
