@@ -331,7 +331,8 @@ def init_player()->Player:
     for it in [
         Item("Canteen",["food"],hp_delta=12,notes="Basic recovery"),
         Item("Rusty Knife",["weapon"],attack_delta=2,consumable=False,notes="Better than bare hands"),
-        Item("Old Journal",["book","boon"],special_mods={"INT":+1},notes="Sparks insight")
+        Item("Old Journal",["book","boon"],special_mods={"INT":+1},consumable=False,
+             notes="Sparks insight while you carry it")
     ]: p.add_item(it)
     return p
 

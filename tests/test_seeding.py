@@ -133,3 +133,88 @@ def test_begin_act_seeds_a_real_blueprint_end_to_end():
     begin_act(state, 1)
     assert state.act.index == 1
     assert state.act.undiscovered, "seeded actors should be waiting to be found"
+
+
+# ---------------------------------------------------------------------------
+# Items that promise a stat bonus and have to deliver one.
+# ---------------------------------------------------------------------------
+
+def _player_with(*items):
+    import RP_GPT as core
+
+    player = core.Player(name="Ant", stats=core.Stats(INT=5, STR=5))
+    for item in items:
+        player.add_item(item)
+    return player
+
+
+def _boon(name, **mods):
+    import RP_GPT as core
+
+    return core.Item(name, ["boon"], special_mods=dict(mods), consumable=False)
+
+
+def test_a_carried_book_actually_raises_the_stat():
+    """The Old Journal said "+1 INT" on its card and changed nothing at all.
+
+    Every stat the engine reads comes from Run.stats, and Run.stats comes from
+    stats_of -- which read the raw dataclass field.
+    """
+    from engine.bridge import stats_of
+
+    player = _player_with(_boon("Old Journal", INT=1))
+    assert player.effective_stat("INT") == 6
+    assert stats_of(player)["INT"] == 6, "the dice have to see it too"
+
+
+def test_a_consumable_in_your_pack_is_not_a_consumable_in_your_arm():
+    import RP_GPT as core
+
+    player = _player_with(core.Item("Stimpak", ["med"], special_mods={"END": 2}))
+    assert player.effective_stat("END") == 5
+
+
+def test_gear_helps_but_a_hoard_does_not():
+    from engine.model import MAX_CARRIED_STAT_BONUS
+
+    player = _player_with(*[_boon(f"Journal {n}", INT=2) for n in range(5)])
+    assert player.effective_stat("INT") == 5 + MAX_CARRIED_STAT_BONUS
+
+
+def test_a_cursed_item_is_bounded_the_same_way():
+    from engine.model import MAX_CARRIED_STAT_BONUS
+
+    player = _player_with(*[_boon(f"Millstone {n}", STR=-2) for n in range(5)])
+    assert player.effective_stat("STR") == 5 - MAX_CARRIED_STAT_BONUS
+
+
+def test_the_character_sheet_can_say_what_is_helping():
+    player = _player_with(_boon("Old Journal", INT=1), _boon("Lens", INT=1))
+    assert player.gear_behind("INT") == ["Old Journal +1", "Lens +1"]
+    assert player.gear_behind("STR") == []
+
+
+def test_a_save_written_before_the_validator_does_not_crash_the_sheet():
+    """B10 crashed the screen rather than the action. Twice would be careless.
+
+    An old state.json can hold special_mods the validator would never pass
+    now, and this runs to draw the character sheet.
+    """
+    import RP_GPT as core
+
+    junk = core.Item("Relic", ["boon"], consumable=False,
+                     special_mods={"STR": "a lot", "WISDOM": 3})
+    listy = core.Item("Rope", ["tool"], consumable=False, special_mods=["+1 STR"])
+    player = _player_with(junk, listy)
+    assert player.effective_stat("STR") == 5
+    assert player.gear_behind("STR") == []
+
+
+def test_the_journal_the_game_actually_hands_out_is_worth_something():
+    """Not a fixture -- the real starting kit, which had it consumable."""
+    from ui.webapp.game_service import default_items
+
+    journal = [i for i in default_items if i.name == "Old Journal"][0]
+    assert journal.special_mods == {"INT": 1}
+    assert not journal.consumable, "a book you carry is not a book you eat"
+    assert _player_with(journal).effective_stat("INT") == 6

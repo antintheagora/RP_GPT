@@ -45,8 +45,24 @@ CODE_TO_INTENT: Dict[str, tuple] = {
 
 
 def stats_of(player) -> Dict[str, int]:
+    """Your stats as they actually are, gear included.
+
+    This is the one door: every stat the engine reads comes from `Run.stats`,
+    and `Run.stats` comes from here. It used to read the raw dataclass field,
+    which is why carrying a +1 INT book changed nothing anywhere.
+    """
     stats = getattr(player, "stats", None)
-    return {key: int(getattr(stats, key, 5)) if stats else 5 for key in SPECIAL_KEYS}
+    if stats is None:
+        return {key: 5 for key in SPECIAL_KEYS}
+    effective = getattr(player, "effective_stat", None)
+    out: Dict[str, int] = {}
+    for key in SPECIAL_KEYS:
+        try:
+            out[key] = int(effective(key)) if callable(effective) \
+                else int(getattr(stats, key, 5))
+        except (TypeError, ValueError, AttributeError):
+            out[key] = int(getattr(stats, key, 5) or 5)
+    return out
 
 
 def weapon_of(player) -> WeaponWeight:

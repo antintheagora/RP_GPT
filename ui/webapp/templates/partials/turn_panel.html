@@ -66,7 +66,7 @@
           {% endfor %}
         </ul>
       {% elif payload.party and not payload.party.assists_total %}
-        <p class="text-sm text-ash mt-1">Nobody follows you anywhere. (Charisma {{ player.stats.CHA }}.)</p>
+        <p class="text-sm text-ash mt-1">Nobody follows you anywhere. (Charisma {{ player.effective_stat('CHA') }}.)</p>
       {% else %}
         <p class="text-sm text-ash mt-1">Alone, for now.</p>
       {% endif %}
@@ -187,11 +187,18 @@
 
   <div>
     <p class="overline text-dust mb-2">SPECIAL spread</p>
+    {# The number the dice actually use, not the one on the character sheet.
+       These read player.stats directly, so a +1 INT book showed nothing here
+       even once it started working -- and a stat that disagrees with the odds
+       is worse than a stat that never moves. #}
     <div class="grid grid-cols-7 gap-2 text-center text-sm">
-      {% for code, stat in [('STR', player.stats.STR), ('PER', player.stats.PER), ('END', player.stats.END), ('CHA', player.stats.CHA), ('INT', player.stats.INT), ('AGI', player.stats.AGI), ('LUC', player.stats.LUC)] %}
-        <div class="rounded-sm bg-pitch border border-edge py-2">
+      {% for code in ['STR', 'PER', 'END', 'CHA', 'INT', 'AGI', 'LUC'] %}
+        {% set bonus = player.carried_stat_bonus(code) %}
+        <div class="rounded-sm bg-pitch border py-2 {{ 'border-brass/60' if bonus > 0 else ('border-rust/60' if bonus < 0 else 'border-edge') }}"
+             {% if bonus %}title="{{ player.gear_behind(code) | join(', ') }}"{% endif %}>
           <p class="text-xs text-dust">{{ code }}</p>
-          <p class="text-lg font-semibold">{{ stat }}</p>
+          <p class="text-lg font-semibold {{ 'text-brass' if bonus > 0 else ('text-flare' if bonus < 0 else '') }}">{{ player.effective_stat(code) }}</p>
+          {% if bonus %}<p class="text-[10px] text-dust leading-none">{{ '%+d' % bonus }} gear</p>{% endif %}
         </div>
       {% endfor %}
     </div>

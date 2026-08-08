@@ -33,6 +33,12 @@ class TurnMode(Enum):
 
 SPECIAL_KEYS = ["STR","PER","END","CHA","INT","AGI","LUC"]
 
+#: The most your pack may be worth to any one stat. Gear helps; a hoard does
+#: not. `target_for` subtracts (stat - STAT_PIVOT) from the number you need on
+#: a d20, so a point of a stat is exactly 5% -- three points from what you
+#: carry is a real edge, and a fourth journal is not a fourth edge.
+MAX_CARRIED_STAT_BONUS = 3
+
 @dataclass
 class Stats:
     STR:int=5; PER:int=5; END:int=5; CHA:int=5; INT:int=5; AGI:int=5; LUC:int=5
@@ -79,9 +85,59 @@ class Player:
     inventory:List[Item]=field(default_factory=list); buffs:List[Buff]=field(default_factory=list)
     age: Optional[int] = None; sex: Optional[str] = None; hair_color: Optional[str] = None
     clothing: Optional[str] = None; appearance: Optional[str] = None
-    def effective_stat(self,k): 
+    def carried_stat_bonus(self, k:str)->int:
+        """What your gear is worth to one stat, right now.
+
+        Nothing applied `special_mods` at all. The Old Journal said "+1 INT"
+        on its card, the model wrote items promising bonuses, and none of it
+        reached a single roll -- the only code that would have applied it
+        lives in `Core.Interactions.use_item`, which nothing calls.
+
+        Consumables are excluded: a stimpak in your pack is not a stimpak in
+        your arm. Everything else grants its bonus while you carry it.
+
+        Read defensively because a save written before the validator existed
+        can hold `{"STRENGTH": "a lot"}`, and this is called to draw the
+        character sheet -- which is exactly how B10 crashed the screen rather
+        than the action.
+        """
+        total = 0
+        for item in self.inventory:
+            if getattr(item, "consumable", True):
+                continue
+            mods = getattr(item, "special_mods", None)
+            if not isinstance(mods, dict):
+                continue
+            try:
+                total += int(mods.get(k, 0) or 0)
+            except (TypeError, ValueError):
+                continue
+        return max(-MAX_CARRIED_STAT_BONUS, min(MAX_CARRIED_STAT_BONUS, total))
+
+    def gear_behind(self, k:str)->List[str]:
+        """Which of your things is moving this stat, for the character sheet.
+
+        A number that changed with no way to find out why is a worse problem
+        than a number that never changed at all.
+        """
+        out=[]
+        for item in self.inventory:
+            if getattr(item,"consumable",True):
+                continue
+            mods=getattr(item,"special_mods",None)
+            if not isinstance(mods,dict):
+                continue
+            try:
+                amount=int(mods.get(k,0) or 0)
+            except (TypeError,ValueError):
+                continue
+            if amount:
+                out.append(f"{item.name} {amount:+d}")
+        return out
+
+    def effective_stat(self,k):
         base=getattr(self.stats,k)
-        return base+sum(b.stat_mods.get(k,0) for b in self.buffs)
+        return base+self.carried_stat_bonus(k)+sum(b.stat_mods.get(k,0) for b in self.buffs)
     def add_item(self,it:Item):
         self.inventory.append(it)
         if it.attack_delta and "weapon" in it.tags: 
