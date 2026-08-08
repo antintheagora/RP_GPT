@@ -258,3 +258,70 @@ def test_a_world_that_states_its_act_length_gets_it():
     assert segments_for_turns(11) in (10, 12)
     assert segments_for_turns(0) == 10, "no answer means the default"
     assert segments_for_turns(None) == 10
+
+
+# =============================
+# ---- A TIDE THAT ARRIVES ----
+# =============================
+
+def test_a_tide_that_runs_its_course_says_what_it_left_behind():
+    """`if_completed` was parsed off the blueprint, stored, and read by
+    nothing.
+
+    MECHANICS gives the field and an example -- "the quarter belongs to them;
+    every route out is watched" -- and it is the whole point of a force with a
+    plan: not the last step, but the world after the plan succeeded.
+    `TideMove.is_final` was set and never looked at either, so nothing in the
+    game could tell a Tide moving from a Tide arriving.
+    """
+    import random
+    import sys
+
+    sys.path.insert(0, "tests")
+    from engine.events import collecting
+    from engine.resolve import Bearing, Consequence
+    from engine.tides import Tide
+    from engine.turn import advance_turn
+    from test_turn import StubKeeper, _intent, _run
+
+    tide = Tide(id="patrol", name="The Ironclad Patrol",
+                wants="to find who burned the tithe barn",
+                moves=["checkpoints go up", "a friend is taken",
+                       "they raid the safehouse"],
+                if_completed="the quarter belongs to them")
+    run = _run(tides=[tide])
+
+    with collecting() as bus:
+        for _ in range(14):
+            advance_turn(run, _intent(),
+                         StubKeeper(bearing=Bearing.FUTILE,
+                                    consequence=Consequence.CLOCK_TICK),
+                         rng=random.Random(2))
+
+    said = " ".join(event.text for event in bus.events)
+    assert tide.fired == len(tide.moves), "the Tide never finished its list"
+    assert "the quarter belongs to them" in said, (
+        "it carried its plan out and the game said only the last step of it"
+    )
+
+
+def test_a_tide_still_running_does_not_announce_its_ending():
+    """The completion is the payoff, so it cannot arrive early."""
+    from engine.tides import Tide
+
+    tide = Tide(id="patrol", name="Patrol", wants="x",
+                moves=["one", "two", "three"], if_completed="it is theirs now")
+
+    # Three moves on a four-segment clock, so the first tick fires nothing and
+    # the moves land on ticks two, three and four. Written as "advance until
+    # something fires" rather than a hardcoded number, because the segments
+    # come from `_moves_due` and are not one per move.
+    fired = []
+    while not fired:
+        fired = tide.advance(1)
+    assert not fired[0].is_final, "the first move is not the arrival"
+    assert tide.fired < len(tide.moves)
+
+    while tide.fired < len(tide.moves):
+        fired = tide.advance(1) or fired
+    assert fired[-1].is_final, "the last move has to say it is the last"

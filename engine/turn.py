@@ -634,6 +634,15 @@ def _advance_tides(run: Run, resolution: Resolution) -> List[TideMove]:
     moves = urgent.advance(segments)
     for move in moves:
         ev.chapter(move.text)
+        # A Tide that has run its whole list has *arrived*, and what that
+        # leaves behind is the point of the thing. MECHANICS gives the field
+        # and an example -- "the quarter belongs to them; every route out is
+        # watched" -- and it was parsed off the blueprint, stored on the Tide,
+        # and read by nothing. `TideMove.is_final` was likewise set and never
+        # looked at. So a force with a plan carried its plan out and the game
+        # said only the last step of it.
+        if move.is_final and urgent.if_completed:
+            ev.chapter(urgent.if_completed)
     return moves
 
 
