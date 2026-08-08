@@ -14,6 +14,15 @@ const FOG_CONFIG = {
     baseOpacity: 0.2,         // Base opacity of particles
     brightness: 1.5,          // Global brightness multiplier
 
+    // How much of that survives in the layer drawn IN FRONT of the interface.
+    // The foreground canvas sits at z-index 50 with mix-blend-mode: screen,
+    // and screen can only lighten -- so sixteen 400-700px puffs of bright
+    // blue-white at 0.3 alpha were being added on top of every panel and
+    // every word of text on the play screen. It read as a permanent haze over
+    // the game rather than as atmosphere in it. The background layer is
+    // untouched: behind the content it is doing exactly what it should.
+    foregroundOpacity: 0.26,
+
     // Movement
     speed: 0.5,               // Reduced base speed for wispiness
     drift: 1.5,               // Higher random drift for chaotic movement
@@ -32,7 +41,7 @@ const FOG_CONFIG = {
     fpsLimit: 60,
     zIndexBackground: -15,    // Behind UI
     zIndexForeground: 50,     // In front of UI
-    foregroundRatio: 0.2      // Percentage of particles in foreground
+    foregroundRatio: 0.14     // Percentage of particles in foreground
 };
 
 
@@ -115,7 +124,8 @@ class FogParticle {
         ctx.save();
         ctx.translate(this.x, this.y);
         ctx.rotate(this.rotation);
-        ctx.globalAlpha = this.currentAlpha * FOG_CONFIG.brightness;
+        const layerScale = this.layer === 'fg' ? FOG_CONFIG.foregroundOpacity : 1;
+        ctx.globalAlpha = this.currentAlpha * FOG_CONFIG.brightness * layerScale;
 
         // Draw a soft procedural "blob"
         // We use a radial gradient to create a soft puff

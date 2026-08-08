@@ -255,26 +255,36 @@ def input_field(path, name="stone_input"):
                             mossy=False, seed=13, mortar=0.18)
     iron = look.rusted_iron("Input iron", rustiness=0.35, seed=17)
 
-    # Deep back face, so the recess has somewhere to be dark.
-    look.block((0, 0.34, 0), (SPAN, 0.08, SPAN), stone, name="well")
+    # The writing surface. Close behind the lip, not far back: at y=+0.34 it
+    # caught no light at all and the whole middle of the plate rendered as a
+    # black hole with a hairline square in it.
+    field = look.damp_stone("Input field", block_scale=0.8, wetness=0.30,
+                            mossy=False, seed=29, mortar=0.0,
+                            tint=(0.0300, 0.0272, 0.0215, 1.0))
+    look.block((0, 0.035, 0), (SPAN, 0.06, SPAN), field, name="well")
 
+    # Two courses, in the border zone. These sat at rise 0.425 and 0.300 --
+    # well inside the 0.5 unit border -- so the four bars crossed in the
+    # middle of the plate and the whole thing came out as a woven lattice
+    # rather than as a groove with a bottom.
     lip = [
-        (0.150, 0.230, 0.425),
-        (0.090, 0.130, 0.300),
+        (0.200, 0.230, 0.900),   # outer course
+        (0.150, 0.130, 0.715),   # inner course, lower: this is the lip
     ]
-    for sign in (1, -1):
-        for thickness, depth, rise in lip:
+    for thickness, depth, rise in lip:
+        for sign in (1, -1):
             look.block((0, -depth / 2, sign * rise), (SPAN, depth, thickness),
                        stone, name="lip")
+            # A hair shallower where it crosses, or the corners Z-fight.
             look.block((sign * rise, -(depth - 0.003) / 2, 0),
                        (thickness, depth - 0.003, SPAN), stone, name="lip")
 
-    # A thin brass bead right at the inner edge, which is what tells the eye
-    # where the writing surface begins.
+    # A thin iron bead at the inner edge, which is what tells the eye where
+    # the writing surface begins.
     for sign in (1, -1):
-        look.block((0, -0.055, sign * 0.238), (SPAN, 0.05, 0.028), iron,
+        look.block((0, -0.050, sign * 0.612), (SPAN, 0.05, 0.030), iron,
                    name="bead")
-        look.block((sign * 0.238, -0.0535, 0), (0.028, 0.047, SPAN), iron,
+        look.block((sign * 0.612, -0.0485, 0), (0.030, 0.047, SPAN), iron,
                    name="bead")
 
     _lighting(key=380)

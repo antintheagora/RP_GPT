@@ -100,6 +100,43 @@
     if (count) count.textContent = needle ? shown + " match" + (shown === 1 ? "" : "es") : "";
   });
 
+  /* ---- A plain form POST is the slowest thing in the app ----------------
+   *
+   * The thinking bar and the dimmed content already exist, and the comment
+   * over them in app.css says the point out loud: local inference is fifteen
+   * to sixty seconds and the screen must not look dead. But they were wired
+   * only to htmx events, and the slowest action in the whole game -- Launch
+   * campaign, which waits on a 12B model writing an entire blueprint -- is an
+   * ordinary form POST. So the one screen that most needed the reassurance
+   * was the only one that never got it: you click, nothing happens, nothing
+   * moves, and the natural thing to do is click again.
+   *
+   * `data-quiet` opts a form out, for anything genuinely instant.
+   */
+  document.addEventListener("submit", function (event) {
+    var form = event.target;
+    if (!form || form.tagName !== "FORM") return;
+    if (form.hasAttribute("data-quiet")) return;
+    if (form.hasAttribute("hx-post") || form.hasAttribute("hx-get")) return;
+    if (event.defaultPrevented) return;
+
+    var button = form.querySelector("button[type=submit], input[type=submit]");
+    if (button && button.getAttribute("data-waiting") !== null) return;
+
+    busy(true);
+    if (!button) return;
+    button.setAttribute("data-waiting", "");
+    var said = button.getAttribute("data-waiting-text") ||
+               button.textContent.trim();
+    // Disabled on the next tick, never inside the handler: a control that is
+    // already disabled when the browser serialises the form does not submit
+    // its own name and value, and this button is inside the form it posts.
+    window.setTimeout(function () {
+      button.disabled = true;
+      button.textContent = said;
+    }, 0);
+  }, true);
+
   document.addEventListener("htmx:beforeRequest", function () { busy(true); });
   document.addEventListener("htmx:afterRequest", function () { busy(false); });
   document.addEventListener("htmx:sendError", function () { busy(false); });

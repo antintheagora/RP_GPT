@@ -376,3 +376,50 @@ def test_a_finished_campaign_stops_asking_what_you_do_next():
     menu = turn.index("What do you do?")
     assert over < menu, "the menu is not inside the game-over branch"
     assert "{% elif payload.bargain %}" in turn, "the ending has to win the branch"
+
+
+# ---------------------------------------------------------------------------
+# Found by playing on 2026-08-08.
+# ---------------------------------------------------------------------------
+
+def test_a_new_campaign_is_saved_before_the_player_sees_it():
+    """Sixty seconds of model time must survive closing the tab.
+
+    /start built the session and redirected straight to /play. The run then
+    existed only in memory until the first turn ended, so the save directory
+    held a world.db with no state.json beside it -- invisible to the Continue
+    list, unrecoverable by the player, and one orphaned ledger per abandoned
+    launch. Found by launching a campaign and restarting the server.
+    """
+    import inspect
+    import ui.webapp.server as server
+
+    source = inspect.getsource(server)
+    start = source[source.index("def start_game()"):]
+    start = start[:start.index("@app.post(\"/worlds/<slug>/select\")")]
+    assert "session.save()" in start, (
+        "/start must persist the run before redirecting to /play"
+    )
+    assert start.index("session.save()") < start.index("return redirect"), (
+        "the save has to happen before the redirect, not after"
+    )
+
+
+def test_the_turn_panel_never_calls_a_method_on_the_player():
+    """A missing method in Jinja is a 500, and a 500 is a blank game.
+
+    The SPECIAL row called player.carried_stat_bonus(code) straight from the
+    template. Against a Player that did not have it -- an older class, a
+    partially restored save, a stale worker -- Jinja raised UndefinedError,
+    /ui/turn returned 500, and the entire play screen rendered as nothing at
+    all. The values are computed in game_service now and passed as plain data.
+    """
+    from pathlib import Path
+
+    panel = (Path(__file__).resolve().parent.parent / "ui" / "webapp" /
+             "templates" / "partials" / "turn_panel.html").read_text(encoding="utf-8")
+    for forbidden in ("player.carried_stat_bonus", "player.gear_behind",
+                      "player.effective_stat"):
+        assert forbidden not in panel, (
+            f"{forbidden} in the template can take the whole screen down"
+        )

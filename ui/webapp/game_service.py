@@ -859,6 +859,35 @@ class GameSession:
             })
         return out
 
+    def _special_payload(self) -> List[Dict[str, Any]]:
+        """The seven stats as the dice see them, ready to draw.
+
+        Computed here rather than by calling methods from the template. The
+        turn panel called `player.carried_stat_bonus(code)` directly and a
+        Player without that method raised UndefinedError inside Jinja, which
+        is a 500 on /ui/turn, which is the entire play screen replaced by
+        nothing. A missing stat bonus is worth a wrong number on a card; it
+        is not worth the game disappearing.
+        """
+        player = self.state.player
+        rows: List[Dict[str, Any]] = []
+        for code in core.SPECIAL_KEYS:
+            try:
+                value = int(player.effective_stat(code))
+            except Exception:
+                value = int(getattr(getattr(player, "stats", None), code, 5) or 5)
+            try:
+                bonus = int(player.carried_stat_bonus(code))
+            except Exception:
+                bonus = 0
+            try:
+                sources = list(player.gear_behind(code))
+            except Exception:
+                sources = []
+            rows.append({"code": code, "value": value, "bonus": bonus,
+                         "sources": ", ".join(sources)})
+        return rows
+
     def get_turn_payload(self) -> Dict[str, Any]:
         with self._lock:
             plan = self.state.blueprint.acts[self.state.act.index]
@@ -879,6 +908,7 @@ class GameSession:
                 for option in self.ensure_options()
             ]
             data = {
+                "special": self._special_payload(),
                 "act_index": self.state.act.index,
                 "act_count": self.state.act_count,
                 "act_goal": plan.goal,

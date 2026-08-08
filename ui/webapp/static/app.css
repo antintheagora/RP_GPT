@@ -50,12 +50,24 @@
      The ninebox system creates ornate frames from 9-slice textures.
   */
   /* Texture for ninebox panels */
-  --box-slice: 256px;
-  /* Corner slice size for boxes */
+  --box-slice: 48px;
+  /* How big a corner is ON SCREEN -- not a slice of the source image.
+     .ninebox builds its frame from nine divs with `background-size: 300%`,
+     so each corner always shows the source's top-left ninth whatever this
+     says; this is only how large that ninth is drawn. Briefly set to 256px
+     on the theory that it matched the 256px corner of the rendered plate,
+     which gave every panel a quarter-metre stone border. 50px was the
+     original and correct; 64 because the rendered corners have detail worth
+     a few more pixels. */
   --box-gap: 4px;
   /* Gap inside box frame */
-  --box-padding: 2rem;
-  /* Padding around content inside boxes (2rem = 32px) */
+  --box-padding: 2.75rem;
+  /* Padding around content inside boxes.
+     It has to clear the frame, not merely look roomy. Each corner div shows
+     the source image's top-left ninth, and in the rendered plate about three
+     quarters of that ninth is stone rim -- so with a 48px corner the rim
+     reaches 36px in, and 32px of padding put every panel heading on top of
+     it. 44px clears it with a little air. */
 
   /* --- INPUT FIELD SETTINGS ---
      Controls how text input fields and text areas look.

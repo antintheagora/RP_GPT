@@ -888,6 +888,13 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
                                 has_active=False, default_model=DEFAULT_MODEL),
                 400,
             )
+        # Written before the player is shown anything. Generating a campaign
+        # is a minute of a 12B model's time, and until now the run existed
+        # only in memory until the first turn ended -- so closing the tab, or
+        # restarting the server, threw away the whole minute and left an
+        # orphaned world.db behind with no state.json beside it, which the
+        # Continue list cannot see and the player cannot recover.
+        session.save()
         flask_session["session_id"] = session.id
         return redirect(url_for("play"))
 
