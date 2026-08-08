@@ -890,7 +890,30 @@ class GameSession:
                 sources = list(player.gear_behind(code))
             except Exception:
                 sources = []
-            rows.append({"code": code, "value": value, "bonus": bonus,
+
+            # What being hurt costs this approach.
+            #
+            # `resolve()` takes a `wound_penalty` and moves the target number
+            # by it, and `target_for` already subtracts (stat - 5) -- so -2
+            # from a wound and -2 from the stat are exactly the same number
+            # arriving by different routes. Only one of them was on screen. A
+            # character with a bad leg was shown AGI 8, needed a 12 by the
+            # card in front of them, and was rolled against 14.
+            #
+            # The heading over this grid says these are the numbers the dice
+            # use. Now they are.
+            try:
+                hurt = int(self.run.condition.wounds.penalty_for(code))
+            except Exception:
+                hurt = 0
+            try:
+                injuries = [w.name for w in self.run.condition.wounds.wounds
+                            if w.applies_to(code)]
+            except Exception:
+                injuries = []
+
+            rows.append({"code": code, "value": value + hurt, "bonus": bonus,
+                         "wound": hurt, "injuries": injuries,
                          "sources": ", ".join(sources)})
         return rows
 

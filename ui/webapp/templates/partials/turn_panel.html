@@ -7,7 +7,7 @@
   <div class="nf tl"></div><div class="nf t"></div><div class="nf tr"></div>
   <div class="nf l"></div><div class="nf c"></div><div class="nf r"></div>
   <div class="nf bl"></div><div class="nf b"></div><div class="nf br"></div>
-  <div class="nine-content p-10 space-y-5">
+  <div class="nine-content p-5 sm:p-10 space-y-5">
 
   <div class="flex flex-wrap items-center justify-between gap-3">
     <div>
@@ -101,7 +101,19 @@
       <p class="overline text-dust">Marks</p>
       {% if cond and (cond.wounds.wounds or cond.scars or cond.virtues) %}
         <ul class="text-sm space-y-1 mt-1">
-          {% for wound in cond.wounds.wounds %}<li class="text-flare">{{ wound.name }}</li>{% endfor %}
+          {# A name on its own says nothing. Every wound knows what it costs
+             and which approach it costs it on, and neither was ever drawn. #}
+          {% for wound in cond.wounds.wounds %}
+            <li class="flex justify-between gap-2">
+              <span class="text-flare">{{ wound.name }}</span>
+              <span class="text-xs text-dust shrink-0">
+                {% if wound.level >= 3 %}−2 to everything
+                {% elif wound.stat %}{{ wound.penalty }} {{ wound.stat }}
+                {% else %}level {{ wound.level }}{% endif %}
+                {%- if wound.state.value == 'raw' %} · untreated{% endif %}
+              </span>
+            </li>
+          {% endfor %}
           {% for scar in cond.scars %}<li class="text-brass">{{ scar.value }}</li>{% endfor %}
           {% for virtue in cond.virtues %}<li class="text-verdigris">{{ virtue.value }}</li>{% endfor %}
         </ul>
@@ -198,14 +210,37 @@
     {# The number the dice actually use, not the one on the character sheet.
        These read player.stats directly, so a +1 INT book showed nothing here
        even once it started working -- and a stat that disagrees with the odds
-       is worse than a stat that never moves. #}
-    <div class="grid grid-cols-7 gap-2 text-center text-sm">
+       is worse than a stat that never moves.
+
+       A wound is the same story from the other side. `resolve()` moves the
+       target number by the wound penalty, and `target_for` already moves it
+       by (stat - 5), so -2 from a bad leg and -2 from Agility are the same
+       number arriving by different routes. Only one of them was ever drawn:
+       a hurt character was shown AGI 8, read 12 off this grid, and was
+       rolled against 14. #}
+    <div class="grid grid-cols-4 xl:grid-cols-7 gap-2 text-center text-sm">
       {% for stat in payload.special %}
-        <div class="rounded-sm bg-pitch border py-2 {{ 'border-brass/60' if stat.bonus > 0 else ('border-rust/60' if stat.bonus < 0 else 'border-edge') }}"
-             {% if stat.sources %}title="{{ stat.sources }}"{% endif %}>
+        {% set note = [] %}
+        {% if stat.sources %}{% set _ = note.append(stat.sources) %}{% endif %}
+        {% if stat.injuries %}{% set _ = note.append(stat.injuries | join(', ')) %}{% endif %}
+        <div class="rounded-sm bg-pitch border py-2
+                    {{ 'border-flare/70' if stat.wound
+                       else ('border-brass/60' if stat.bonus > 0
+                       else ('border-rust/60' if stat.bonus < 0 else 'border-edge')) }}"
+             {% if note %}title="{{ note | join(' — ') }}"{% endif %}>
           <p class="text-xs text-dust">{{ stat.code }}</p>
-          <p class="text-lg font-semibold {{ 'text-brass' if stat.bonus > 0 else ('text-flare' if stat.bonus < 0 else '') }}">{{ stat.value }}</p>
-          {% if stat.bonus %}<p class="text-[10px] text-dust leading-none">{{ '%+d' % stat.bonus }} gear</p>{% endif %}
+          <p class="text-lg font-semibold
+                    {{ 'text-flare' if stat.wound
+                       else ('text-brass' if stat.bonus > 0
+                       else ('text-flare' if stat.bonus < 0 else '')) }}">{{ stat.value }}</p>
+          {# The word only when there is room for it. On a phone these cards
+             are 43px wide and "+1 gear" measured 41 of the 41 available --
+             fitting exactly is one font away from not fitting. #}
+          {% if stat.wound %}
+            <p class="text-[10px] text-flare leading-none">{{ '%+d' % stat.wound }}<span class="hidden sm:inline"> hurt</span></p>
+          {% elif stat.bonus %}
+            <p class="text-[10px] text-dust leading-none">{{ '%+d' % stat.bonus }}<span class="hidden sm:inline"> gear</span></p>
+          {% endif %}
         </div>
       {% endfor %}
     </div>

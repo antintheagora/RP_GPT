@@ -52,7 +52,20 @@
 
         {% if cond and (cond.wounds.wounds or cond.scars or cond.virtues) %}
           <ul class="text-sm space-y-1 pt-2 border-t border-edge">
-            {% for wound in cond.wounds.wounds %}<li class="text-flare">{{ wound.name }}</li>{% endfor %}
+            {# What it costs, and whether anyone has looked at it. A raw wound
+               can still worsen; a treated one cannot, and only a treated
+               level-3 can begin to heal at all. #}
+            {% for wound in cond.wounds.wounds %}
+              <li>
+                <span class="text-flare">{{ wound.name }}</span>
+                <span class="block text-xs text-dust">
+                  {% if wound.level >= 3 %}&minus;2 to everything
+                  {% elif wound.stat %}{{ wound.penalty }} to {{ wound.stat }}
+                  {% else %}level {{ wound.level }}{% endif %}
+                  &middot; {{ 'untreated' if wound.state.value == 'raw' else 'treated' }}
+                </span>
+              </li>
+            {% endfor %}
             {% for scar in cond.scars %}<li class="text-brass">{{ scar.value }}</li>{% endfor %}
             {% for virtue in cond.virtues %}<li class="text-verdigris">{{ virtue.value }}</li>{% endfor %}
           </ul>
@@ -80,7 +93,7 @@
         <p class="overline text-dust mb-2">SPECIAL</p>
         {# The same numbers the turn panel shows, from the same payload, so the
            two screens cannot disagree about a stat. #}
-        <div class="grid grid-cols-7 gap-2 text-center text-sm">
+        <div class="grid grid-cols-4 xl:grid-cols-7 gap-2 text-center text-sm">
           {% for stat in payload.special %}
             <div class="rounded-sm bg-pitch border py-2 {{ 'border-brass/60' if stat.bonus > 0 else ('border-rust/60' if stat.bonus < 0 else 'border-edge') }}"
                  {% if stat.sources %}title="{{ stat.sources }}"{% endif %}>

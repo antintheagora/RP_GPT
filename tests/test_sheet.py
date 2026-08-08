@@ -178,3 +178,43 @@ def test_the_sheet_route_is_wired_up():
 
     rules = {rule.rule for rule in create_app().url_map.iter_rules()}
     assert "/ui/sheet" in rules
+
+
+# =============================
+# -- THE SCREEN AND THE DICE --
+# =============================
+
+def test_a_wound_moves_the_number_on_screen_too():
+    """A stat that disagrees with the odds is worse than one that never moves.
+
+    `resolve()` shifts the target by the wound penalty, and `target_for`
+    already shifts it by (stat - 5) -- so -2 from a bad leg and -2 from
+    Agility are the same number arriving by different routes. Only one was
+    ever drawn. A character with a bad leg was shown AGI 8, read a target of
+    12 off the grid, and was rolled against 14.
+    """
+    from engine.resolve import Bearing, target_for
+
+    session = _session()
+    session.run.condition.wounds.take("A bad leg", 2, cap=2, stat="AGI")
+
+    rows = {row["code"]: row for row in session.get_turn_payload()["special"]}
+    assert rows["AGI"]["wound"] == -2
+    assert rows["AGI"]["injuries"] == ["A bad leg"]
+    assert rows["STR"]["wound"] == 0, "a bad leg is not a bad shoulder"
+
+    # The target the grid implies is the target the dice will use.
+    shown = target_for(12, Bearing.SOUND, rows["AGI"]["value"])
+    rolled = target_for(12, Bearing.SOUND, 5) - session.run.condition.wounds.penalty_for("AGI")
+    assert shown == rolled
+
+
+def test_a_wound_says_what_it_costs_and_not_only_its_name():
+    """"A bad leg" tells a player nothing they can act on."""
+    session = _session()
+    session.run.condition.wounds.take("A bad leg", 2, cap=2, stat="AGI")
+
+    html = _render(session.get_sheet_payload())
+    assert "A bad leg" in html
+    assert "AGI" in html
+    assert "untreated" in html, "raw and treated are different wounds"
