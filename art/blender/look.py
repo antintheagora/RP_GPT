@@ -278,7 +278,8 @@ def _mix_out(node):
     return out(node, ("Result", "Color", "Value"))
 
 
-def _crack_field(tree, mapping, scale, width, seed_offset, location):
+
+def _crack_field(tree, coords, scale, width, seed_offset, location):
     """Thin wandering lines. White everywhere, black in the crack.
 
     A contour of a noise field rather than a noise: take |n - 0.5| and keep
@@ -290,7 +291,7 @@ def _crack_field(tree, mapping, scale, width, seed_offset, location):
     field = _noise(tree, scale, detail=6.0, roughness=0.55,
                    location=(location[0], location[1]), distortion=0.35)
     sock(field, "W", seed_offset)
-    tree.links.new(mapping.outputs["Vector"], field.inputs["Vector"])
+    tree.links.new(coords, field.inputs["Vector"])
 
     centred = tree.nodes.new("ShaderNodeMath")
     centred.location = (location[0] + 200, location[1])
@@ -311,7 +312,7 @@ def _crack_field(tree, mapping, scale, width, seed_offset, location):
 
 def damp_stone(name="Damp stone", block_scale=7.0, wetness=0.55,
                mossy=True, seed=0, tint=None, mortar=1.0, world_space=False,
-               cracks=0.0, puddling=0.0):
+               cracks=0.0, puddling=0.0, grain_axis=None, grain=5.0):
     """Dark stone that has been underground a long time.
 
     Three things make it read as *damp* rather than merely dark. Roughness
@@ -340,13 +341,37 @@ def damp_stone(name="Damp stone", block_scale=7.0, wetness=0.55,
         source.location = (-1600, 0)
         tree.links.new(source.outputs["Object"], mapping.inputs["Vector"])
 
+    # `grain_axis` stretches every feature along one axis -- the axis a
+    # straight run lies along -- so cracks, joints and pitting all run
+    # lengthways instead of across.
+    #
+    # This is what stops a stretched frame looking smeared, and the reason is
+    # worth stating exactly. A nine-slice edge is drawn at a fixed scale
+    # across its width and at whatever the window demands along its length:
+    # measured on this build, 0.145x across and anywhere from 0.64x to 3.6x
+    # along. A crack's *width* is measured across the crack. So a crack lying
+    # lengthways has its width in the direction that never changes and its
+    # length in the direction that does -- it simply gets longer, which is
+    # what cracks do. A crack lying across the run has its width in the
+    # varying direction, and a crack that gets wider without getting longer
+    # is exactly what reads as a smear.
+    #
+    # Scaling the coordinate down along an axis lowers the frequency there,
+    # which lengthens features along it. One socket, because everything below
+    # reads this one coordinate.
+    if grain_axis is not None:
+        factor = [1.0, 1.0, 1.0]
+        factor[grain_axis] = 1.0 / grain
+        sock(mapping, "Scale", tuple(factor))
+    coords = mapping.outputs["Vector"]
+
     # --- the mortar between blocks -------------------------------------
     voronoi = tree.nodes.new("ShaderNodeTexVoronoi")
     voronoi.location = (-1200, 300)
     voronoi.feature = "DISTANCE_TO_EDGE"
     sock(voronoi, "Scale", block_scale)
     sock(voronoi, "Randomness", 0.85)
-    tree.links.new(mapping.outputs["Vector"], voronoi.inputs["Vector"])
+    tree.links.new(coords, voronoi.inputs["Vector"])
     # `mortar` is how much of the masonry the *shader* is responsible for.
     # Turn it down where the blocks are really modelled, or the procedural
     # joints draw a second, differently-shaped wall over the real one and the
@@ -361,10 +386,10 @@ def damp_stone(name="Damp stone", block_scale=7.0, wetness=0.55,
     # --- pitting and weathering ----------------------------------------
     grit = _noise(tree, 90.0, detail=10.0, roughness=0.75,
                   location=(-1200, 0))
-    tree.links.new(mapping.outputs["Vector"], grit.inputs["Vector"])
+    tree.links.new(coords, grit.inputs["Vector"])
     weather = _noise(tree, 4.5, detail=8.0, roughness=0.6,
                      location=(-1200, -280), distortion=0.4)
-    tree.links.new(mapping.outputs["Vector"], weather.inputs["Vector"])
+    tree.links.new(coords, weather.inputs["Vector"])
 
     # --- base colour ----------------------------------------------------
     base = _ramp(tree, [(0.30, STONE_DARK), (0.72, tint or STONE_LIGHT)],
@@ -382,7 +407,7 @@ def damp_stone(name="Damp stone", block_scale=7.0, wetness=0.55,
     # --- damp: roughness in patches -------------------------------------
     damp = _noise(tree, 2.2, detail=6.0, roughness=0.5, location=(-1200, -560),
                   distortion=0.6)
-    tree.links.new(mapping.outputs["Vector"], damp.inputs["Vector"])
+    tree.links.new(coords, damp.inputs["Vector"])
     rough = _ramp(tree, [(0.35, (0.18, 0.18, 0.18, 1)),
                          (0.52, (0.88, 0.88, 0.88, 1))],
                   location=(-900, -560))
@@ -407,7 +432,7 @@ def damp_stone(name="Damp stone", block_scale=7.0, wetness=0.55,
     # surface crunchy instead of leathery.
     chips = _noise(tree, 26.0, detail=6.0, roughness=0.85,
                    location=(-1200, 260), distortion=1.8)
-    tree.links.new(mapping.outputs["Vector"], chips.inputs["Vector"])
+    tree.links.new(coords, chips.inputs["Vector"])
     chip_relief = _ramp(tree, [(0.34, (0, 0, 0, 1)), (0.66, (1, 1, 1, 1))],
                         location=(-1000, 130))
     tree.links.new(out(chips, ("Fac", "Color")), chip_relief.inputs["Fac"])
@@ -431,9 +456,9 @@ def damp_stone(name="Damp stone", block_scale=7.0, wetness=0.55,
     if cracks:
         # Two networks at different scales, so the big ones have small ones
         # branching off them rather than every crack being the same width.
-        coarse = _crack_field(tree, mapping, block_scale * 2.2, 0.016 * cracks,
+        coarse = _crack_field(tree, coords, block_scale * 2.2, 0.016 * cracks,
                               seed * 0.7, (-1700, 1450))
-        fine = _crack_field(tree, mapping, block_scale * 6.5, 0.010 * cracks,
+        fine = _crack_field(tree, coords, block_scale * 6.5, 0.010 * cracks,
                             seed * 1.3 + 4.0, (-1700, 1750))
         together = _mix(tree, "MULTIPLY", location=(-380, 1500), factor=1.0)
         tree.links.new(out(coarse, "Color"), _mix_in(together, 0))
@@ -497,7 +522,7 @@ def damp_stone(name="Damp stone", block_scale=7.0, wetness=0.55,
         # mask with a slow noise is what stops it reading as a shader.
         patchy = _noise(tree, 3.1, detail=5.0, roughness=0.5,
                         location=(-900, -1120))
-        tree.links.new(mapping.outputs["Vector"], patchy.inputs["Vector"])
+        tree.links.new(coords, patchy.inputs["Vector"])
         somewhere = _ramp(tree, [(0.40, (0, 0, 0, 1)), (0.62, (1, 1, 1, 1))],
                           location=(-650, -1120))
         tree.links.new(out(patchy, ("Fac", "Color")), somewhere.inputs["Fac"])
@@ -536,7 +561,7 @@ def damp_stone(name="Damp stone", block_scale=7.0, wetness=0.55,
         colour_source = _mix_out(soaked)
 
     if mossy:
-        colour_source = _add_moss(tree, bsdf, colour_source, mapping, joints,
+        colour_source = _add_moss(tree, bsdf, colour_source, coords, joints,
                                   seed=seed)
 
     tree.links.new(colour_source, bsdf.inputs["Base Color"])
@@ -545,7 +570,7 @@ def damp_stone(name="Damp stone", block_scale=7.0, wetness=0.55,
     return mat
 
 
-def _add_moss(tree, bsdf, colour_source, mapping, joints, seed=0):
+def _add_moss(tree, bsdf, colour_source, coords, joints, seed=0):
     """Moss where moss actually grows: upward faces, and in the joints.
 
     The mask is the surface normal's Z component, so it is the geometry that
@@ -565,7 +590,7 @@ def _add_moss(tree, bsdf, colour_source, mapping, joints, seed=0):
 
     patchy = _noise(tree, 9.0, detail=9.0, roughness=0.7,
                     location=(-1200, 950), distortion=1.2)
-    tree.links.new(mapping.outputs["Vector"], patchy.inputs["Vector"])
+    tree.links.new(coords, patchy.inputs["Vector"])
     patch_mask = _ramp(tree, [(0.42, (0, 0, 0, 1)), (0.60, (1, 1, 1, 1))],
                        location=(-1000, 950))
     tree.links.new(out(patchy, ("Fac", "Color")), patch_mask.inputs["Fac"])

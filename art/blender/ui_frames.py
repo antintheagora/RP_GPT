@@ -122,7 +122,28 @@ CORNER_QUOINS = [
 ]
 
 
-def stone_band(stone, y=0.045, depth=0.06, amount=0.010):
+#: How much longer a feature is along a run than across it.
+#:
+#: Three, not six. Six pushed the anisotropy far enough that the courses
+#: started to read as wood grain -- long parallel streaks running the whole
+#: length of the bar -- which is exactly the material this frame is not made
+#: of. Three still lays the cracks with the course, so stretching lengthens
+#: them rather than widening them, and still looks quarried.
+GRAIN = 3.0
+
+
+def quarry(name, grain_axis=None, **kw):
+    """One stone, optionally grained along an axis.
+
+    Three of these are cut for every frame: a plain one for the corners,
+    which are drawn at a fixed scale in both directions and so need no
+    special handling, and one for each run direction, whose features are
+    stretched to lie *along* the run.
+    """
+    return look.damp_stone(name, grain_axis=grain_axis, grain=GRAIN, **kw)
+
+
+def stone_band(stones, y=0.045, depth=0.06, amount=0.010):
     """The wall the courses stand on, over the border zone only.
 
     Without it the courses are separate bars with transparent film between
@@ -134,29 +155,31 @@ def stone_band(stone, y=0.045, depth=0.06, amount=0.010):
     half = SPAN / 2
     inner = half - BORDER
     inset = (half + inner) / 2
-    for index, (position, size) in enumerate((
-        ((0, y, inset), (SPAN, depth, BORDER)),
-        ((0, y, -inset), (SPAN, depth, BORDER)),
-        ((-inset, y, 0), (BORDER, depth, SPAN - 2 * BORDER)),
-        ((inset, y, 0), (BORDER, depth, SPAN - 2 * BORDER)),
+    for index, (position, size, axis) in enumerate((
+        ((0, y, inset), (SPAN, depth, BORDER), 0),
+        ((0, y, -inset), (SPAN, depth, BORDER), 0),
+        ((-inset, y, 0), (BORDER, depth, SPAN - 2 * BORDER), 2),
+        ((inset, y, 0), (BORDER, depth, SPAN - 2 * BORDER), 2),
     )):
-        slab = look.block(position, size, stone, name="band", bevel=0.02)
-        look.weather(slab, amount=amount, scale=5.0, cuts=12, seed=index + 40)
+        slab = look.block(position, size, stones[axis], name="band", bevel=0.02)
+        look.weather(slab, amount=amount, scale=5.0, along=axis, cuts=12,
+                     seed=index + 40)
 
 
-def stone_courses(stone, profile=None, amount=0.013, scale=7.0, cuts=14,
+def stone_courses(stones, profile=None, amount=0.013, scale=7.0, cuts=14,
                   seed=0):
     """The four straight runs, each a constant cross-section.
 
-    `along` is what makes them safe to stretch: a run is scaled along its
-    length by whatever the window happens to be, and across it by a fixed
-    amount, so lengthways noise drops to a seventh frequency and becomes a
-    slow undulation instead of a feature with a recognisable size.
+    Both the shape and the stone are grained along the run: displacement at a
+    seventh of the frequency lengthways, and every texture stretched six times
+    longer that way. A crack lying with the course keeps its width when the
+    edge is stretched, because width is measured across, and across is the
+    direction a nine-slice never scales.
     """
     for side, sign in (("top", 1), ("bottom", -1)):
         for index, (thickness, depth, rise) in enumerate(profile or COURSE_PROFILE):
             run = look.block((0, -depth / 2, sign * rise),
-                             (SPAN, depth, thickness), stone,
+                             (SPAN, depth, thickness), stones[0],
                              name=f"{side}_course", bevel=0.018)
             look.weather(run, amount=amount, scale=scale, along=0, cuts=cuts,
                          seed=seed + index * 3 + (0 if sign > 0 else 7))
@@ -167,7 +190,7 @@ def stone_courses(stone, profile=None, amount=0.013, scale=7.0, cuts=14,
             # staircases into exactly the four places people look.
             depth -= 0.004
             run = look.block((sign * rise, -depth / 2, 0),
-                             (thickness, depth, SPAN), stone,
+                             (thickness, depth, SPAN), stones[2],
                              name=f"{side}_course", bevel=0.018)
             look.weather(run, amount=amount, scale=scale, along=2, cuts=cuts,
                          seed=seed + index * 3 + (13 if sign > 0 else 19))
@@ -201,10 +224,16 @@ def stone_corner(x, z, stone, seed=0, amount=0.019, chip=0.075,
                  seed=seed * 13 + 1, chip=chip * 1.2)
 
 
-def stone_frame_body(stone, seed=0, amount=0.013, chip=0.075):
-    """Band, courses and four corners. The whole vocabulary in one call."""
-    stone_band(stone)
-    stone_courses(stone, amount=amount, seed=seed)
+def stone_frame_body(stones, seed=0, amount=0.013, chip=0.075):
+    """Band, courses and four corners. The whole vocabulary in one call.
+
+    `stones` is keyed by the axis a piece runs along: 0 for the horizontal
+    runs, 2 for the vertical ones, None for the corners, which are never
+    tiled and so are never made periodic.
+    """
+    stone = stones[None]
+    stone_band(stones)
+    stone_courses(stones, amount=amount, seed=seed)
     half = SPAN / 2
     for index, (cx, cz) in enumerate(((-half, half), (half, half),
                                       (-half, -half), (half, -half))):
@@ -219,9 +248,13 @@ def stone_frame_body(stone, seed=0, amount=0.013, chip=0.075):
 def frame(path, mossy=True, tint=None, name="stone_frame"):
     """A card's frame. The same masonry as the screen border, at card size."""
     _setup()
-    stone = look.damp_stone("Frame stone", block_scale=2.6, wetness=0.66,
-                            mossy=mossy, seed=3, tint=tint, mortar=0.32,
-                            cracks=0.9, puddling=1.0)
+    spec = dict(block_scale=2.6, wetness=0.66, mossy=mossy, seed=3,
+                tint=tint, mortar=0.32, cracks=0.9, puddling=1.0)
+    stones = {
+        None: quarry("Frame stone", **spec),
+        0: quarry("Frame stone across", grain_axis=0, **spec),
+        2: quarry("Frame stone down", grain_axis=2, **spec),
+    }
 
     # The panel's own background. `border-image-slice: ... fill` stretches
     # this across the whole card, so it is held flat and dark -- anything with
@@ -236,7 +269,7 @@ def frame(path, mossy=True, tint=None, name="stone_frame"):
     look.block((0, 0.090, 0), (SPAN, 0.06, SPAN), field, name="Field",
                bevel=0.02)
 
-    stone_frame_body(stone, amount=0.011, chip=0.055)
+    stone_frame_body(stones, amount=0.011, chip=0.055)
 
     _lighting()
     _glint()
@@ -284,12 +317,16 @@ def game_frame(path, name="stone_portal"):
     # Darker than the panels. This is the largest thing on the screen and the
     # one thing the player is meant to look *past*; at the panels' value it
     # came out mid-grey and pulled the eye off the game.
-    stone = look.damp_stone("Portal stone", block_scale=1.3, wetness=0.62,
-                            mossy=True, seed=41, mortar=0.35,
-                            tint=(0.0186, 0.0167, 0.0131, 1.0),
-                            cracks=1.0, puddling=1.0)
+    spec = dict(block_scale=1.3, wetness=0.62, mossy=True, seed=41,
+                mortar=0.35, tint=(0.0186, 0.0167, 0.0131, 1.0),
+                cracks=1.0, puddling=1.0)
+    stones = {
+        None: quarry("Portal stone", **spec),
+        0: quarry("Portal stone across", grain_axis=0, **spec),
+        2: quarry("Portal stone down", grain_axis=2, **spec),
+    }
 
-    stone_frame_body(stone, amount=0.013, chip=0.075)
+    stone_frame_body(stones, amount=0.013, chip=0.075)
 
     # Lit like the panels, from the upper left, so the border belongs to the
     # same room as everything inside it.

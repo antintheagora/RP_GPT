@@ -251,3 +251,53 @@ def test_the_stylesheet_points_at_the_rendered_border():
     for name in ("--game-frame-top: 512", "--game-frame-side: 512",
                  "--game-frame-bottom: 512"):
         assert name in css, f"{name} -- all four sides must slice the same"
+
+
+# ---------------------------------------------------------------------------
+# Detail has to survive being stretched.
+# ---------------------------------------------------------------------------
+
+def _grain_ratio(path, slice_px):
+    """Detail across a straight run, relative to detail along it.
+
+    A nine-slice edge is drawn at a fixed scale across its width and at
+    whatever the window demands along its length. A crack's *width* is
+    measured across the crack, so a crack lying with the course keeps its
+    width at every window size and only gets longer. A crack lying across the
+    course gets wider without getting longer, which is what reads as smeared.
+
+    Above 1.0 means the detail favours lying with the course.
+    """
+    width, height, channels, pixels = _read_png(path)
+
+    def lit(x, y):
+        base = (y * width + x) * channels
+        return max(pixels[base], pixels[base + 1], pixels[base + 2])
+
+    along = across = 0
+    for y in range(40, slice_px - 40, 3):
+        for x in range(slice_px + 40, width - slice_px - 40, 3):
+            along += abs(lit(x + 3, y) - lit(x - 3, y))
+            across += abs(lit(x, y + 3) - lit(x, y - 3))
+    return across / max(along, 1)
+
+
+@pytest.mark.parametrize("name,slice_px",
+                         [("stone_portal", 512), ("stone_frame", 256)])
+def test_a_runs_detail_lies_along_it(name, slice_px):
+    """Otherwise stretching widens the cracks instead of lengthening them.
+
+    Measured at 1.24 before the runs were grained, and the complaint that
+    prompted it was that the cracks looked stretched. The grain is
+    deliberately mild -- pushed far enough it stops looking like stone and
+    starts looking like wood, which is the one material this frame is not.
+    """
+    ratio = _grain_ratio(PLATES / f"{name}.png", slice_px)
+    assert ratio > 1.30, (
+        f"{name}: detail is {ratio:.2f}x stronger across the run than along "
+        f"it; it needs to lie with the course or stretching will smear it"
+    )
+    assert ratio < 3.0, (
+        f"{name}: {ratio:.2f}x is combed rather than quarried -- that reads "
+        f"as wood grain"
+    )

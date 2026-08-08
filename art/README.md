@@ -43,6 +43,33 @@ block and the moss moves.
 | `blender/scenes.py` | The crypt, and four landscapes. → `static/ui/scenes/` |
 | `render.py` | Finds Blender and runs the above. |
 
+## Why the runs are grained
+
+A nine-slice edge is drawn at a **fixed** scale across its width and at
+whatever the window demands along its length — measured on this build, 0.145x
+across and anywhere from 0.64x to 3.6x along.
+
+A crack's *width* is measured across the crack. So a crack lying **with** the
+course has its width in the direction that never changes and its length in
+the direction that does: it simply gets longer, which is what cracks do. A
+crack lying **across** the course has its width in the varying direction, and
+a crack that gets wider without getting longer is exactly what reads as
+smeared.
+
+So every run — the courses and the band behind them — is cut from a stone
+whose features are stretched three times longer along the run than across it
+(`quarry(grain_axis=...)`), and displaced at a seventh of the frequency
+lengthways (`weather(along=...)`). Corners are drawn at a fixed scale in both
+directions and need none of this.
+
+Three, not six. Six pushed it far enough that the courses read as wood grain,
+which is the one material these frames are not. `test_a_runs_detail_lies_along_it`
+holds the ratio between 1.30 and 3.0 for that reason.
+
+The complete fix is `border-image-repeat: round`, which tiles the edge at its
+own aspect instead of scaling it. That needs a seamless tile, and a seamless
+tile needs more than a periodic texture — see the task for the measurements.
+
 ## One masonry vocabulary
 
 `stone_band`, `stone_courses` and `stone_corner` build every frame in the
