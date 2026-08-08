@@ -35,7 +35,34 @@ PER_PERSON = 2
 
 #: Kinds that are worth repeating back, best first. A `met` row is the
 #: bookkeeping that says an encounter happened; it is not a memory.
-WORTH_SAYING = ("talk", "said", "harm", "betrayal", "gift", "scene")
+#:
+#: Ordered by how much somebody would actually lead with it. Being killed for
+#: is the thing a person brings up first and forever; a courtesy is the thing
+#: they bring up when there is nothing else.
+WORTH_SAYING = ("death", "betrayal", "harm", "gift", "talk", "said", "scene")
+
+#: What each move on the closed Affinity list is, as a kind of memory. The
+#: shape of the list is engine/affinity.py's; the reading of it is here,
+#: because "what would somebody bring this up as" is a question about recall
+#: rather than about scoring.
+MOVE_KIND = {
+    "killed someone they loved": "death",
+    "betrayed them": "betrayal",
+    "broke a promise": "betrayal",
+    "refused them in genuine need": "betrayal",
+    "an insult": "harm",
+    "saved their life": "gift",
+    "significant help at real cost to you": "gift",
+    "gave them something they needed": "gift",
+    "kept a promise": "gift",
+    "a courtesy": "talk",
+}
+
+
+def kind_for_move(move) -> str:
+    """How a Move should be filed. Unknown moves are still worth saying."""
+    value = getattr(move, "value", move)
+    return MOVE_KIND.get(str(value), "scene")
 
 
 @dataclass(frozen=True)

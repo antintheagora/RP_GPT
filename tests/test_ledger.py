@@ -600,3 +600,150 @@ def test_an_npc_is_told_what_they_remember():
         recall="What you remember of them: You cut the rope bridge at Ashfall.")
     assert "rope bridge" in carried
     assert "Never list them" in carried, "or it recites the whole ledger"
+
+
+# =============================
+# ---- WHAT GETS REMEMBERED ---
+# =============================
+#
+# Only `met`, `talk` and `said` were ever written, so the events most worth a
+# callback -- the fight, the betrayal, the thing somebody took a wound for --
+# left no trace at all. An NPC could remember a conversation and not that you
+# had killed their commander.
+
+def test_every_move_against_a_person_is_written_down():
+    """`Ledger.apply` is the one door a gift, an insult, a betrayal or a kill
+    comes through, so one listener catches all of them."""
+    from engine.affinity import Ledger, Move
+
+    ledger = Ledger()
+    seen = []
+    ledger.on_move = lambda *args: seen.append(args)
+
+    ledger.apply("Sister Mercy", Move.BETRAYED, note="you sold her to the Coven")
+    ledger.apply("Kael", Move.GAVE, note="you gave him the last canteen")
+
+    assert [s[0] for s in seen] == ["Sister Mercy", "Kael"]
+    assert seen[0][1] is Move.BETRAYED
+    assert seen[0][3] == "you sold her to the Coven"
+
+
+def test_a_listener_that_falls_over_does_not_lose_the_move():
+    from engine.affinity import Ledger, Move
+
+    ledger = Ledger()
+    ledger.on_move = lambda *a: (_ for _ in ()).throw(RuntimeError("disk on fire"))
+    shift = ledger.apply("Kael", Move.BETRAYED)
+    assert shift < 0, "the Affinity change was lost with the listener"
+
+
+def test_the_listener_is_never_written_into_the_save():
+    """`encode` walks dataclass fields, and a callable is not JSON. Declaring
+    `on_move` as an ordinary field would have put a function object into
+    state.json and broken every save the moment anything subscribed."""
+    from dataclasses import fields
+
+    from engine.affinity import Ledger
+    from engine.persistence import encode
+
+    assert "on_move" not in {f.name for f in fields(Ledger)}
+
+    ledger = Ledger()
+    ledger.on_move = lambda *a: None
+    assert "on_move" not in encode(ledger)
+
+
+def test_the_listener_does_not_leak_between_campaigns():
+    """`on_move` is a ClassVar, so assigning it on the class rather than the
+    instance would hand one campaign's listener to every other session in the
+    process."""
+    from engine.affinity import Ledger, Move
+
+    first, second = Ledger(), Ledger()
+    heard = []
+    first.on_move = lambda *a: heard.append(a)
+    second.apply("Kael", Move.INSULT)
+    assert heard == [], "the other campaign's ledger was listening"
+
+
+def test_a_move_is_filed_as_the_kind_of_thing_it_was():
+    from engine.affinity import Move
+    from ledger import callbacks
+
+    assert callbacks.kind_for_move(Move.KILLED_LOVED) == "death"
+    assert callbacks.kind_for_move(Move.BETRAYED) == "betrayal"
+    assert callbacks.kind_for_move(Move.SAVED_LIFE) == "gift"
+    assert callbacks.kind_for_move(Move.COURTESY) == "talk"
+    assert callbacks.kind_for_move("something invented") == "scene"
+
+
+def test_every_move_on_the_closed_list_has_a_reading():
+    """The list lives in engine/affinity.py; a new one added there must not
+    silently become an unrankable 'scene'."""
+    from engine.affinity import Move
+    from ledger import callbacks
+
+    for move in Move:
+        assert move.value in callbacks.MOVE_KIND, move
+
+
+def test_a_death_outranks_a_conversation(store):
+    """Somebody brings up what you did to their commander before they bring
+    up the weather."""
+    from ledger import callbacks
+
+    kael = resolve_or_create(store, "Kael").entity_id
+    store.record("talk", "You asked him about the road.", entity_id=kael, act=1)
+    store.record("death", "You killed his commander.", entity_id=kael, act=1)
+    store.record("said", "He mentioned the weather.", entity_id=kael, act=2)
+
+    found = callbacks.for_person(store, kael, "Kael")
+    assert found[0].summary == "You killed his commander."
+
+
+def test_a_swing_that_landed_is_not_a_memory():
+    """"You hit The Scavenger Scout for 6" is true, and a character who opens
+    with it is reading a combat log."""
+    import inspect
+
+    from ui.webapp.game_service import GameSession
+
+    source = inspect.getsource(GameSession._remember_turn)
+    assert "damage_dealt" not in source
+    assert "struck" not in source
+    assert "felled" in source, "and a death is"
+
+
+def test_a_wound_taken_for_you_is_remembered_as_a_gift(store):
+    from engine.affinity import Move
+    from ledger import callbacks
+
+    assert callbacks.kind_for_move(Move.SAVED_LIFE) == "gift"
+    brutus = resolve_or_create(store, "Brutus").entity_id
+    store.record("gift", "Brutus took a wound meant for you.", entity_id=brutus)
+    found = callbacks.for_person(store, brutus, "Brutus")
+    assert "took a wound meant for you" in found[0].summary
+
+
+def test_a_death_is_written_down_once(store):
+    """The kill arrives twice: through `Ledger.apply` bound to whoever died,
+    and again from the turn's own result. Writing both against the same name
+    gave Kael two identical death rows, and a callback that said it twice."""
+    from engine.affinity import Ledger, Move
+
+    ledger = Ledger()
+    kael = resolve_or_create(store, "Kael").entity_id
+
+    ledger.on_move = lambda name, move, shift, note, act: store.record(
+        "death", note, entity_id=kael)
+    ledger.apply("Kael", Move.KILLED_LOVED, note="you killed Kael")
+    store.record("death", "you killed Kael")      # the world-level row
+
+    theirs = [e.summary for e in store.history(kael)]
+    assert len(theirs) == 1, theirs
+
+
+def test_a_death_with_no_owner_is_still_findable(store):
+    """Attached to nobody, so somebody who was not there can bring it up."""
+    store.record("death", "you killed Kael")
+    assert store.search("Kael"), "nobody could ever hear about it"

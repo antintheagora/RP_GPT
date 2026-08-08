@@ -286,6 +286,17 @@ TALK_PHRASE = {
 }
 
 
+def _in_the_past(note: str) -> str:
+    """A move's note as somebody would recall it rather than narrate it.
+
+    The notes are written for the moment they happen -- "you killed Kael" --
+    and read back forty scenes later in a conversation, where the tense is
+    what makes it a memory instead of a caption.
+    """
+    note = (note or "").strip()
+    return note[:1].upper() + note[1:] if note else ""
+
+
 def clean_output(raw: str) -> str:
     text = raw.replace("\r", "\n")
     lines: List[str] = []
@@ -633,6 +644,90 @@ class GameSession:
             if exchange.reply:
                 self._remember(actor, "said",
                                f"{conversation.actor_name} told you: {exchange.reply}")
+
+    def _listen_for_moves(self) -> None:
+        """Write every act against a person into the ledger as it happens.
+
+        `Ledger.apply` is the one door a gift, an insult, a betrayal or a kill
+        comes through, so subscribing once here catches all of them rather
+        than scattering a record call across the engine -- and keeps `engine/`
+        from knowing the ledger package exists.
+
+        On the instance, never on the class. `on_move` is a ClassVar, so
+        assigning to `Ledger.on_move` would leak one campaign's listener into
+        every other session in the process.
+        """
+        ledger = getattr(self.state, "ledger", None)
+        store = getattr(self, "ledger_store", None)
+        if ledger is None or store is None:
+            return
+
+        def written(name, move, shift, note, act):
+            from ledger import callbacks
+
+            self._remember_name(name, callbacks.kind_for_move(move),
+                                _in_the_past(note), act=act)
+
+        ledger.on_move = written
+
+    def _remember_turn(self, result) -> None:
+        """The handful of things from one turn worth bringing up later.
+
+        Deliberately not everything. "You hit The Scavenger Scout for 6" is
+        true, and a character who opens with it is reading a combat log --
+        so a swing that landed is not a memory and a death is, a wound is
+        not and a scar is, an assist is not and a companion taking a wound
+        for you very much is.
+        """
+        if result is None:
+            return
+        act = self.state.act.index
+        turn = self.state.act.turns_taken
+
+        if result.felled:
+            # Attached to nobody on purpose. The kill already arrives through
+            # `Ledger.apply` bound to the person who died, and writing a
+            # second row against the same name gave Kael two identical death
+            # rows and a callback that said it twice. This one has no owner,
+            # so it is findable by anyone searching -- which is how somebody
+            # who was not there gets to bring it up.
+            self._record_world("death", f"you killed {result.felled}",
+                               act=act, turn=turn)
+        if result.companion_hurt:
+            self._remember_name(result.companion_hurt, "gift",
+                                f"{result.companion_hurt} took a wound meant "
+                                f"for you", act=act, turn=turn)
+        for mark, kind in ((result.scar, "harm"), (result.virtue, "gift")):
+            if mark is not None:
+                self._record_world(kind, f"you came away {mark.value}",
+                                   act=act, turn=turn)
+
+    def _remember_name(self, name: str, kind: str, summary: str,
+                       *, act: int = 1, turn: int = 0) -> None:
+        """Record something against a person known only by name."""
+        store = getattr(self, "ledger_store", None)
+        if store is None or not (name or "").strip():
+            return
+        try:
+            from ledger.identity import resolve_or_create
+
+            found = resolve_or_create(store, name,
+                                      ask=getattr(self.state, "ledger_ask", None))
+            store.record(kind, summary, entity_id=found.entity_id,
+                         act=act, turn=turn)
+        except Exception:
+            _log.exception("could not record %s for %s", kind, name)
+
+    def _record_world(self, kind: str, summary: str, *,
+                      act: int = 1, turn: int = 0) -> None:
+        """Something that happened to nobody in particular."""
+        store = getattr(self, "ledger_store", None)
+        if store is None:
+            return
+        try:
+            store.record(kind, summary, act=act, turn=turn)
+        except Exception:
+            _log.exception("could not record %s", kind)
 
     def _remember(self, actor, kind: str, summary: str) -> None:
         """Write one thing that happened with one person into the ledger."""
@@ -1243,6 +1338,7 @@ class GameSession:
 
             self.state.ledger_ask = keeper_asker(
                 GemmaClient(model=DEFAULT_KEEPER_MODEL))
+            self._listen_for_moves()
         except Exception:
             # A campaign without memory is worse, not broken.
             _log.exception("could not open the ledger for %s", self.id)
@@ -1372,6 +1468,7 @@ class GameSession:
                         # Keep the old fields in step so the HUD, the save file
                         # and the templates stay correct while they migrate.
                         sync_back(self.run, self.state, result)
+                        self._remember_turn(result)
 
                         if consumed:
                             # Whether this turn was also the last one. An act

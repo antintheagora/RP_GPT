@@ -26,9 +26,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Callable, ClassVar, Dict, List, Optional
 
 from Core.Character_Registry import normalise
+from Core.Logging import get_logger
+
+_log = get_logger("affinity")
 
 # =============================
 # ---------- BANDS ------------
@@ -205,6 +208,19 @@ class Ledger:
     people: Dict[str, Person] = field(default_factory=dict)
     factions: Dict[str, Faction] = field(default_factory=dict)
 
+    #: Called with `(name, move, shift, note, act)` after anything moves.
+    #:
+    #: `apply` is the one door every interpersonal act comes through -- a
+    #: gift, an insult, a betrayal, a kill -- so one hook here catches all of
+    #: them without scattering a record call across the engine. The web layer
+    #: uses it to write the ledger; nothing in `engine/` knows that.
+    #:
+    #: A ClassVar and not a field on purpose. `encode` walks `fields()` to
+    #: save the game, and a callable in there is not JSON -- declaring it
+    #: normally would put a function object in state.json and break every
+    #: save the moment anything subscribed.
+    on_move: ClassVar[Optional[Callable[..., None]]] = None
+
     # ---------- people ----------
 
     def person(self, name: str, *, faction_id: Optional[str] = None,
@@ -254,6 +270,13 @@ class Ledger:
                     # The first notable witnessed act is what makes a faction
                     # aware of you at all.
                     faction.known = True
+
+        sink = getattr(self, "on_move", None)
+        if sink is not None:
+            try:
+                sink(person.name, move, shift, note or move.value, act)
+            except Exception:
+                _log.debug("a move listener failed", exc_info=True)
         return shift
 
     def add_faction(self, faction_id: str, name: str = "") -> Faction:
