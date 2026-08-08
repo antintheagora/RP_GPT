@@ -58,19 +58,23 @@ def test_stats_scale_with_act_index():
 
 
 def test_seeding_tolerates_missing_and_malformed_fields():
-    """A model will send whatever it likes. It must not kill the campaign."""
+    """A model will send whatever it likes. It must not kill the campaign.
+
+    This used to assert the opposite -- that `hp: "not a number"` raised
+    ValueError, on the reasoning that a bad field is a real error and should
+    surface early. It surfaced inside `begin_act`, which is called at act
+    transitions, outside any try, in a game with nowhere to be saved. The
+    validator strikes the unreadable field out instead, so the seeding
+    default applies and the character arrives.
+    """
     ragged = [
         {},
         {"name": "Nameless"},
         {"name": "Odd", "kind": "thing", "hp": "not a number"},
     ]
-    with pytest.raises(ValueError):
-        # hp is coerced with int(); a non-numeric string is a real error, and
-        # it should surface here rather than midway through act three.
-        actors_from_seed(ragged, act_index=1)
-
-    ok = actors_from_seed(ragged[:2], act_index=1)
-    assert [a.name for a in ok] == ["Stranger", "Nameless"]
+    seeded = actors_from_seed(ragged, act_index=1)
+    assert [a.name for a in seeded] == ["Stranger", "Nameless", "Odd"]
+    assert seeded[2].hp == seeded[1].hp     # as if hp had never been written
 
 
 def test_items_are_built_from_seed_data():

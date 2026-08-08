@@ -143,13 +143,19 @@ def begin_act(state, idx: int):
     plan = state.blueprint.acts[idx]
     state.act.situation = plan.intro_paragraph
     state.location_desc = plan.intro_paragraph.split(".")[0] if plan.intro_paragraph else ""
+    # Everything the model wrote for this act goes through the validator, and
+    # anything it refused is written down. The store is passed for the writing
+    # only -- the checks run either way, and a campaign with no ledger open is
+    # protected just the same, it simply leaves no record of what was caught.
+    store = getattr(state, "ledger_store", None)
+
     # Seed a few items into the player's inventory (light randomization)
-    for it in items_from_seed(plan.seed_items):
+    for it in items_from_seed(plan.seed_items, idx, store=store):
         if random.random() < 0.35:
             state.player.add_item(it)
 
     # Seed undiscovered actors for this act
-    seeded = actors_from_seed(plan.seed_actors, idx)
+    seeded = actors_from_seed(plan.seed_actors, idx, store=store)
 
     # Optional starting companions on Act 1 for flavor and dialogue
     if idx == 1:

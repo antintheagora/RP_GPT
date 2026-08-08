@@ -43,17 +43,67 @@ def _persist_profile(actor) -> None:
         _log.debug("profile hook failed for %s", getattr(actor, "name", "?"), exc_info=True)
 
 
-def items_from_seed(seed)->List[Item]:
+def items_from_seed(seed, act_index:int=1, *, store=None)->List[Item]:
+    """Items the model wrote, checked at the door.
+
+    `special_mods` arrives as an arbitrary mapping written by a language
+    model and used to be passed straight through -- and the code that applies
+    it does `setattr(stats, key, getattr(stats, key) + value)` with no
+    whitelist, so a key of "STRENGTH" raises AttributeError and a value of
+    "a lot" raises TypeError in the f-string that merely *renders* the
+    inventory. Bad data crashed the screen rather than the action (B10).
+
+    Validating here rather than where it is applied is the point: it is the
+    one door, and whatever eventually consumes the field gets something sane
+    without having to know any of this.
+    """
     out=[]
     for i in seed or []:
+        if not isinstance(i, dict):
+            continue          # a seed list of bare strings killed turn zero
+        i = _checked("grant_item", i, store, act=act_index) or {}
+        if not i:
+            continue
         out.append(Item(
             name=i.get("name","Curio"), tags=i.get("tags",[]) or [],
-            hp_delta=int(i.get("hp_delta",0)), attack_delta=int(i.get("attack_delta",0)),
-            special_mods=i.get("special_mods",{}) or {}, goal_delta=int(i.get("goal_delta",0)),
-            pressure_delta=int(i.get("pressure_delta",0)), consumable=bool(i.get("consumable",True)),
+            hp_delta=_as_int(i.get("hp_delta")), attack_delta=_as_int(i.get("attack_delta")),
+            special_mods=i.get("special_mods",{}) or {}, goal_delta=_as_int(i.get("goal_delta")),
+            pressure_delta=_as_int(i.get("pressure_delta")), consumable=bool(i.get("consumable",True)),
             notes=i.get("notes","")
         ))
     return out
+
+
+def _as_int(value, default: int = 0) -> int:
+    """Model output reaches `int()` unguarded in a dozen places."""
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _checked(builder: str, raw: Dict[str, Any], store,
+             **kw) -> Optional[Dict[str, Any]]:
+    """Run one proposal past the world's invariants. Returns its payload.
+
+    `builder` names a constructor in `ledger.ops` -- "grant_item", "seed_actor".
+
+    Imported at the point of use rather than at the top of the file, for two
+    reasons. engine/ is meant to import with nothing but the standard library
+    present, and the ledger reaches back into Core.Character_Registry, which
+    imports this module -- so a module-level import here is a cycle.
+
+    Soft: a validator that cannot run must not stop a campaign starting, so a
+    failure here passes the data through exactly as it did before.
+    """
+    try:
+        from ledger import ops, validator
+
+        survived = validator.clean(getattr(ops, builder)(raw, **kw), store=store)
+    except Exception:
+        _log.debug("the validator could not run on %s", builder, exc_info=True)
+        return dict(raw)
+    return dict(survived.payload) if survived is not None else None
 
 # Only a fallback now: the blueprint states `hostile` outright. Kept, and
 # widened, for older saves and for anything that arrives without the flag.
@@ -73,9 +123,15 @@ def role_from_kind(kind: str) -> str:
     low = (kind or "").lower()
     return "enemy" if any(word in low for word in HOSTILE_WORDS) else "npc"
 
-def actors_from_seed(seed, act_index:int)->List[Actor]:
+def actors_from_seed(seed, act_index:int, *, store=None)->List[Actor]:
     out=[]
     for a in seed or []:
+        if not isinstance(a, dict):
+            # A validated blueprint whose seed_actors is ["Raider Scout"]
+            # -- strings, not objects -- used to kill the game at turn zero
+            # and again at every act transition, outside any try.
+            continue
+        a = _checked("seed_actor", a, store, act=act_index) or a
         # What the blueprint said, if it said anything.
         declared = a.get("hostile")
         if isinstance(declared, bool):
@@ -106,6 +162,17 @@ def actors_from_seed(seed, act_index:int)->List[Actor]:
         _persist_profile(actor)
         out.append(actor)
     return out
+
+def _log_act_numbering(acts: Dict[int, Any]) -> None:
+    """Shout if the acts still are not 1..N. Never raises; see `_checked`."""
+    try:
+        from ledger.validator import act_keys_normalised_1_to_n
+
+        for problem in act_keys_normalised_1_to_n(acts.keys()):
+            _log.error("%s", problem)
+    except Exception:
+        _log.debug("could not check the act numbering", exc_info=True)
+
 
 def _clock_spec(raw: Any, fallback: str) -> Dict[str, Any]:
     """A clock the model named, tidied. Never trusted for its size."""
@@ -236,6 +303,12 @@ def blueprint_from_json(j:Dict[str,Any])->CampaignBlueprint:
     skipped = len(raw_acts) - len(items)
     if skipped:
         _log.warning("ignored %d act entr(ies) that were not objects", skipped)
+
+    # B06. The renumbering above is the fix; this is the check that it worked.
+    # `begin_act` indexes acts[idx] raw, so a hole here is a KeyError two acts
+    # in, in a game with nowhere to be saved -- and the last time the numbering
+    # was wrong, nothing said so until a run died to it.
+    _log_act_numbering(acts)
     factions = []
     for raw in j.get("factions") or []:
         if not isinstance(raw, dict):
