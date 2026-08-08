@@ -990,6 +990,13 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
             # both the custom-move box and the per-option describe box, so one
             # field serves both.
             "intent": request.form.get("custom_intent") or request.form.get("describe"),
+            # Push, from MECHANICS 3.1: 2 Resolve to lower the target by 3.
+            # `advance_turn` has taken a `push` argument since the engine was
+            # written and nothing has ever passed one, so the branch that
+            # spends the Resolve has never run in a shipped game. An unchecked
+            # box posts nothing, which is the right default for spending a
+            # resource.
+            "push": bool(request.form.get("push")),
         }
         result = session.apply_choice(code, payload)
         html = render_template("partials/log_panel.html", events=session.get_events(), payload=session.get_turn_payload())

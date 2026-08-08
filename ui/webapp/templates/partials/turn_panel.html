@@ -363,12 +363,40 @@
 
   <div>
     <p class="overline text-dust mb-2">What do you do?</p>
+
+    {# Push, from MECHANICS 3.1. `advance_turn` has taken a `push` argument
+       since the engine was written and nothing ever passed one, so the branch
+       that spends the Resolve has never run in a shipped game. Resolve was on
+       screen as a resource with nothing at all to spend it on: it only ever
+       counted down toward a Scar.
+
+       One toggle rather than a second button on every row -- it applies to
+       whichever action you pick next, and `hx-include` puts it in the post.
+       Offered only when you can afford it, because a control that is always
+       there and sometimes silently does nothing is worse than no control. #}
+    {% if cond and cond.resolve >= 2 %}
+      <label class="flex items-start gap-3 mb-3 rounded-sm border border-edge bg-soot/60 p-3 cursor-pointer hover:border-brass/60 transition">
+        <input type="checkbox" id="push-toggle" name="push" value="1"
+               class="mt-1 h-4 w-4 accent-brass" />
+        <span>
+          <span class="block text-parchment">Push yourself</span>
+          <span class="block text-xs text-dust mt-0.5">
+            2 Resolve for a better chance at whatever you do next &mdash;
+            worth about fifteen points. You have {{ cond.resolve }}.
+          </span>
+        </span>
+      </label>
+    {% endif %}
+
     <div class="space-y-2">
       {% for option in payload.options %}
         <div class="rounded-sm border border-edge bg-soot/80 hover:border-ember/80 transition">
           {% if not option.must_describe %}
-            {# Quick: one click, the game fills in the details. #}
-            <form hx-post="{{ url_for('handle_action') }}" hx-swap="none">
+            {# Quick: one click, the game fills in the details.
+               `hx-include` carries the Push toggle, which lives above the
+               menu rather than being repeated on every row. #}
+            <form hx-post="{{ url_for('handle_action') }}" hx-swap="none"
+                  hx-include="#push-toggle">
               <input type="hidden" name="action" value="menu" />
               <input type="hidden" name="choice" value="{{ option.code }}" />
               <button type="submit" class="w-full text-left px-4 py-3">
@@ -385,7 +413,8 @@
               {% if option.must_describe %}<span class="text-lg font-semibold text-parchment block">{{ option.label }}</span>{% endif %}
               Describe it yourself
             </summary>
-            <form hx-post="{{ url_for('handle_action') }}" hx-swap="none" class="mt-2 space-y-2">
+            <form hx-post="{{ url_for('handle_action') }}" hx-swap="none" class="mt-2 space-y-2"
+                  hx-include="#push-toggle">
               <input type="hidden" name="action" value="menu" />
               <input type="hidden" name="choice" value="{{ option.code }}" />
               <textarea name="describe" rows="2" required

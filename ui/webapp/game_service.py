@@ -1706,6 +1706,11 @@ class GameSession:
                             self.keeper,
                             assessment=assessment,
                             take_bargain=take,
+                            # Never on a Bargain answer: that click is
+                            # answering an offer, not making an attempt, and
+                            # the attempt it belongs to was staged last turn
+                            # with whatever was ticked then.
+                            push=bool(payload.get("push")) and not offered,
                         )
                         consumed = result.consumed_turn
                         self._last_result = result

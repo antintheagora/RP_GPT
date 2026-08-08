@@ -236,3 +236,76 @@ def test_a_reckoning_can_name_someone_the_campaign_actually_met():
         __import__("RP_GPT").Actor(name="Silas", kind="person", role="npc")
     ]
     assert "Silas" in session._ledger()
+
+
+# =============================
+# ---------- PUSHING ----------
+# =============================
+
+def test_pushing_spends_resolve_and_lowers_the_target():
+    """MECHANICS 3.1: 2 Resolve to lower the target by 3.
+
+    `advance_turn` has taken a `push` argument since the engine was written
+    and nothing has ever passed one -- the web UI called it with four
+    keywords and `push` was not among them. So the branch that spends the
+    Resolve had never run in a shipped game, and Resolve was displayed on the
+    play screen as a resource with nothing whatsoever to spend it on: it only
+    ever counted down toward a Scar.
+    """
+    plain = _session()
+    option = next(o for o in plain.ensure_options() if o.verb is Verb.OBSERVE)
+    before = plain.run.condition.resolve
+
+    plain.apply_choice(option.key, {})
+    unpushed = before - plain.run.condition.resolve
+
+    pushed_session = _session()
+    option = next(o for o in pushed_session.ensure_options() if o.verb is Verb.OBSERVE)
+    pushed_session.apply_choice(option.key, {"push": True})
+    pushed = before - pushed_session.run.condition.resolve
+
+    assert pushed == unpushed + 2, (
+        f"a push cost {pushed - unpushed} Resolve, not 2"
+    )
+
+
+def test_pushing_with_nothing_left_is_not_a_free_push():
+    """`spend` refuses when the Resolve is not there, and `advance_turn`
+    clears the flag rather than applying the bonus anyway.
+
+    Asserted against the condition rather than through a whole turn: at 1
+    Resolve a consequence takes the last point, which breaks the player's
+    nerve, which takes a Scar and resets Resolve to maximum. That is the rule
+    in MECHANICS 1.3 working correctly, and it makes the number after the turn
+    say nothing about whether the push was paid for.
+    """
+    from engine.character import Condition, WeaponWeight
+
+    condition = Condition(endurance=5, strength=5, weapon=WeaponWeight.MEDIUM)
+    condition.resolve = 1
+    assert condition.spend(2) is False, "a push you cannot afford still happened"
+    assert condition.resolve == 1, "and it was charged for anyway"
+
+    condition.resolve = 2
+    assert condition.spend(2) is True
+    assert condition.resolve == 0
+
+
+def test_the_toggle_reaches_the_forms_that_make_an_attempt():
+    """It lives above the menu rather than on every row, so the forms have to
+    pull it in -- and only the ones that actually roll dice.
+
+    Not rest, which is not an attempt. Not a Bargain answer, whose attempt
+    was staged on the previous click. Not talking, which costs no turn.
+    """
+    from pathlib import Path
+
+    panel = (Path(__file__).resolve().parent.parent / "ui" / "webapp"
+             / "templates" / "partials" / "turn_panel.html").read_text(encoding="utf-8")
+    assert 'id="push-toggle"' in panel, "no toggle to include"
+    assert panel.count('hx-include="#push-toggle"') == 2, (
+        "the quick form and the describe form, and nothing else"
+    )
+
+    rest = panel[panel.index('name="action" value="rest"'):]
+    assert "push-toggle" not in rest[:400], "sleeping is not an attempt at anything"
