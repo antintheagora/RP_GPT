@@ -438,3 +438,67 @@ def test_the_wound_remembers_which_approach_earned_it():
     wound = run.condition.wounds.wounds[0]
     assert wound.stat, "a wound with no stat penalises nothing at all"
     assert wound.applies_to(wound.stat)
+
+
+# =============================
+# --- A FAIL FORWARD TEACHES --
+# =============================
+
+def test_a_fail_forward_reveals_the_true_bearing():
+    """MECHANICS: "Fail forward always reveals something. At minimum, the true
+    Bearing of the approach you just tried... This is what makes A4 true."
+
+    It revealed nothing. `Outcome.FAIL_FORWARD` was produced by dice.py and
+    read in exactly one place -- the line in `resolve()` that declines to
+    apply a consequence. So the outcome meant no consequence *and* no
+    information: a turn spent, nothing changed, nothing learned.
+
+    Measured over 6,000 rolls it is 39% of everything that happens. The single
+    most common outcome in the game was the only one that did nothing.
+    """
+    from engine.dice import Outcome
+
+    run = _run()
+    result = advance_turn(run, _intent(stat="STR"),
+                          StubKeeper(bearing=Bearing.FUTILE),
+                          rng=random.Random(11))
+    if result.resolution.roll.outcome is not Outcome.FAIL_FORWARD:
+        pytest.skip("this seed did not produce a fail forward")
+
+    assert result.learned, "a fail forward that teaches nothing is a dead turn"
+    assert "forcing it" in result.learned, "name the approach in the fiction's words"
+
+
+def test_every_fail_forward_teaches_something():
+    """Not most of them. The rule has no exceptions in MECHANICS."""
+    from engine.dice import Outcome
+
+    seen = silent = 0
+    for seed in range(300):
+        run = _run()
+        bearing = random.Random(seed).choice(list(Bearing))
+        result = advance_turn(run, _intent(), StubKeeper(bearing=bearing),
+                              rng=random.Random(seed))
+        if result.resolution.roll.outcome is not Outcome.FAIL_FORWARD:
+            continue
+        seen += 1
+        if not result.learned:
+            silent += 1
+
+    assert seen > 20, "the sample has to actually contain fail forwards"
+    assert silent == 0, f"{silent} of {seen} fail forwards taught nothing"
+
+
+def test_what_it_teaches_is_the_bearing_that_was_rolled():
+    """A finding that does not match the roll is worse than no finding."""
+    from engine.dice import Outcome
+    from engine.resolve import BEARING_HINT
+
+    for seed in range(200):
+        run = _run()
+        bearing = random.Random(seed).choice(list(Bearing))
+        result = advance_turn(run, _intent(), StubKeeper(bearing=bearing),
+                              rng=random.Random(seed))
+        if result.resolution.roll.outcome is not Outcome.FAIL_FORWARD:
+            continue
+        assert BEARING_HINT[result.resolution.bearing] in result.learned

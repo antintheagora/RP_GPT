@@ -36,6 +36,7 @@ from engine.director import Director
 from engine.model import SPECIAL_KEYS
 from engine.resolve import (
     Assessment,
+    BEARING_HINT,
     Bearing,
     Consequence,
     harm_leaves_a_wound,
@@ -58,6 +59,24 @@ WITHDREW_FROM = {
     Verb.USE_ITEM: "You think better of it and put it away.",
     Verb.WITHDRAW: "You think better of the route and stay put.",
     None: "You see it going wrong and pull back before it does.",
+}
+
+# What a failed attempt teaches. MECHANICS requires a fail forward to reveal
+# the true Bearing of the approach that was tried, which is the one thing the
+# player can never see for themselves -- the Keeper rates all seven stats and
+# the screen shows none of the ratings.
+LEARNED = "You come away knowing this much: {approach}, {hint}."
+
+#: The stat named the way the fiction would name it, so the line reads as an
+#: observation rather than a stat block.
+STAT_AS_APPROACH = {
+    "STR": "forcing it",
+    "PER": "watching for the way in",
+    "END": "outlasting it",
+    "CHA": "talking it round",
+    "INT": "working it out",
+    "AGI": "moving quickly",
+    "LUC": "chancing it",
 }
 
 
@@ -125,6 +144,9 @@ class TurnResult:
     scar: Optional[Scar] = None
     virtue: Optional[Virtue] = None
     observation: str = ""
+    # What a fail forward taught. MECHANICS requires one to reveal the true
+    # Bearing of the approach; the outcome existed and revealed nothing.
+    learned: str = ""
     assisted_by: str = ""
     companion_hurt: str = ""
     damage_dealt: int = 0
@@ -378,6 +400,26 @@ def advance_turn(
         # does" landed mid-conversation, where there was nothing to pull back
         # from and nothing had been risked.
         ev.marginal(WITHDREW_FROM.get(intent.verb, WITHDREW_FROM[None]))
+
+    # A fail forward has to be worth something.
+    #
+    # MECHANICS: "Fail forward always reveals something. At minimum, the true
+    # Bearing of the approach you just tried -- so a failed shoulder against
+    # the door teaches you the hinges are set deep. This is what makes A4
+    # true." A4 is "failure moves the story".
+    #
+    # It revealed nothing. `Outcome.FAIL_FORWARD` was produced by dice.py and
+    # read in exactly one place: the line in resolve() that declines to apply
+    # a consequence. So the outcome meant *no consequence and no information*
+    # -- a turn spent, nothing changed, nothing learned. Measured over 6,000
+    # rolls it is 39% of everything that happens, which makes it the single
+    # most common thing in the game and the only one that does nothing at all.
+    if resolution.roll.outcome is Outcome.FAIL_FORWARD:
+        result.learned = LEARNED.format(
+            approach=STAT_AS_APPROACH.get(resolution.stat, "that"),
+            hint=BEARING_HINT[resolution.bearing],
+        )
+        ev.marginal(result.learned)
 
     if intent.verb is Verb.OBSERVE:
         observation = apply_observation(
