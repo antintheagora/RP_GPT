@@ -23,8 +23,9 @@ import os
 import random
 import sys
 
+import bmesh
 import bpy
-from mathutils import Vector
+from mathutils import Vector, noise
 
 # ---------------------------------------------------------------- palette
 #
@@ -277,8 +278,40 @@ def _mix_out(node):
     return out(node, ("Result", "Color", "Value"))
 
 
+def _crack_field(tree, mapping, scale, width, seed_offset, location):
+    """Thin wandering lines. White everywhere, black in the crack.
+
+    A contour of a noise field rather than a noise: take |n - 0.5| and keep
+    only the values near zero, and what you get is the set of points where
+    the field crosses its own midpoint -- which is a branching, wandering,
+    non-repeating line, i.e. a crack. Noise on its own gives blotches, and
+    blotches read as dirt.
+    """
+    field = _noise(tree, scale, detail=6.0, roughness=0.55,
+                   location=(location[0], location[1]), distortion=0.35)
+    sock(field, "W", seed_offset)
+    tree.links.new(mapping.outputs["Vector"], field.inputs["Vector"])
+
+    centred = tree.nodes.new("ShaderNodeMath")
+    centred.location = (location[0] + 200, location[1])
+    centred.operation = "SUBTRACT"
+    centred.inputs[1].default_value = 0.5
+    tree.links.new(out(field, ("Fac", "Color")), centred.inputs[0])
+
+    distance = tree.nodes.new("ShaderNodeMath")
+    distance.location = (location[0] + 360, location[1])
+    distance.operation = "ABSOLUTE"
+    tree.links.new(centred.outputs["Value"], distance.inputs[0])
+
+    line = _ramp(tree, [(0.0, (0, 0, 0, 1)), (width, (1, 1, 1, 1))],
+                 location=(location[0] + 520, location[1]))
+    tree.links.new(distance.outputs["Value"], line.inputs["Fac"])
+    return line
+
+
 def damp_stone(name="Damp stone", block_scale=7.0, wetness=0.55,
-               mossy=True, seed=0, tint=None, mortar=1.0, world_space=False):
+               mossy=True, seed=0, tint=None, mortar=1.0, world_space=False,
+               cracks=0.0, puddling=0.0):
     """Dark stone that has been underground a long time.
 
     Three things make it read as *damp* rather than merely dark. Roughness
@@ -394,6 +427,113 @@ def damp_stone(name="Damp stone", block_scale=7.0, wetness=0.55,
     tree.links.new(bump_blocks.outputs["Normal"], bsdf.inputs["Normal"])
 
     colour_source = _mix_out(grime)
+
+    if cracks:
+        # Two networks at different scales, so the big ones have small ones
+        # branching off them rather than every crack being the same width.
+        coarse = _crack_field(tree, mapping, block_scale * 2.2, 0.016 * cracks,
+                              seed * 0.7, (-1700, 1450))
+        fine = _crack_field(tree, mapping, block_scale * 6.5, 0.010 * cracks,
+                            seed * 1.3 + 4.0, (-1700, 1750))
+        together = _mix(tree, "MULTIPLY", location=(-380, 1500), factor=1.0)
+        tree.links.new(out(coarse, "Color"), _mix_in(together, 0))
+        tree.links.new(out(fine, "Color"), _mix_in(together, 1))
+
+        darkened = _mix(tree, "MULTIPLY", location=(-150, 1300), factor=0.85)
+        tree.links.new(colour_source, _mix_in(darkened, 0))
+        tree.links.new(_mix_out(together), _mix_in(darkened, 1))
+        colour_source = _mix_out(darkened)
+
+        # And cut them into the surface, or they are lines drawn on stone.
+        crack_bump = tree.nodes.new("ShaderNodeBump")
+        crack_bump.location = (520, -700)
+        sock(crack_bump, "Strength", 0.65)
+        sock(crack_bump, "Distance", 0.045)
+        tree.links.new(_mix_out(together), crack_bump.inputs["Height"])
+        existing_normal = bsdf.inputs["Normal"]
+        if existing_normal.links:
+            tree.links.new(existing_normal.links[0].from_socket,
+                           crack_bump.inputs["Normal"])
+        tree.links.new(crack_bump.outputs["Normal"], bsdf.inputs["Normal"])
+
+    if puddling:
+        # Water sits where water would sit. Ambient occlusion is a cavity
+        # mask -- it darkens exactly where a surface turns in on itself -- so
+        # driving gloss off the inverse of it wets the crevices, the joints
+        # and the underside of every ledge, and leaves the exposed faces dry.
+        # Noise-driven wetness puts puddles up the side of a wall.
+        cavity = tree.nodes.new("ShaderNodeAmbientOcclusion")
+        cavity.location = (-900, -880)
+        cavity.samples = 8
+        # NOT only_local. Every block here is convex, so a block asked about
+        # its own occlusion answers "none" -- which made the wet mask zero
+        # everywhere and left the stone uniformly matte however low the
+        # roughness was set. The water pools *between* the courses and under
+        # the ledges, and that is occlusion by the neighbours.
+        cavity.only_local = False
+        sock(cavity, "Distance", 0.16)
+
+        pooled = _ramp(tree, [(0.55, (1, 1, 1, 1)), (0.96, (0, 0, 0, 1))],
+                       location=(-650, -880))
+        tree.links.new(out(cavity, ("AO", "Color")), pooled.inputs["Fac"])
+
+        # And on top of things, where rain and seepage actually run. Cavities
+        # alone put the gloss only where the light cannot reach it, so the
+        # stone was wet exactly where nobody could see that it was.
+        facing = tree.nodes.new("ShaderNodeNewGeometry")
+        facing.location = (-1150, -680)
+        axis = tree.nodes.new("ShaderNodeSeparateXYZ")
+        axis.location = (-950, -680)
+        tree.links.new(facing.outputs["Normal"], axis.inputs["Vector"])
+        ledges = _ramp(tree, [(0.30, (0, 0, 0, 1)), (0.90, (1, 1, 1, 1))],
+                       location=(-750, -680))
+        tree.links.new(axis.outputs["Z"], ledges.inputs["Fac"])
+        both = _mix(tree, "SCREEN", location=(-500, -780), factor=0.85)
+        tree.links.new(out(pooled, "Color"), _mix_in(both, 0))
+        tree.links.new(out(ledges, "Color"), _mix_in(both, 1))
+        pooled = both
+
+        # Not everywhere it could pool -- only where it has. Breaking the
+        # mask with a slow noise is what stops it reading as a shader.
+        patchy = _noise(tree, 3.1, detail=5.0, roughness=0.5,
+                        location=(-900, -1120))
+        tree.links.new(mapping.outputs["Vector"], patchy.inputs["Vector"])
+        somewhere = _ramp(tree, [(0.40, (0, 0, 0, 1)), (0.62, (1, 1, 1, 1))],
+                          location=(-650, -1120))
+        tree.links.new(out(patchy, ("Fac", "Color")), somewhere.inputs["Fac"])
+
+        wet = _mix(tree, "MULTIPLY", location=(-420, -960), factor=1.0)
+        tree.links.new(_mix_out(pooled) if pooled.bl_idname == "ShaderNodeMix"
+                       else out(pooled, "Color"), _mix_in(wet, 0))
+        tree.links.new(out(somewhere, "Color"), _mix_in(wet, 1))
+
+        slick = _mix(tree, "MIX", location=(300, -960), data_type="FLOAT")
+        tree.links.new(_mix_out(wet), slick.inputs[0])
+        current = bsdf.inputs["Roughness"]
+        if current.links:
+            tree.links.new(current.links[0].from_socket, _mix_in(slick, 0))
+        # Standing water is a mirror. 0.05, not 0.3.
+        slick.inputs[3].default_value = 0.040
+        tree.links.new(_mix_out(slick), bsdf.inputs["Roughness"])
+
+        # Water raises how reflective the surface is, not just how smooth.
+        # Roughness alone gives a soft sheen; the jump in specular level is
+        # what makes it read as a film of water sitting on top of the stone
+        # rather than as stone that happens to be polished.
+        shine = _mix(tree, "MIX", location=(300, -1250), data_type="FLOAT")
+        tree.links.new(_mix_out(wet), shine.inputs[0])
+        shine.inputs[2].default_value = 0.40
+        shine.inputs[3].default_value = 0.90
+        tree.links.new(_mix_out(shine),
+                       bsdf.inputs.get("Specular IOR Level")
+                       or bsdf.inputs["Specular"])
+
+        # Wet stone is darker as well as shinier; missing that is why a gloss
+        # map on its own reads as varnish.
+        soaked = _mix(tree, "MULTIPLY", location=(300, 1150), factor=0.32)
+        tree.links.new(colour_source, _mix_in(soaked, 0))
+        tree.links.new(_mix_out(wet), _mix_in(soaked, 1))
+        colour_source = _mix_out(soaked)
 
     if mossy:
         colour_source = _add_moss(tree, bsdf, colour_source, mapping, joints,
@@ -666,6 +806,65 @@ def roughen(obj, amount=0.006, seed=0):
         vertex.co.z += rng.uniform(-amount, amount)
 
 
+def weather(obj, amount=0.016, scale=9.0, along=None, cuts=8, seed=0,
+            chip=0.0):
+    """Chew a block's shape up so its outline is not a drawn line.
+
+    Real displacement, not a bump map. A bump shades a flat face as though it
+    were rough and leaves the silhouette a perfect straight edge, which is
+    exactly what gives the frame away -- the give-away is always the outline,
+    never the shading.
+
+    **`along` is what makes this safe to stretch.** The straight runs of a
+    nine-slice are scaled along their length by whatever the window happens to
+    be -- measured on this build, between 0.64x and 3.6x from an 800px window
+    to a 4K one -- while the cross-section is always drawn at the same 0.145x.
+    So detail across a run is predictable and detail along it is not. Passing
+    the run's axis here drops that axis's noise frequency to a seventh, which
+    turns anything running lengthways into a slow undulation: a gentle wave is
+    still a gentle wave at 0.64x or at 3.6x, where a chip the size of a fist
+    would be a pockmark at one end of that range and a crater at the other.
+
+    Corners take `along=None` and get the full three-dimensional treatment,
+    because a corner slice is never stretched at all.
+    """
+    mesh = obj.data
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    if cuts:
+        bmesh.ops.subdivide_edges(bm, edges=bm.edges[:], cuts=cuts,
+                                  use_grid_fill=True)
+    bm.normal_update()
+
+    # A seventh of the frequency along the run axis, full frequency across it.
+    weights = [1.0, 1.0, 1.0]
+    if along is not None:
+        weights[along] = 0.14
+
+    for vertex in bm.verts:
+        position = Vector((
+            (vertex.co.x * weights[0] + seed * 3.1) * scale,
+            (vertex.co.y * weights[1] + seed * 5.7) * scale,
+            (vertex.co.z * weights[2] + seed * 1.9) * scale,
+        ))
+        # Two octaves: the broad one moves the outline, the fine one pits it.
+        broad = noise.noise(position * 0.35)
+        fine = noise.noise(position * 1.6)
+        offset = broad * amount + fine * amount * 0.35
+        if chip:
+            # Occasional bites taken out of the edge. Only ever inward, so a
+            # chipped block never grows past the space it is allotted.
+            bite = noise.noise(position * 0.18 + Vector((11.3, 4.7, 8.1)))
+            if bite > 0.34:
+                offset -= (bite - 0.34) * chip
+        vertex.co += vertex.normal * offset
+
+    bm.to_mesh(mesh)
+    bm.free()
+    mesh.update()
+    return obj
+
+
 def fog(strength=0.02, colour=(0.30, 0.28, 0.24), bounds=None):
     """Atmosphere in the world volume.
 
@@ -773,7 +972,7 @@ __all__ = [
     "wipe", "use_cycles", "view_transform", "render_to", "camera",
     "area_light", "point_light", "sun", "sock", "out",
     "damp_stone", "rusted_iron", "heavy_cloth", "glowing", "still_water",
-    "block", "roughen", "fog", "haze", "sky_gradient",
+    "block", "roughen", "weather", "fog", "haze", "sky_gradient",
     "PITCH", "SOOT", "STONE_DARK", "STONE_LIGHT", "MOSS_DEEP", "MOSS_LIT",
     "RUST", "RUST_DEEP", "IRON", "BRASS", "CLOTH_OXBLOOD", "CANDLE",
 ]

@@ -64,15 +64,29 @@ def _lighting(key=420, warmth=(1.0, 0.90, 0.74)):
 def _setup(transparent=True):
     look.wipe()
     look.use_cycles(samples=320, transparent=transparent)
-    look.view_transform("Standard")
-    world = bpy.data.worlds.new("Empty")
-    world.use_nodes = True
-    bg = world.node_tree.nodes.get("Background")
-    if bg:
-        look.sock(bg, "Color", (0, 0, 0, 1))
-        look.sock(bg, "Strength", 0.0)
-    bpy.context.scene.world = world
+    # Half a stop down. Giving the plates a sky to reflect and a glint to
+    # catch lifted every one of them by about a third -- which is the cost of
+    # the wetness reading at all. Pulling it back here rather than by
+    # re-darkening six tints keeps the specular, the cracks and the moss in
+    # exactly the relationship they were tuned to, and only moves the level.
+    look.view_transform("Standard", exposure=-0.5)
+    # A dim sky rather than a black one. `film_transparent` keeps the alpha
+    # whatever the world is lit to, and a glossy surface with nothing around
+    # it reflects nothing -- wet stone in a black world is just black stone.
+    look.sky_gradient(top=(0.048, 0.060, 0.090), horizon=(0.072, 0.066, 0.058),
+                      strength=0.38, bend=1.6)
     look.camera((0, -6.0, 0), (0, 0, 0), ortho_scale=SPAN)
+
+
+def _glint(energy=170):
+    """One small hard source, purely so wet stone has a highlight to throw.
+
+    Gloss with nothing bright in front of it is not visibly gloss: roughness
+    can be 0.04 and the surface still reads matte if there is no source small
+    enough to make a specular.
+    """
+    look.area_light((-1.0, -3.0, 1.5), (0, 0, 0), energy=energy, size=0.16,
+                    color=(0.86, 0.90, 1.0))
 
 
 # =============================
@@ -90,13 +104,17 @@ RUN_PROFILE = [
 ]
 
 
-def _corner_cluster(x, z, material, iron, seed=0):
+def _corner_cluster(x, z, material, seed=0):
     """The bit that never stretches, so the bit that gets to be interesting.
 
-    Dressed blocks at slightly wrong angles, an iron bracket over the joint,
-    and the whole thing kept inside its own 0.5-unit box -- anything that
-    crosses the slice line gets torn in half between a fixed corner and a
-    stretched edge.
+    Dressed blocks at slightly wrong angles, a tie stone across the joint, and
+    the whole thing kept inside its own 0.5-unit box -- anything that crosses
+    the slice line gets torn in half between a fixed corner and a stretched
+    edge.
+
+    There was an iron strap and two pins here. Everything in the interface is
+    quarried now, so the strap is a tie stone and the pins are bosses cut from
+    the same block as the wall.
     """
     sx = 1 if x > 0 else -1
     sz = 1 if z > 0 else -1
@@ -122,34 +140,35 @@ def _corner_cluster(x, z, material, iron, seed=0):
             (w, depth, h), material,
             rotation=(0, wobble * 3.0, wobble * 1.8),
             name=f"Quoin{seed}_{index}", bevel=0.013)
-        look.roughen(obj, 0.005, seed=seed * 31 + index)
+        look.weather(obj, amount=0.012, scale=12.0, cuts=10,
+                     seed=seed * 31 + index, chip=0.050)
         made.append(obj)
 
-    # An iron strap over the mitre, pinned. The only pure-metal thing in the
-    # frame, and it is what stops the corner reading as more wall.
-    strap = look.block((x - sx * 0.235, -0.282, z - sz * 0.235),
-                       (0.40, 0.030, 0.058), iron,
-                       rotation=(0, 0, -sx * sz * math.radians(45)),
-                       name=f"Strap{seed}", bevel=0.008)
-    made.append(strap)
-    for offset in (0.128, 0.342):
-        bpy.ops.mesh.primitive_uv_sphere_add(
-            radius=0.026, segments=20, ring_count=10,
-            location=(x - sx * offset, -0.300, z - sz * offset))
-        pin = bpy.context.active_object
-        pin.scale = (1, 0.55, 1)
-        pin.data.materials.append(iron)
-        for polygon in pin.data.polygons:
-            polygon.use_smooth = True
-        made.append(pin)
+    # A tie stone laid across the mitre, and a boss at each end of it. Same
+    # block as the wall, so the corner reads as built rather than bolted.
+    tie = look.block((x - sx * 0.235, -0.300, z - sz * 0.235),
+                     (0.44, 0.075, 0.090), material,
+                     rotation=(0, 0, -sx * sz * math.radians(45)),
+                     name=f"Tie{seed}", bevel=0.016)
+    look.weather(tie, amount=0.010, scale=11.0, cuts=10, seed=seed * 5,
+                 chip=0.040)
+    made.append(tie)
+    for index, offset in enumerate((0.120, 0.350)):
+        boss = look.block((x - sx * offset, -0.345, z - sz * offset),
+                          (0.078, 0.060, 0.078), material,
+                          rotation=(0, 0, -sx * sz * math.radians(45)),
+                          name=f"Boss{seed}_{index}", bevel=0.020)
+        look.weather(boss, amount=0.006, scale=16.0, cuts=8,
+                     seed=seed * 17 + index)
+        made.append(boss)
     return made
 
 
 def frame(path, mossy=True, tint=None, name="stone_frame"):
     _setup()
-    stone = look.damp_stone("Frame stone", block_scale=3.4, wetness=0.6,
-                            mossy=mossy, seed=3, tint=tint, mortar=0.22)
-    iron = look.rusted_iron("Frame iron", rustiness=0.22, seed=7)
+    stone = look.damp_stone("Frame stone", block_scale=3.4, wetness=0.66,
+                            mossy=mossy, seed=3, tint=tint, mortar=0.22,
+                            cracks=0.85, puddling=1.0)
 
     half = SPAN / 2
 
@@ -170,10 +189,14 @@ def frame(path, mossy=True, tint=None, name="stone_frame"):
 
     # --- the four straight runs, constant cross-section ------------------
     for side, sign in (("top", 1), ("bottom", -1)):
-        for thickness, depth, rise in RUN_PROFILE:
-            look.block((0, -depth / 2, sign * rise),
-                       (SPAN, depth, thickness), stone,
-                       name=f"{side}_run")
+        for index, (thickness, depth, rise) in enumerate(RUN_PROFILE):
+            run = look.block((0, -depth / 2, sign * rise),
+                             (SPAN, depth, thickness), stone,
+                             name=f"{side}_run")
+            # along=0: X is the length of a horizontal run, so its noise drops
+            # to a seventh frequency there and survives being stretched.
+            look.weather(run, amount=0.009, scale=9.0, along=0, cuts=12,
+                         seed=index + (0 if sign > 0 else 5))
     for side, sign in (("left", -1), ("right", 1)):
         for thickness, depth, rise in RUN_PROFILE:
             # 3mm shallower than its horizontal partner. Where the two cross
@@ -181,16 +204,19 @@ def frame(path, mossy=True, tint=None, name="stone_frame"):
             # Z-fighting, and it printed hard black staircases into all four
             # corners of the button before anyone noticed it in the frame.
             depth -= 0.003
-            look.block((sign * rise, -depth / 2, 0),
-                       (thickness, depth, SPAN), stone,
-                       name=f"{side}_run")
+            run = look.block((sign * rise, -depth / 2, 0),
+                             (thickness, depth, SPAN), stone,
+                             name=f"{side}_run")
+            look.weather(run, amount=0.009, scale=9.0, along=2, cuts=12,
+                         seed=index + (11 if sign > 0 else 17))
 
     # --- corners ---------------------------------------------------------
     for index, (cx, cz) in enumerate(((-half, half), (half, half),
                                       (-half, -half), (half, -half))):
-        _corner_cluster(cx, cz, stone, iron, seed=index + 1)
+        _corner_cluster(cx, cz, stone, seed=index + 1)
 
     _lighting()
+    _glint()
     look.render_to(os.path.join(path, f"{name}.png"), RES, RES,
                    samples=384, transparent=True)
 
@@ -237,7 +263,8 @@ def _portal_ring(stone):
         ((-inset, 0.045, 0), (BORDER, 0.06, SPAN - 2 * BORDER)),
         ((inset, 0.045, 0), (BORDER, 0.06, SPAN - 2 * BORDER)),
     ):
-        look.block(position, size, stone, name="ring", bevel=0.02)
+        slab = look.block(position, size, stone, name="ring", bevel=0.02)
+        look.weather(slab, amount=0.010, scale=5.0, cuts=12, seed=int(size[0]))
 
 
 def _portal_corner(x, z, stone, seed=0):
@@ -264,7 +291,8 @@ def _portal_corner(x, z, stone, seed=0):
             (w, depth, h), stone,
             rotation=(0, wobble * 2.0, wobble * 1.3),
             name=f"Quoin{seed}_{index}", bevel=0.020)
-        look.roughen(block, 0.006, seed=seed * 29 + index)
+        look.weather(block, amount=0.019, scale=8.0, cuts=12,
+                     seed=seed * 29 + index, chip=0.075)
 
     # One keystone set across the mitre. Three nested steps read as a
     # ziggurat rather than as anything carved, and being the highest thing in
@@ -273,7 +301,8 @@ def _portal_corner(x, z, stone, seed=0):
     key = look.block((x - sx * 0.330, -0.190, z - sz * 0.330),
                      (0.330, 0.380, 0.330), stone,
                      name=f"Keystone{seed}", bevel=0.055)
-    look.roughen(key, 0.005, seed=seed * 13 + 1)
+    look.weather(key, amount=0.021, scale=7.0, cuts=14,
+                 seed=seed * 13 + 1, chip=0.090)
 
 
 def game_frame(path, name="stone_portal"):
@@ -284,39 +313,53 @@ def game_frame(path, name="stone_portal"):
     """
     look.wipe()
     look.use_cycles(samples=420, transparent=True)
-    look.view_transform("Standard")
-    world = bpy.data.worlds.new("Empty")
-    world.use_nodes = True
-    background = world.node_tree.nodes.get("Background")
-    if background:
-        look.sock(background, "Color", (0, 0, 0, 1))
-        look.sock(background, "Strength", 0.0)
-    bpy.context.scene.world = world
+    # Half a stop down. Giving the plates a sky to reflect and a glint to
+    # catch lifted every one of them by about a third -- which is the cost of
+    # the wetness reading at all. Pulling it back here rather than by
+    # re-darkening six tints keeps the specular, the cracks and the moss in
+    # exactly the relationship they were tuned to, and only moves the level.
+    look.view_transform("Standard", exposure=-0.5)
+    # A dim sky, not a black one. `film_transparent` keeps the alpha whatever
+    # the world is lit to, and a glossy surface with nothing around it
+    # reflects nothing -- so wet stone in a black world is simply black stone.
+    # This is what the water has to catch. Cool, against the warm key, because
+    # that colour split between the sheen and the light is most of what says
+    # "wet" rather than "polished".
+    look.sky_gradient(top=(0.055, 0.070, 0.105), horizon=(0.085, 0.078, 0.068),
+                      strength=0.30, bend=1.6)
     look.camera((0, -6.0, 0), (0, 0, 0), ortho_scale=SPAN)
 
     # Darker than the panels. This is the largest thing on the screen and the
     # one thing the player is meant to look *past*; at the panels' value it
     # came out mid-grey and pulled the eye off the game.
-    stone = look.damp_stone("Portal stone", block_scale=1.3, wetness=0.55,
+    stone = look.damp_stone("Portal stone", block_scale=1.3, wetness=0.62,
                             mossy=True, seed=41, mortar=0.35,
-                            tint=(0.0305, 0.0275, 0.0215, 1.0))
+                            tint=(0.0186, 0.0167, 0.0131, 1.0),
+                            cracks=1.0, puddling=1.0)
 
     half = SPAN / 2
     _portal_ring(stone)
     for side, sign in (("top", 1), ("bottom", -1)):
-        for thickness, depth, rise in PORTAL_PROFILE:
-            look.block((0, -depth / 2, sign * rise),
-                       (SPAN, depth, thickness), stone, name=f"{side}_course",
-                       bevel=0.018)
+        for index, (thickness, depth, rise) in enumerate(PORTAL_PROFILE):
+            course = look.block((0, -depth / 2, sign * rise),
+                                (SPAN, depth, thickness), stone,
+                                name=f"{side}_course", bevel=0.018)
+            # along=0: X is the length of a horizontal run, so its noise runs
+            # at a seventh frequency and survives being stretched anywhere
+            # from 0.64x to 3.6x.
+            look.weather(course, amount=0.013, scale=7.0, along=0, cuts=14,
+                         seed=index * 3 + (0 if sign > 0 else 7))
     for side, sign in (("left", -1), ("right", 1)):
-        for thickness, depth, rise in PORTAL_PROFILE:
+        for index, (thickness, depth, rise) in enumerate(PORTAL_PROFILE):
             # 4mm shallower than the horizontal course it crosses. Coplanar
             # faces at a corner are Z-fighting, and it prints hard black
             # staircases into exactly the four places people look.
             depth -= 0.004
-            look.block((sign * rise, -depth / 2, 0),
-                       (thickness, depth, SPAN), stone, name=f"{side}_course",
-                       bevel=0.018)
+            course = look.block((sign * rise, -depth / 2, 0),
+                                (thickness, depth, SPAN), stone,
+                                name=f"{side}_course", bevel=0.018)
+            look.weather(course, amount=0.013, scale=7.0, along=2, cuts=14,
+                         seed=index * 3 + (13 if sign > 0 else 19))
 
     for index, (cx, cz) in enumerate(((-half, half), (half, half),
                                       (-half, -half), (half, -half))):
@@ -325,6 +368,15 @@ def game_frame(path, name="stone_portal"):
     # Lit like the panels, from the upper left, so the border belongs to the
     # same room as everything inside it.
     _lighting(key=300, warmth=(1.0, 0.91, 0.78))
+    # One small hard source near the camera axis, purely so the wet stone has
+    # a highlight to throw. Gloss with nothing bright in front of it is not
+    # visibly gloss -- roughness can be 0.05 and the surface still reads matte
+    # if there is no source small enough to make a glint.
+    # Generous on purpose. This is drawn at roughly a seventh of the size it
+    # is rendered at, and an effect that looks right at 2048px is invisible at
+    # 74px of border.
+    look.area_light((-1.1, -3.2, 1.6), (0, 0, 0), energy=260, size=0.16,
+                    color=(0.86, 0.90, 1.0))
     look.render_to(os.path.join(path, f"{name}.png"), BIG_RES, BIG_RES,
                    samples=420, transparent=True)
 
@@ -334,40 +386,58 @@ def game_frame(path, name="stone_portal"):
 # =============================
 
 def button(path, name="stone_button", pressed=False, lit=False):
-    """A stone plate in an iron surround, matching the game's Buttons.png.
+    """A stone plate in a stone surround.
 
-    Three concentric courses, because that is what the painted one does and
-    the point is to belong beside it, not to replace the look.
+    Three concentric courses, because that is what the painted Buttons.png
+    does and the point is to belong beside it. The middle course was rusted
+    iron; it is a recessed course of the same stone now, and the shadow in the
+    channel is what separates the plate from the rim rather than a change of
+    material.
     """
     _setup()
-    stone = look.damp_stone("Button stone", block_scale=2.6, wetness=0.5,
-                            mossy=True, seed=5, mortar=0.25)
-    plate = look.damp_stone("Button plate", block_scale=1.1, wetness=0.35,
-                            mossy=False, seed=9, mortar=0.30)
-    iron = look.rusted_iron("Button iron", rustiness=0.42, seed=2)
+    stone = look.damp_stone("Button stone", block_scale=2.6, wetness=0.58,
+                            mossy=True, seed=5, mortar=0.25,
+                            cracks=0.8, puddling=1.0)
+    plate = look.damp_stone("Button plate", block_scale=1.1, wetness=0.42,
+                            mossy=False, seed=9, mortar=0.30,
+                            cracks=0.9, puddling=0.85)
+    # The channel was rusted iron. Darker stone instead: a course cut from the
+    # same quarry and set back, so what reads is the shadow, not the metal.
+    channel_stone = look.damp_stone("Button channel", block_scale=3.2,
+                                    wetness=0.72, mossy=False, seed=33,
+                                    mortar=0.55, cracks=1.0, puddling=1.0,
+                                    tint=(0.0225, 0.0200, 0.0158, 1.0))
 
     depth_shift = -0.055 if pressed else 0.0
 
     # Outer stone course, mossed along the top by the shader.
-    look.block((0, -0.150, 0.86), (SPAN, 0.30, 0.28), stone, name="rim_top")
-    look.block((0, -0.150, -0.86), (SPAN, 0.30, 0.28), stone, name="rim_bottom")
-    look.block((-0.86, -0.1485, 0), (0.28, 0.297, SPAN), stone, name="rim_left")
-    look.block((0.86, -0.1485, 0), (0.28, 0.297, SPAN), stone, name="rim_right")
+    for index, (position, size, axis) in enumerate((
+            ((0, -0.150, 0.86), (SPAN, 0.30, 0.28), 0),
+            ((0, -0.150, -0.86), (SPAN, 0.30, 0.28), 0),
+            ((-0.86, -0.1485, 0), (0.28, 0.297, SPAN), 2),
+            ((0.86, -0.1485, 0), (0.28, 0.297, SPAN), 2))):
+        rim = look.block(position, size, stone, name="rim")
+        look.weather(rim, amount=0.008, scale=10.0, along=axis, cuts=12,
+                     seed=index * 3 + 1)
 
     # The rusted channel. Recessed, so it holds the shadow that separates the
     # plate from the rim.
-    for position, size in (((0, -0.110, 0.60), (1.46, 0.22, 0.26)),
-                           ((0, -0.110, -0.60), (1.46, 0.22, 0.26)),
-                           ((-0.60, -0.109, 0), (0.26, 0.218, 1.46)),
-                           ((0.60, -0.109, 0), (0.26, 0.218, 1.46))):
-        look.block(position, size, iron, name="channel")
+    for index, (position, size, axis) in enumerate((
+            ((0, -0.110, 0.60), (1.46, 0.22, 0.26), 0),
+            ((0, -0.110, -0.60), (1.46, 0.22, 0.26), 0),
+            ((-0.60, -0.109, 0), (0.26, 0.218, 1.46), 2),
+            ((0.60, -0.109, 0), (0.26, 0.218, 1.46), 2))):
+        groove = look.block(position, size, channel_stone, name="channel")
+        look.weather(groove, amount=0.007, scale=13.0, along=axis, cuts=10,
+                     seed=index * 7 + 2)
 
     # The face you press.
     face = look.block((0, 0.06 - depth_shift, 0), (0.98, 0.34, 0.98), plate,
                       name="face", bevel=0.055)
-    look.roughen(face, 0.005, seed=4)
+    look.weather(face, amount=0.011, scale=8.0, cuts=14, seed=4, chip=0.030)
 
     key = 640 if lit else 420
+    _glint(210 if lit else 170)
     warmth = (1.0, 0.86, 0.62) if lit else (1.0, 0.92, 0.80)
     _lighting(key=key, warmth=warmth)
     if lit:
@@ -385,17 +455,25 @@ def button(path, name="stone_button", pressed=False, lit=False):
 def input_field(path, name="stone_input"):
     """A groove cut into stone. Inputs should look like somewhere to write."""
     _setup()
-    stone = look.damp_stone("Input stone", block_scale=2.0, wetness=0.65,
-                            mossy=False, seed=13, mortar=0.18)
-    iron = look.rusted_iron("Input iron", rustiness=0.35, seed=17)
+    stone = look.damp_stone("Input stone", block_scale=2.0, wetness=0.70,
+                            mossy=False, seed=13, mortar=0.18,
+                            cracks=0.9, puddling=1.0)
+    # The bead was iron. A paler dressed stone now -- still a line that says
+    # where the writing surface starts, still quarried.
+    bead_stone = look.damp_stone("Input bead", block_scale=5.0, wetness=0.80,
+                                 mossy=False, seed=37, mortar=0.0,
+                                 cracks=0.6, puddling=1.0,
+                                 tint=(0.0520, 0.0470, 0.0375, 1.0))
 
     # The writing surface. Close behind the lip, not far back: at y=+0.34 it
     # caught no light at all and the whole middle of the plate rendered as a
     # black hole with a hairline square in it.
-    field = look.damp_stone("Input field", block_scale=0.8, wetness=0.30,
-                            mossy=False, seed=29, mortar=0.0,
+    field = look.damp_stone("Input field", block_scale=0.8, wetness=0.34,
+                            mossy=False, seed=29, mortar=0.0, cracks=0.7,
+                            puddling=0.7,
                             tint=(0.0300, 0.0272, 0.0215, 1.0))
-    look.block((0, 0.035, 0), (SPAN, 0.06, SPAN), field, name="well")
+    well = look.block((0, 0.035, 0), (SPAN, 0.06, SPAN), field, name="well")
+    look.weather(well, amount=0.006, scale=6.0, cuts=12, seed=23)
 
     # Two courses, in the border zone. These sat at rise 0.425 and 0.300 --
     # well inside the 0.5 unit border -- so the four bars crossed in the
@@ -405,23 +483,29 @@ def input_field(path, name="stone_input"):
         (0.200, 0.230, 0.900),   # outer course
         (0.150, 0.130, 0.715),   # inner course, lower: this is the lip
     ]
-    for thickness, depth, rise in lip:
+    for index, (thickness, depth, rise) in enumerate(lip):
         for sign in (1, -1):
-            look.block((0, -depth / 2, sign * rise), (SPAN, depth, thickness),
-                       stone, name="lip")
+            flat = look.block((0, -depth / 2, sign * rise),
+                              (SPAN, depth, thickness), stone, name="lip")
+            look.weather(flat, amount=0.007, scale=11.0, along=0, cuts=12,
+                         seed=index * 5 + (0 if sign > 0 else 3))
             # A hair shallower where it crosses, or the corners Z-fight.
-            look.block((sign * rise, -(depth - 0.003) / 2, 0),
-                       (thickness, depth - 0.003, SPAN), stone, name="lip")
+            upright = look.block((sign * rise, -(depth - 0.003) / 2, 0),
+                                 (thickness, depth - 0.003, SPAN), stone,
+                                 name="lip")
+            look.weather(upright, amount=0.007, scale=11.0, along=2, cuts=12,
+                         seed=index * 5 + (7 if sign > 0 else 9))
 
     # A thin iron bead at the inner edge, which is what tells the eye where
     # the writing surface begins.
     for sign in (1, -1):
-        look.block((0, -0.050, sign * 0.612), (SPAN, 0.05, 0.030), iron,
-                   name="bead")
-        look.block((sign * 0.612, -0.0485, 0), (0.030, 0.047, SPAN), iron,
-                   name="bead")
+        look.block((0, -0.050, sign * 0.612), (SPAN, 0.05, 0.030), bead_stone,
+                   name="bead", bevel=0.008)
+        look.block((sign * 0.612, -0.0485, 0), (0.030, 0.047, SPAN),
+                   bead_stone, name="bead", bevel=0.008)
 
     _lighting(key=380)
+    _glint(150)
     look.render_to(os.path.join(path, f"{name}.png"), RES, RES,
                    samples=320, transparent=True)
 
