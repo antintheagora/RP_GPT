@@ -625,3 +625,25 @@ def test_a_character_nobody_described_still_gets_a_voice():
 
     assert personality_roll("", "", "") in PERSONALITY_ARCHETYPES
     assert personality_roll() in PERSONALITY_ARCHETYPES
+
+
+def test_the_progress_clock_does_not_repeat_the_act_goal():
+    """Seen live, three inches apart in the same panel:
+
+        Act 2 of 3 - Turn 2
+        The Sanctum's Heart is Exposed
+        YOUR PROGRESS
+        The Sanctum's Heart is Exposed
+        2 / 10
+
+    The blueprint names the act goal and the project clock separately and the
+    model very often gives them the same words. Printing a sentence twice
+    does not make it twice as clear.
+    """
+    from pathlib import Path
+
+    turn = (Path(__file__).resolve().parent.parent / "ui" / "webapp"
+            / "templates" / "partials" / "turn_panel.html").read_text(encoding="utf-8")
+    assert "clock.name != payload.act_goal" in turn, (
+        "the clock label repeats the heading above it whenever they match"
+    )

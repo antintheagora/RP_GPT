@@ -25,7 +25,14 @@
         <p class="overline {{ 'text-flare' if clock.kind == 'danger' else 'text-brass' }}">
           {{ 'Closing in' if clock.kind == 'danger' else 'Your progress' }}
         </p>
-        <p class="text-lg font-semibold">{{ clock.name }}</p>
+        {# The blueprint names the act goal and the project clock separately,
+           and the model very often gives them the same words -- seen live:
+           "The Sanctum's Heart is Exposed" as the heading at the top of this
+           panel and again as the clock label three inches below it. Printing
+           a sentence twice does not make it twice as clear. #}
+        {% if clock.name and clock.name != payload.act_goal %}
+          <p class="text-lg font-semibold">{{ clock.name }}</p>
+        {% endif %}
         <div class="mt-2 flex gap-1" aria-label="{{ clock.filled }} of {{ clock.segments }} filled">
           {% for i in range(clock.segments) %}
             {# Unfilled segments were bg-hearth (#2a221e) on a bg-soot card (#1c1715)
