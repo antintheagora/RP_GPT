@@ -219,3 +219,77 @@ def test_the_rule_holds_for_a_character_with_almost_no_hit_points():
     from engine.resolve import Position, harm_leaves_a_wound
 
     assert harm_leaves_a_wound(Position.RISKY, 0, 2)
+
+
+def test_a_night_treats_the_worst_of_it():
+    """`WoundTrack.treat` had no caller anywhere in production.
+
+    That did not matter while no wound ever happened. Now they do, and an
+    untreated wound stays RAW -- and RAW is the only state that can worsen on
+    a natural 1, so wounds could only ever get worse. A level-3 was worse
+    still: `heal_chance` holds it at zero until treated, so it was permanent
+    by construction.
+
+    MECHANICS names three ways to treat one, and "a dedicated beat during a
+    rest" is the one that needs neither an item nor a person to exist first.
+    """
+    from engine.character import WoundState
+    from engine.rest import take_rest
+    import random as _random
+    import sys
+    sys.path.insert(0, "tests")
+    from test_turn import _run
+
+    run = _run()
+    # A level 3 on purpose: `heal_chance` holds it at zero until it is
+    # treated, so it is still there after the healing roll whatever the dice
+    # do. A level 1 or 2 can simply close on the night, which makes the test
+    # depend on a seed rather than on the rule.
+    run.condition.wounds.take("A twisted ankle", 2, cap=2, stat="AGI")
+    run.condition.wounds.take("A cracked rib", 1, cap=1, stat="END")
+    assert all(w.state is WoundState.RAW for w in run.condition.wounds.wounds)
+
+    # Seed-independent, because the healing roll runs first and a wound that
+    # closes on the night is not there to be treated. What has to be true
+    # either way is that nothing you can see to yourself is still raw in the
+    # morning -- raw is the only state that can worsen.
+    take_rest(run, rng=_random.Random(3))
+
+    left_raw = [w for w in run.condition.wounds.wounds
+                if w.state is WoundState.RAW and w.level <= 2]
+    assert not left_raw, f"{[w.name for w in left_raw]} went untended"
+    treated = [w for w in run.condition.wounds.wounds
+               if w.state is WoundState.TREATED]
+    assert len(treated) <= 1, "one beat, one wound -- a night is not a hospital"
+
+
+def test_a_treated_wound_can_no_longer_worsen():
+    """Which is the entire reason a healer is worth finding."""
+    from engine.character import WoundState
+
+    track = WoundTrack(slots=3)
+    wound = track.take("A bad leg", 2, cap=2, stat="AGI")
+    track.treat(wound)
+    assert wound.state is WoundState.TREATED
+    assert track.worsen_applicable("AGI") is None
+
+
+def test_a_night_alone_is_not_help_enough_for_the_worst_wounds():
+    """MECHANICS describes a level 3 in three words: "You need help."
+
+    A rest treating one would make a healer NPC and a medical item pointless,
+    which is the opposite of the reason the level exists.
+    """
+    from engine.character import WoundState
+    from engine.rest import take_rest
+    import random as _random
+    import sys
+    sys.path.insert(0, "tests")
+    from test_turn import _run
+
+    run = _run()
+    run.condition.wounds.take("A shattered knee", 3, cap=3, stat="AGI")
+    result = take_rest(run, rng=_random.Random(3))
+
+    assert not result.treated
+    assert run.condition.wounds.wounds[0].state is WoundState.RAW

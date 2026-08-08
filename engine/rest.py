@@ -25,6 +25,7 @@ from typing import List, Optional
 
 from engine import events as ev
 from engine.affinity import neglected_companions
+from engine.character import WoundState
 from engine.clocks import ClockTick
 from engine.tides import TideMove
 
@@ -58,6 +59,7 @@ class RestResult:
     resolve_now: int = 0
     healed: List[str] = field(default_factory=list)
     neglected: List[str] = field(default_factory=list)
+    treated: str = ""             # the wound somebody finally saw to
     dream: Optional[Dream] = None
     dream_text: str = ""
     foretold: str = ""            # the Tide move a premonition revealed
@@ -104,6 +106,37 @@ def take_rest(run, *, rng: Optional[random.Random] = None,
         ev.harm(f"You recover {result.hp_regained}.")
     for name in result.healed:
         ev.marginal(f"{name} has closed.")
+
+    # Somebody sees to the worst of it.
+    #
+    # `WoundTrack.treat` had no caller anywhere in production. Nothing in the
+    # game could treat a wound, which did not matter while no wound ever
+    # happened -- and now they do. Untreated, a wound stays RAW, and a RAW
+    # wound is the only kind that can worsen on a natural 1, so wounds could
+    # only ever get worse. A level-3 is worse still: `heal_chance` holds it at
+    # zero until it has been treated, so it was permanent by construction.
+    #
+    # MECHANICS names three ways to treat one -- a medical item, a healer NPC,
+    # or "a dedicated beat during a rest". This is the third. The other two
+    # want an item and a person to exist first.
+    #
+    # After the healing roll, not before: treating resets `rests_carried`, and
+    # the climbing heal chance is the thing that makes a wound survivable in
+    # the long run. Treating one should not cost it the nights it has already
+    # served.
+    #
+    # Levels 1 and 2 only. MECHANICS describes a level 3 in three words --
+    # "You need help." -- and a night on your own is not help. That one still
+    # wants a healer or a medical item, which is what makes finding either
+    # worth a detour.
+    worst_raw = max(
+        (w for w in run.condition.wounds.wounds
+         if w.state is WoundState.RAW and w.level <= 2),
+        key=lambda w: w.level, default=None)
+    if worst_raw is not None:
+        run.condition.wounds.treat(worst_raw)
+        result.treated = worst_raw.name
+        ev.marginal(f"{worst_raw.name} is cleaned and bound. It will not get worse now.")
 
     # Anyone hurt helping you who was never seen to. The night is when you
     # would have had the chance, so this is where it is charged for.
