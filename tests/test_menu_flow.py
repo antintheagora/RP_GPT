@@ -251,21 +251,30 @@ def test_pushing_spends_resolve_and_lowers_the_target():
     Resolve had never run in a shipped game, and Resolve was displayed on the
     play screen as a resource with nothing whatsoever to spend it on: it only
     ever counted down toward a Scar.
+
+    Driven through `advance_turn` with a fixed die rather than through a
+    session, because a session rolls its own RNG -- so the same click gives
+    different outcomes, and the Resolve afterwards reflects the outcome as
+    much as the push. Same seed, same everything, one flag different.
     """
-    plain = _session()
-    option = next(o for o in plain.ensure_options() if o.verb is Verb.OBSERVE)
-    before = plain.run.condition.resolve
+    import random as _random
+    import sys
+    sys.path.insert(0, "tests")
+    from test_turn import StubKeeper, _intent, _run
+    from engine.turn import advance_turn
 
-    plain.apply_choice(option.key, {})
-    unpushed = before - plain.run.condition.resolve
+    plain_run = _run()
+    plain = advance_turn(plain_run, _intent(), StubKeeper(), rng=_random.Random(7))
 
-    pushed_session = _session()
-    option = next(o for o in pushed_session.ensure_options() if o.verb is Verb.OBSERVE)
-    pushed_session.apply_choice(option.key, {"push": True})
-    pushed = before - pushed_session.run.condition.resolve
+    pushed_run = _run()
+    pushed = advance_turn(pushed_run, _intent(), StubKeeper(),
+                          rng=_random.Random(7), push=True)
 
-    assert pushed == unpushed + 2, (
-        f"a push cost {pushed - unpushed} Resolve, not 2"
+    assert pushed.resolution.roll.target == plain.resolution.roll.target - 3, (
+        "a push is worth three on the target, which is fifteen points"
+    )
+    assert pushed_run.condition.resolve == plain_run.condition.resolve - 2, (
+        "and it costs two Resolve"
     )
 
 
