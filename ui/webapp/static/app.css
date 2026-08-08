@@ -26,13 +26,31 @@
    ========================================================================== */
 
 :root {
+  /* --- RENDERED PLATES -------------------------------------------------
+     The frames, buttons and inputs in /static/ui/rendered/ are modelled and
+     rendered in Blender rather than painted -- see art/blender/ and
+     `python art/render.py`. They are built to a constraint this stylesheet
+     imposes and the painted ones do not respect: every border-image below
+     says `repeat: stretch`, so the middle of each edge is scaled to whatever
+     width the panel happens to be. Detail running *across* an edge smears by
+     exactly that much. The rendered plates put a constant cross-section
+     along every straight run and keep all the character in the corners,
+     which never stretch.
+
+     To go back to the hand-painted set, point these four at the old files:
+     nine_slice.png, Buttons.png, Input_Forms3.png.
+  */
+  --frame-image: url('/static/ui/rendered/stone_frame.png');
+  --button-image-src: url('/static/ui/rendered/stone_button.png');
+  --button-image-lit: url('/static/ui/rendered/stone_button_lit.png');
+  --input-image-src: url('/static/ui/rendered/stone_input.png');
+
   /* --- UNIVERSAL BOX SETTINGS ---
      Controls the default padding and spacing for content boxes/panels.
      The ninebox system creates ornate frames from 9-slice textures.
   */
-  --frame-image: url('/static/ui/nine_slice.png');
   /* Texture for ninebox panels */
-  --box-slice: 50px;
+  --box-slice: 256px;
   /* Corner slice size for boxes */
   --box-gap: 4px;
   /* Gap inside box frame */
@@ -43,7 +61,7 @@
      Controls how text input fields and text areas look.
      Used for: character name input, description fields, etc.
   */
-  --input-image: url('/static/ui/Input_Forms3.png');
+  --input-image: var(--input-image-src);
   /* 9-slice texture for inputs */
   --input-py: 0.5rem;
   /* Vertical padding inside input (top/bottom) */
@@ -64,7 +82,7 @@
      Controls the clickable "cards" used for selecting scenarios/worlds.
      These have a highlighted glow effect when selected.
   */
-  --selector-image: url('/static/ui/Input_Forms3.png');
+  --selector-image: var(--input-image-src);
   /* 9-slice texture for selectors */
   --selector-slice: 256;
   /* Corner slice size */
@@ -84,7 +102,7 @@
   /* --- BUTTON SETTINGS ---
      Controls the appearance of action buttons (e.g., "Begin Journey", "Create").
   */
-  --button-image: url('/static/ui/Buttons.png');
+  --button-image: var(--button-image-src);
   /* 9-slice texture for buttons */
   --button-slice: 256;
   /* Corner slice size */
