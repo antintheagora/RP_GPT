@@ -179,14 +179,30 @@ def _resolve_through_ledger(state, name: str):
 
         # Known to the ledger and not on stage: someone from an earlier act,
         # walking back in. Put them back rather than minting a twin.
+        #
+        # Unless they are dead. This is B04, and it is the bug
+        # `ENTITY_MUST_EXIST_AND_BE_ALIVE` was written to kill by construction
+        # -- but that invariant guards `Op`s, and the ops it guards are Phase 3
+        # scaffolding that nothing produces yet, so it has never run on
+        # anything at all. Meanwhile the live path is right here, and the other
+        # route out of this same pool -- `try_discover_actor` -- has always
+        # filtered on `alive`. Two doors into one room, one of them checking.
+        #
+        # An act transition deliberately moves everyone you have met back to
+        # `undiscovered`, corpses included, so the model naming a character it
+        # killed two acts ago was enough to stand them back up.
         for pool in (getattr(state.act, "undiscovered", None) or [],):
             for actor in list(pool):
-                if _name_key(getattr(actor, "name", "")) == _name_key(name):
-                    pool.remove(actor)
-                    actor.discovered = True
-                    actor.entity_id = found.entity_id
-                    state.act.actors.append(actor)
-                    return actor, found.entity_id
+                if _name_key(getattr(actor, "name", "")) != _name_key(name):
+                    continue
+                if not getattr(actor, "alive", True):
+                    _log.info("%r is dead and stays that way", name)
+                    return None, found.entity_id
+                pool.remove(actor)
+                actor.discovered = True
+                actor.entity_id = found.entity_id
+                state.act.actors.append(actor)
+                return actor, found.entity_id
         return None, found.entity_id
     except Exception:
         _log.exception("ledger lookup failed for %r", name)
