@@ -1529,7 +1529,7 @@ textarea.u-input {
 .continue-title { font-size: 15px; letter-spacing: .01em; }
 .continue-meta {
   font-size: 11px; letter-spacing: .09em; text-transform: uppercase;
-  color: #8a7a5c;
+  color: #9d8c6c;
 }
 .continue-line {
   font-size: 13px; font-style: italic; color: #a89a80;
@@ -1634,10 +1634,15 @@ body.is-thinking .chronicle-feed {
   margin-top: 1.5rem; padding-top: .75rem;
   border-top: 1px solid rgba(179, 49, 31, .4);
 }
-.chron-marginal { font-size: 13px; font-style: italic; color: #8a7a5c; }
-.chron-plate, .chron-system { font-size: 12px; color: #8a7a5c; }
+.chron-marginal { font-size: 13px; font-style: italic; color: #9d8c6c; }
+.chron-plate, .chron-system { font-size: 12px; color: #9d8c6c; }
 
-/* A live connection gets a cursor; a dropped one silently loses it rather
+/* These three carried the old `dust` as a literal, so lifting the palette
+   in tailwind.config.js moved every Tailwind class and left the live prose
+   feed and the Continue cards behind on their own. Hardcoding a palette value
+   is how a colour ends up with two definitions and one of them stale.
+
+   A live connection gets a cursor; a dropped one silently loses it rather
    than pretending the stream is still running. */
 .chronicle-live #chronicle::after {
   content: "";

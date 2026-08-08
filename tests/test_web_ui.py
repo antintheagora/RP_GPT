@@ -503,3 +503,72 @@ def test_no_two_fields_claim_the_same_id():
     for page in ("characters.html", "legacy_start.html", "roster.html"):
         found = re.findall(r'id="(f-[^"{}]+)"', _text("templates", page))
         assert len(found) == len(set(found)), f"{page} has duplicate field ids"
+
+
+# =============================
+# ---- IT HAS TO BE LEGIBLE ---
+# =============================
+
+def _luminance(value: str) -> float:
+    """WCAG relative luminance of a #rrggbb string."""
+    channels = [int(value[index:index + 2], 16) / 255 for index in (1, 3, 5)]
+    linear = [c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+              for c in channels]
+    return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+
+
+def _contrast(ink: str, ground: str) -> float:
+    a, b = _luminance(ink), _luminance(ground)
+    return (max(a, b) + 0.05) / (min(a, b) + 0.05)
+
+
+def _palette() -> dict:
+    """The colours as the Tailwind build actually reads them."""
+    config = (WEBAPP.parent.parent / "tools" / "tailwind" / "tailwind.config.js")
+    text = config.read_text(encoding="utf-8")
+    return {name: value for name, value in
+            re.findall(r"^\s*(\w+):\s*'(#[0-9a-fA-F]{6})'", text, re.M)}
+
+
+def test_the_dimmest_ink_is_still_readable():
+    """`ash` is described in the palette as the dimmest thing still *meant to
+    be read*, and at #7f7159 it was 3.73:1 on a soot card -- under AA for body
+    text, while carrying "Unmarked, so far.", "Alone, for now." and every
+    de-emphasised sentence on the play screen."""
+    palette = _palette()
+    for ink in ("ash", "dust", "tan", "parchment", "bone"):
+        for ground in ("pitch", "night", "soot"):
+            ratio = _contrast(palette[ink], palette[ground])
+            assert ratio >= 4.5, (
+                f"{ink} on {ground} is {ratio:.2f}:1, under AA for body text"
+            )
+
+
+def test_the_ink_levels_are_far_enough_apart_to_tell_apart():
+    """Five levels that read as three are three levels.
+
+    `ash` and `dust` were 3.73 and 4.24 against a soot card -- half a step --
+    so two of the five were the same colour in practice.
+    """
+    palette = _palette()
+    ladder = [_contrast(palette[ink], palette["soot"])
+              for ink in ("ash", "dust", "tan", "parchment")]
+    for lower, higher in zip(ladder, ladder[1:]):
+        assert higher - lower >= 0.7, (
+            f"{lower:.2f} and {higher:.2f} are not distinguishable side by side"
+        )
+
+
+def test_no_stylesheet_hardcodes_a_palette_colour():
+    """Lifting `dust` in the config moved every Tailwind class and left the
+    live chronicle and the Continue cards behind, because those three rules
+    wrote the old value out by hand. A colour with two definitions has one
+    stale definition."""
+    palette = _palette()
+    css = _text("static", "app.css")
+    for name in ("ash", "dust", "tan", "bone", "parchment", "soot", "night", "pitch"):
+        stale = {"ash": "#7f7159", "dust": "#8a7a5c"}.get(name)
+        if stale:
+            assert stale not in css.lower(), (
+                f"app.css still carries the old {name} literal {stale}"
+            )

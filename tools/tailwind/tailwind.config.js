@@ -36,8 +36,19 @@ module.exports = {
         bone: '#fdf5e4',     /* headings */
         parchment: '#e6dccb',/* body */
         tan: '#a89a80',      /* secondary */
-        dust: '#8a7a5c',     /* labels and meta */
-        ash: '#7f7159',      /* the dimmest thing still meant to be read */
+        /* Measured against the cards these actually sit on rather than
+           picked by eye. `ash` is described right here as the dimmest thing
+           still *meant to be read*, and at #7f7159 it was 3.73:1 on a soot
+           card -- below AA for body text, and it was carrying "Unmarked, so
+           far.", "Alone, for now." and every de-emphasised sentence on the
+           play screen.
+
+           `dust` moved too, for a different reason: at #8a7a5c it was 4.24
+           against ash's 3.73, half a step apart, so two of the five ink
+           levels read as one colour. The ladder is now 4.56 / 5.41 / 6.42,
+           which is a step you can see. Same hues; only lightness changed. */
+        dust: '#9d8c6c',     /* labels and meta */
+        ash: '#8f7f64',      /* the dimmest thing still meant to be read */
 
         /* the three things the game needs to say in colour */
         rust: '#b3311f',       /* it is coming for you */
