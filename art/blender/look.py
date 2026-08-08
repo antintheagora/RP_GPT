@@ -1033,8 +1033,133 @@ def sky_gradient(top=(0.020, 0.026, 0.045), horizon=(0.115, 0.075, 0.052),
 
 
 
+def bryce_sky(bands=None, strength=1.0, bend=3.0,
+              cloud_colour=(0.62, 0.58, 0.60), cloud_amount=0.55,
+              cloud_scale=2.6, cloud_detail=7.0, cloud_sharpness=(0.44, 0.72),
+              cloud_height=0.10, seed=0.0):
+    """A Bryce sky: banded gradient, and cloud that converges at the horizon.
+
+    The two-stop version this replaces is a clean gradient, which is exactly
+    what Bryce skies are not. Theirs are the most recognisable thing about the
+    software: several distinct colour bands stacked up the dome, and a layer
+    of stratified cloud that foreshortens toward the horizon because it lies
+    in a plane rather than on the dome.
+
+    That foreshortening is the whole trick and it is one node: divide the
+    view direction's X and Y by its Z before sampling the noise. Sampling the
+    dome directly gives cloud the same size overhead and at the horizon, which
+    reads as fog on a ceiling. Dividing by Z is a flat plane seen in
+    perspective, so the cells stretch and crowd exactly the way real cloud
+    does on a big sky.
+
+    `bands` is a list of (position, rgb) up the dome, horizon first.
+    """
+    bands = bands or [
+        (0.00, (0.240, 0.120, 0.086)),
+        (0.18, (0.196, 0.104, 0.110)),
+        (0.42, (0.104, 0.070, 0.128)),
+        (1.00, (0.020, 0.026, 0.062)),
+    ]
+
+    world = bpy.context.scene.world
+    if world is None:
+        world = bpy.data.worlds.new("World")
+        bpy.context.scene.world = world
+    world.use_nodes = True
+    tree = world.node_tree
+    tree.nodes.clear()
+
+    output = tree.nodes.new("ShaderNodeOutputWorld")
+    output.location = (1200, 0)
+    background = tree.nodes.new("ShaderNodeBackground")
+    background.location = (1000, 0)
+    sock(background, "Strength", strength)
+    tree.links.new(background.outputs["Background"], output.inputs["Surface"])
+
+    coord = tree.nodes.new("ShaderNodeTexCoord")
+    coord.location = (-1400, 0)
+    separate = tree.nodes.new("ShaderNodeSeparateXYZ")
+    separate.location = (-1200, 0)
+    tree.links.new(coord.outputs["Generated"], separate.inputs["Vector"])
+
+    # --- the banded gradient -------------------------------------------
+    height = tree.nodes.new("ShaderNodeClamp")
+    height.location = (-1000, 200)
+    tree.links.new(separate.outputs["Z"], height.inputs["Value"])
+    power = tree.nodes.new("ShaderNodeMath")
+    power.location = (-820, 200)
+    power.operation = "POWER"
+    power.inputs[1].default_value = 1.0 / bend
+    tree.links.new(height.outputs["Result"], power.inputs[0])
+    ramp = _ramp(tree, [(pos, tuple(rgb) + (1.0,)) for pos, rgb in bands],
+                 location=(-600, 200), interpolation="EASE")
+    tree.links.new(power.outputs["Value"], ramp.inputs["Fac"])
+
+    # --- cloud, on a plane rather than on the dome ----------------------
+    # Z away from zero, or the division blows up along the horizon line and
+    # leaves a seam of pure noise right where the eye is.
+    floor = tree.nodes.new("ShaderNodeMath")
+    floor.location = (-1000, -300)
+    floor.operation = "MAXIMUM"
+    floor.inputs[1].default_value = 0.045
+    tree.links.new(separate.outputs["Z"], floor.inputs[0])
+
+    flat = []
+    for index, axis in enumerate(("X", "Y")):
+        divide = tree.nodes.new("ShaderNodeMath")
+        divide.location = (-820, -240 - index * 160)
+        divide.operation = "DIVIDE"
+        tree.links.new(separate.outputs[axis], divide.inputs[0])
+        tree.links.new(floor.outputs["Value"], divide.inputs[1])
+        flat.append(divide)
+
+    combine = tree.nodes.new("ShaderNodeCombineXYZ")
+    combine.location = (-620, -300)
+    tree.links.new(flat[0].outputs["Value"], combine.inputs["X"])
+    tree.links.new(flat[1].outputs["Value"], combine.inputs["Y"])
+    combine.inputs["Z"].default_value = seed
+
+    noise = tree.nodes.new("ShaderNodeTexNoise")
+    noise.location = (-420, -300)
+    sock(noise, "Scale", cloud_scale)
+    sock(noise, "Detail", cloud_detail)
+    sock(noise, "Roughness", 0.62)
+    tree.links.new(combine.outputs["Vector"], noise.inputs["Vector"])
+
+    shape = _ramp(tree, [(cloud_sharpness[0], (0, 0, 0, 1)),
+                         (cloud_sharpness[1], (1, 1, 1, 1))],
+                  location=(-220, -300))
+    tree.links.new(noise.outputs["Fac"], shape.inputs["Fac"])
+
+    # Thin the cloud out along the horizon, where a plane seen edge-on would
+    # be hazed to nothing anyway. Without this the band at Z=0 goes solid.
+    fade = _ramp(tree, [(0.0, (0, 0, 0, 1)), (cloud_height, (1, 1, 1, 1))],
+                 location=(-220, -540))
+    tree.links.new(height.outputs["Result"], fade.inputs["Fac"])
+
+    masked = tree.nodes.new("ShaderNodeMath")
+    masked.location = (40, -420)
+    masked.operation = "MULTIPLY"
+    tree.links.new(out(shape, "Color"), masked.inputs[0])
+    tree.links.new(out(fade, "Color"), masked.inputs[1])
+
+    amount = tree.nodes.new("ShaderNodeMath")
+    amount.location = (240, -420)
+    amount.operation = "MULTIPLY"
+    amount.inputs[1].default_value = cloud_amount
+    tree.links.new(masked.outputs["Value"], amount.inputs[0])
+
+    mix = _mix(tree, "MIX", location=(600, 0))
+    # `_mix_in` takes the A/B index, not a name -- Factor is always input 0.
+    tree.links.new(amount.outputs["Value"], mix.inputs[0])
+    tree.links.new(out(ramp, "Color"), _mix_in(mix, 0))
+    _mix_in(mix, 1).default_value = tuple(cloud_colour) + (1.0,)
+    tree.links.new(_mix_out(mix), background.inputs["Color"])
+    return world
+
+
 __all__ = [
-    "WEAR", "worn_edge",
+    "WEAR", "worn_edge", "bryce_sky",
     "wipe", "use_cycles", "view_transform", "render_to", "camera",
     "area_light", "point_light", "sun", "sock", "out",
     "damp_stone", "rusted_iron", "heavy_cloth", "glowing", "still_water",

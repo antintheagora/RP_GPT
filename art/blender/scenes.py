@@ -95,13 +95,26 @@ def pier(x, y, material, height=3.4, width=0.72):
     course = height / courses
     for index in range(courses):
         inset = 0.0 if index else -0.06
+        # Full course height, so consecutive stones meet rather than hover.
+        # At 0.94 each block was 6% short and left a 29mm air gap -- and with
+        # a 50mm rolled edge on each face of the joint, the eye read a 129mm
+        # dark band and the column looked like blocks floating in a stack.
+        #
+        # Meeting exactly is also what produces the joint. Two bevels facing
+        # each other are a V-groove the width of both, which is a mortar bed
+        # with a shadow in it -- no gap to fall through and nothing
+        # interpenetrating, so no clipping either.
         made.append(look.block(
             (x, y, course * (index + 0.5)),
-            (width - inset * 2, width - inset * 2, course * 0.94),
+            (width - inset * 2, width - inset * 2, course),
             material, name=f"Pier{index}"))
-    made.append(look.block((x, y, -0.02), (width + 0.24, width + 0.24, 0.20),
+    # Plinth and capital overlap the shaft by a couple of centimetres rather
+    # than resting a hair off it. The bevel hides the overlap and the joint
+    # still reads, which is the trade: a little interpenetration you cannot
+    # see beats a gap you can.
+    made.append(look.block((x, y, 0.06), (width + 0.24, width + 0.24, 0.24),
                            material, name="Plinth"))
-    made.append(look.block((x, y, height + 0.10), (width + 0.30, width + 0.30, 0.22),
+    made.append(look.block((x, y, height + 0.04), (width + 0.30, width + 0.30, 0.24),
                            material, name="Capital"))
     return made
 
@@ -345,8 +358,15 @@ def drowned_steps(path):
                  lean=0.02 * (1 if index % 2 else -1), twist=index * 0.4,
                  z=-1.2)
 
-    look.sky_gradient(top=(0.014, 0.020, 0.042), horizon=(0.185, 0.098, 0.052),
-                      strength=2.20, bend=3.4)
+    # Bands and cloud rather than a clean two-stop fade. Bryce skies are the
+    # most recognisable thing about the software and none of that was here.
+    look.bryce_sky(bands=[(0.00, (0.290, 0.120, 0.052)),
+                          (0.14, (0.230, 0.106, 0.070)),
+                          (0.38, (0.104, 0.062, 0.104)),
+                          (1.00, (0.014, 0.020, 0.048))],
+                   strength=2.20, bend=3.4,
+                   cloud_colour=(0.68, 0.44, 0.34), cloud_amount=0.62,
+                   cloud_scale=2.2, cloud_sharpness=(0.40, 0.70), seed=1.0)
     look.sun((math.radians(85.5), 0, math.radians(9)), energy=7.0, angle=0.030,
              color=(1.0, 0.55, 0.26))
     # Cold haze against a warm sun. Everything here was warm -- an orange
@@ -396,8 +416,13 @@ def glass_waste(path):
                                 (-14.0, 52.0, 20.0, 2.6), (12.0, 71.0, 11.0, 1.8)):
         monolith(x, y, height, width, glass, lean=0.05, twist=x * 0.2, z=-0.4)
 
-    look.sky_gradient(top=(0.030, 0.014, 0.055), horizon=(0.230, 0.085, 0.070),
-                      strength=1.90, bend=2.6)
+    look.bryce_sky(bands=[(0.00, (0.300, 0.104, 0.082)),
+                          (0.16, (0.236, 0.090, 0.108)),
+                          (0.44, (0.120, 0.052, 0.126)),
+                          (1.00, (0.030, 0.014, 0.062))],
+                   strength=1.90, bend=2.6,
+                   cloud_colour=(0.72, 0.48, 0.52), cloud_amount=0.58,
+                   cloud_scale=3.1, cloud_sharpness=(0.46, 0.74), seed=3.0)
     look.sun((math.radians(87.0), 0, math.radians(-14)), energy=6.0,
              angle=0.045, color=(1.0, 0.42, 0.30))
     look.haze(size=1200, density=0.0050, colour=(0.40, 0.30, 0.34),
@@ -427,9 +452,12 @@ def hollow_king(path):
                            seed=22, mortar=0.2,
                            tint=(0.042, 0.040, 0.032, 1.0))
 
-    terrain(size=1600, resolution=320, kind="hetero", height=105.0, seed=5.5,
-            offset=0.68, origin=(30, 520, -60), material=crag,
-            keep_clear=160.0)
+    # Lower, and further out. At 105 units the massif filled the frame from
+    # the pavement to the top edge and there was no sky in a scene whose
+    # whole description is "a ruined hall open to the sky".
+    terrain(size=1600, resolution=320, kind="hetero", height=58.0, seed=5.5,
+            offset=0.68, origin=(30, 700, -60), material=crag,
+            keep_clear=200.0)
     bpy.ops.mesh.primitive_plane_add(size=260, location=(0, 30, -0.06))
     bpy.context.active_object.data.materials.append(crag)
 
@@ -457,8 +485,13 @@ def hollow_king(path):
                                   (4.4, 17.5, 0.22, 0.9, 0.9, 0.46, 2.1)):
         look.block((x, y, z), (w, d, h), stone, rotation=(0.06, 0.04, rot), name="Rubble")
 
-    look.sky_gradient(top=(0.016, 0.021, 0.048), horizon=(0.120, 0.082, 0.070),
-                      strength=1.60, bend=3.0)
+    look.bryce_sky(bands=[(0.00, (0.190, 0.112, 0.076)),
+                          (0.15, (0.150, 0.092, 0.092)),
+                          (0.40, (0.078, 0.058, 0.106)),
+                          (1.00, (0.016, 0.021, 0.052))],
+                   strength=1.85, bend=3.0,
+                   cloud_colour=(0.60, 0.46, 0.42), cloud_amount=0.66,
+                   cloud_scale=2.0, cloud_sharpness=(0.42, 0.68), seed=7.0)
     # 78 degrees off vertical puts the sun twelve degrees above the horizon,
     # which rakes past the ruin rather than falling on it -- every column was
     # a silhouette against its own fog. 52 gets light onto the stone while
