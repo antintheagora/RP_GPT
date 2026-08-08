@@ -35,6 +35,12 @@ from engine.resolve import (
     Assessment,
     Bearing,
     Consequence,
+    DIFFICULTY_BASE,
+    Difficulty,
+    MAX_BASE_DIFFICULTY,
+    MIN_BASE_DIFFICULTY,
+    PLAN_MODIFIER,
+    Plan,
     Position,
     PositionFacts,
     resolve,
@@ -107,6 +113,42 @@ def _pick_stat(
     return rng.choice(SPECIAL_KEYS)
 
 
+
+#: How often the Keeper reaches for each rung, and how well the player tends
+#: to describe what they are doing. Guesses, but stated ones -- the simulator
+#: used the default 12 for every single roll in every campaign, so the gate
+#: was measuring a game with exactly one difficulty in it.
+DIFFICULTY_MIX = (
+    (Difficulty.ROUTINE, 0.10),
+    (Difficulty.AWKWARD, 0.30),
+    (Difficulty.HARD, 0.35),
+    (Difficulty.DANGEROUS, 0.18),
+    (Difficulty.DESPERATE, 0.07),
+)
+PLAN_MIX = (
+    (Plan.INSPIRED, 0.10),
+    (Plan.SOUND, 0.62),
+    (Plan.VAGUE, 0.23),
+    (Plan.IMPLAUSIBLE, 0.05),
+)
+
+
+def _pick(mix, rng) -> object:
+    roll = rng.random()
+    running = 0.0
+    for value, share in mix:
+        running += share
+        if roll < running:
+            return value
+    return mix[-1][0]
+
+
+def _rated(rng) -> int:
+    """A difficulty drawn from the spread a real campaign produces."""
+    base = DIFFICULTY_BASE[_pick(DIFFICULTY_MIX, rng)]
+    base += PLAN_MODIFIER[_pick(PLAN_MIX, rng)]
+    return max(MIN_BASE_DIFFICULTY, min(MAX_BASE_DIFFICULTY + 4, base))
+
 def simulate_campaign(
     stats: Optional[Dict[str, int]] = None,
     config: Optional[SimConfig] = None,
@@ -146,6 +188,7 @@ def simulate_campaign(
             assessment = Assessment(
                 stat=stat,
                 bearings=bearings,
+                base_difficulty=_rated(rng),
                 consequence=Consequence.HARM if rng.random() < 0.4 else Consequence.CLOCK_TICK,
             )
 

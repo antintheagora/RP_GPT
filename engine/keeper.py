@@ -77,6 +77,21 @@ Rate ALL SEVEN. Nothing is forbidden -- a hopeless approach is "futile", never
 absent. Judge the fiction, not the character's ability: how well would this
 KIND of approach work on this KIND of problem?
 
+Say how hard the thing itself is, for anyone at all, ignoring who is trying:
+  routine   - most people manage this; it matters only because of where they are
+  awkward   - takes care, or a moment they may not get
+  hard      - takes real skill, or real luck
+  dangerous - the kind of thing that goes wrong for capable people
+  desperate - close to impossible; surviving it would be the story
+
+And say whether the thing they described would actually do what they want:
+  inspired    - they have found something the situation was hiding
+  sound       - a reasonable way to go about it
+  vague       - they have not really said how
+  implausible - what they described would not do what they are after
+                (punching through a steel blast door is implausible, however
+                 strong they are -- rate the plan, not the person)
+
 Also report two facts:
   surprise - true only if the opposition genuinely does not know they are there
   cornered - true only if they are outnumbered, trapped, or have no way out
@@ -88,7 +103,8 @@ And name what goes wrong if this fails, choosing one:
 Optionally offer a bargain: something concrete they would hate to give up, in
 exchange for a better chance. Only if one genuinely fits.
 
-Do not decide whether they succeed. Do not give numbers or odds.
+Do not decide whether they succeed, and do not give numbers or odds: every
+scale above is a word, and the numbers behind those words are not yours.
 """
 
 

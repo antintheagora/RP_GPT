@@ -56,6 +56,71 @@ BEARING_MODIFIER: Dict[Bearing, int] = {
     Bearing.FUTILE: +10,
 }
 
+
+class Difficulty(str, Enum):
+    """How hard the thing is, before anything about who is attempting it.
+
+    A category, not a number, because that is the judgement a language model
+    can actually make. It was an integer between 8 and 18 with nothing said
+    about what any value meant -- while the prompt's closing line was "Do not
+    give numbers or odds". The model was forbidden from giving a number and
+    required to supply one, so it supplied noise, and that noise was most of
+    every target.
+
+    The Bearing scale beside this one has always been categorical and has
+    always worked. This is the same idea applied to the other half.
+    """
+
+    ROUTINE = "routine"
+    AWKWARD = "awkward"
+    HARD = "hard"
+    DANGEROUS = "dangerous"
+    DESPERATE = "desperate"
+
+
+class Plan(str, Enum):
+    """Whether what they actually described would do what they want.
+
+    Bearing asks whether this *kind* of approach suits the problem. Nothing
+    asked whether the specific thing the player said made any sense, so
+    "punch through the steel blast door" and a worked-out plan to lever the
+    hinge pins were rated identically. Describing something clever should be
+    worth something, and describing something absurd should cost.
+    """
+
+    INSPIRED = "inspired"
+    SOUND = "sound"
+    VAGUE = "vague"
+    IMPLAUSIBLE = "implausible"
+
+
+#: The numbers the categories mean. Code owns these; the model never sees
+#: them.
+#:
+#: Chosen so the *mean* difficulty a campaign meets stays 12 -- the flat value
+#: every roll used to get, and the value the 5,000-campaign gate was
+#: calibrated against. The first attempt spread them 8/11/14/16/18, which
+#: reads sensibly and moved the mean to 13.3, and the gate immediately
+#: reported the win rate out of band. What is new here is the *spread*, not a
+#: harder game: "hard" sits exactly where the old constant did, and routine
+#: and desperate are the range that constant could never express.
+DIFFICULTY_BASE: Dict[Difficulty, int] = {
+    Difficulty.ROUTINE: 8,
+    Difficulty.AWKWARD: 10,
+    Difficulty.HARD: 12,
+    Difficulty.DANGEROUS: 15,
+    Difficulty.DESPERATE: 18,
+}
+
+#: What the description itself is worth. Deliberately smaller than a Bearing
+#: step: saying it well should tilt a roll, not decide it.
+PLAN_MODIFIER: Dict[Plan, int] = {
+    Plan.INSPIRED: -3,
+    Plan.SOUND: 0,
+    Plan.VAGUE: +1,
+    Plan.IMPLAUSIBLE: +4,
+}
+
 # What the player is told, when they are told anything. Never a number.
 BEARING_HINT: Dict[Bearing, str] = {
     Bearing.IDEAL: "this is exactly what the problem is asking for",
@@ -213,7 +278,8 @@ class Assessment:
 # decoding rather than validated afterwards.
 ASSESS_SCHEMA = {
     "type": "object",
-    "required": ["stat", "bearings", "base_difficulty", "surprise", "cornered", "consequence"],
+    "required": ["stat", "bearings", "how_hard", "plan", "surprise",
+                 "cornered", "consequence"],
     "properties": {
         "stat": {"type": "string", "enum": list(SPECIAL_KEYS)},
         "bearings": {
@@ -224,11 +290,9 @@ ASSESS_SCHEMA = {
                 for key in SPECIAL_KEYS
             },
         },
-        "base_difficulty": {
-            "type": "integer",
-            "minimum": MIN_BASE_DIFFICULTY,
-            "maximum": MAX_BASE_DIFFICULTY,
-        },
+        "how_hard": {"type": "string",
+                     "enum": [d.value for d in Difficulty]},
+        "plan": {"type": "string", "enum": [p.value for p in Plan]},
         "surprise": {"type": "boolean"},
         "cornered": {"type": "boolean"},
         "consequence": {"type": "string", "enum": [c.value for c in Consequence]},
@@ -246,6 +310,44 @@ ASSESS_SCHEMA = {
 }
 
 
+
+def _difficulty_from(payload: Dict) -> int:
+    """Two categories in, one target component out.
+
+    Saves and fixtures written before this carry a raw `base_difficulty`
+    integer, and those still load: a campaign in progress must not break
+    because the question changed shape.
+    """
+    raw_hard = str(payload.get("how_hard", "")).strip().lower()
+    raw_plan = str(payload.get("plan", "")).strip().lower()
+
+    if raw_hard:
+        try:
+            base = DIFFICULTY_BASE[Difficulty(raw_hard)]
+        except ValueError:
+            base = DEFAULT_BASE_DIFFICULTY
+    elif "base_difficulty" in payload:
+        try:
+            base = int(payload["base_difficulty"])
+        except (TypeError, ValueError):
+            base = DEFAULT_BASE_DIFFICULTY
+        # Clamped here, to the range that field was always allowed. The
+        # headroom below exists for a plan modifier stacked on a category,
+        # not for a raw number out of a model that once answered 999.
+        base = max(MIN_BASE_DIFFICULTY, min(MAX_BASE_DIFFICULTY, base))
+    else:
+        base = DEFAULT_BASE_DIFFICULTY
+
+    try:
+        base += PLAN_MODIFIER[Plan(raw_plan)]
+    except ValueError:
+        pass
+
+    # A little past the old ceiling: an implausible plan at desperate odds
+    # should be worse than anything the integer field could express, and
+    # `target_for` clamps to a 5% floor regardless.
+    return max(MIN_BASE_DIFFICULTY, min(MAX_BASE_DIFFICULTY + 4, base))
+
 def assessment_from_json(payload: Dict) -> Assessment:
     """Coerce model output into an Assessment. Never trusts, always clamps."""
     raw_bearings = payload.get("bearings") or {}
@@ -261,11 +363,7 @@ def assessment_from_json(payload: Dict) -> Assessment:
     if stat not in SPECIAL_KEYS:
         stat = SPECIAL_KEYS[0]
 
-    try:
-        base = int(payload.get("base_difficulty", DEFAULT_BASE_DIFFICULTY))
-    except (TypeError, ValueError):
-        base = DEFAULT_BASE_DIFFICULTY
-    base = max(MIN_BASE_DIFFICULTY, min(MAX_BASE_DIFFICULTY, base))
+    base = _difficulty_from(payload)
 
     try:
         consequence = Consequence(str(payload.get("consequence", "")).strip().lower())
@@ -447,4 +545,5 @@ __all__ = [
     "Assessment", "ASSESS_SCHEMA", "assessment_from_json",
     "target_for", "chance_for", "Resolution", "resolve",
     "SEGMENTS_BY_EFFECT", "DEFAULT_BASE_DIFFICULTY", "STAT_PIVOT",
+    "Difficulty", "Plan", "DIFFICULTY_BASE", "PLAN_MODIFIER",
 ]
