@@ -6,31 +6,31 @@
   <div>
     <div class="flex items-center justify-between mb-2">
       <h3 class="text-lg font-semibold">Recent events</h3>
-      <p class="text-xs text-slate-500">Turn {{ payload.turn }}</p>
+      <p class="text-xs text-ash">Turn {{ payload.turn }}</p>
     </div>
     {% if events %}
       <div class="space-y-4 max-h-[32rem] overflow-y-auto pr-2 scroll-fade">
         {% for event in events|reverse %}
-          <article class="rounded-xl border border-slate-700/70 bg-night/80 px-4 py-3 shadow-lg">
-            <p class="text-xs text-slate-500">Turn {{ event.turn }}</p>
+          <article class="rounded-sm border border-edge bg-soot/80 px-4 py-3 shadow-lg">
+            <p class="text-xs text-ash">Turn {{ event.turn }}</p>
             <p class="mt-1 whitespace-pre-line leading-relaxed">{{ event.text }}</p>
           </article>
         {% endfor %}
       </div>
     {% else %}
-      <p class="text-slate-400 text-sm">Take your first action to see RP-GPT's narration log.</p>
+      <p class="text-dust text-sm">Take your first action to see RP-GPT's narration log.</p>
     {% endif %}
   </div>
   <div>
     <h3 class="text-lg font-semibold mb-2">World journal</h3>
     {% if payload.journal_tail %}
-      <ul class="space-y-2 text-sm text-slate-300">
+      <ul class="space-y-2 text-sm text-tan">
         {% for line in payload.journal_tail|reverse %}
-          <li class="border border-slate-700/60 rounded-lg px-3 py-2 bg-night/70">{{ line }}</li>
+          <li class="border border-edge rounded-sm px-3 py-2 bg-soot/70">{{ line }}</li>
         {% endfor %}
       </ul>
     {% else %}
-      <p class="text-slate-500 text-sm">Journal entries will appear as the story unfolds.</p>
+      <p class="text-ash text-sm">Journal entries will appear as the story unfolds.</p>
     {% endif %}
   </div>
   </div>

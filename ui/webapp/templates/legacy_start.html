@@ -4,7 +4,7 @@
   <div class="space-y-4">
     <h2 class="text-2xl font-semibold">Start a fresh run (Legacy)</h2>
     {% if error %}
-    <div class="bg-red-500/10 border border-red-500 text-red-200 rounded px-4 py-3">{{ error }}</div>
+    <div class="bg-rust/10 border border-rust text-flare rounded px-4 py-3">{{ error }}</div>
     {% endif %}
     <div class="ninebox u-box">
       <div class="nf tl"></div>
@@ -19,7 +19,7 @@
       <div class="nine-content">
         <form method="post" action="{{ url_for('start_game') }}" class="space-y-6 u-box-content">
           <div>
-            <label class="block text-sm font-medium text-slate-300">Scenario</label>
+            <label class="block text-sm font-medium text-tan">Scenario</label>
             <div class="mt-2 grid grid-cols-2 gap-3 text-sm">
               {% set current = previous.get('scenario') if previous else 'apocalypse' %}
               {% for value, label in [('apocalypse', 'Apocalypse'), ('dark_fantasy', 'Dark Fantasy'), ('haunted_house', 'Haunted House'), ('custom', 'Custom World')] %}
@@ -118,7 +118,7 @@
       <div class="nf br"></div>
       <div class="nine-content u-box-content">
         <h3 class="text-xl font-semibold">About this build</h3>
-        <ul class="mt-4 space-y-3 text-sm text-slate-300">
+        <ul class="mt-4 space-y-3 text-sm text-tan">
           <li>• Flask + HTMX front-end rendered in a PyWebview shell.</li>
           <li>• Tailwind CSS + Daisy-esque cards for quick theming.</li>
           <li>• Shared engine + Gemma prompts from the core RP-GPT stack.</li>
@@ -138,7 +138,7 @@
       <div class="nf b"></div>
       <div class="nf br"></div>
       <div class="nine-content u-box-content">
-        <p class="text-slate-200 mb-3">You have an active session. Jump back in?</p>
+        <p class="text-parchment mb-3">You have an active session. Jump back in?</p>
         <a href="{{ url_for('play') }}" class="u-button w-full sm:w-auto">Resume adventure →</a>
       </div>
     </div>

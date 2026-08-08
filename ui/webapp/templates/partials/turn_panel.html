@@ -8,8 +8,8 @@
 
   <div class="flex flex-wrap items-center justify-between gap-3">
     <div>
-      <p class="text-sm text-slate-400">Act {{ payload.act_index }} of {{ payload.act_count }} &bull; Turn {{ payload.turn }}</p>
-      <h2 class="text-2xl font-semibold text-white">{{ payload.act_goal }}</h2>
+      <p class="text-sm text-dust">Act {{ payload.act_index }} of {{ payload.act_count }} &bull; Turn {{ payload.turn }}</p>
+      <h2 class="text-2xl font-semibold text-bone">{{ payload.act_goal }}</h2>
     </div>
   </div>
 
@@ -18,42 +18,42 @@
      act on. #}
   <div class="grid gap-3 sm:grid-cols-2">
     {% for clock in payload.clocks %}
-      <div class="rounded-xl bg-night/80 border border-slate-700/80 p-4">
-        <p class="text-xs uppercase tracking-wide {{ 'text-rose-300' if clock.kind == 'danger' else 'text-emerald-300' }}">
+      <div class="rounded-sm bg-soot/80 border border-edge p-4">
+        <p class="overline {{ 'text-flare' if clock.kind == 'danger' else 'text-brass' }}">
           {{ 'Closing in' if clock.kind == 'danger' else 'Your progress' }}
         </p>
         <p class="text-lg font-semibold">{{ clock.name }}</p>
         <div class="mt-2 flex gap-1" aria-label="{{ clock.filled }} of {{ clock.segments }} filled">
           {% for i in range(clock.segments) %}
-            <span class="h-3 flex-1 rounded-sm {{ (('bg-rose-400' if clock.kind == 'danger' else 'bg-emerald-400') if i < clock.filled else 'bg-slate-800') }}"></span>
+            <span class="h-3 flex-1 rounded-sm {{ (('bg-rust' if clock.kind == 'danger' else 'bg-brass') if i < clock.filled else 'bg-hearth') }}"></span>
           {% endfor %}
         </div>
-        <p class="text-sm mt-1 text-slate-400">{{ clock.filled }} / {{ clock.segments }}</p>
+        <p class="text-sm mt-1 text-dust">{{ clock.filled }} / {{ clock.segments }}</p>
       </div>
     {% endfor %}
   </div>
 
   <div class="grid gap-4 sm:grid-cols-2">
-    <div class="rounded-xl bg-night/80 border border-slate-700/80 p-4">
-      <p class="text-xs uppercase tracking-wide text-slate-400">Adventurer</p>
+    <div class="rounded-sm bg-soot/80 border border-edge p-4">
+      <p class="overline text-dust">Adventurer</p>
       <p class="text-lg font-semibold">{{ player.name }}</p>
       {% if cond %}
-        <p class="text-sm text-slate-400">
+        <p class="text-sm text-dust">
           HP {{ cond.hp }} / {{ cond.max_hp }}
-          {% if cond.raw_damage %}<span class="text-amber-300">&bull; {{ cond.raw_damage }} still winnable back</span>{% endif %}
+          {% if cond.raw_damage %}<span class="text-brass">&bull; {{ cond.raw_damage }} still winnable back</span>{% endif %}
         </p>
-        <p class="text-sm text-slate-400">Resolve {{ cond.resolve }} / {{ cond.max_resolve }}</p>
+        <p class="text-sm text-dust">Resolve {{ cond.resolve }} / {{ cond.max_resolve }}</p>
       {% else %}
-        <p class="text-sm text-slate-400">HP {{ player.hp }}</p>
+        <p class="text-sm text-dust">HP {{ player.hp }}</p>
       {% endif %}
     </div>
-    <div class="rounded-xl bg-night/80 border border-slate-700/80 p-4">
+    <div class="rounded-sm bg-soot/80 border border-edge p-4">
       {# Who is with you and what they think of you. Charisma decides how many
          will step in; Affinity decides whether this one will. #}
       <div class="flex items-baseline justify-between gap-2">
-        <p class="text-xs uppercase tracking-wide text-slate-400">With you</p>
+        <p class="overline text-dust">With you</p>
         {% if payload.party and payload.party.assists_total %}
-          <p class="text-xs text-slate-500">{{ payload.party.assists_left }} / {{ payload.party.assists_total }} assists left</p>
+          <p class="text-xs text-ash">{{ payload.party.assists_left }} / {{ payload.party.assists_total }} assists left</p>
         {% endif %}
       </div>
       {% if payload.party and payload.party.members %}
@@ -61,14 +61,14 @@
           {% for member in payload.party.members %}
             <li class="flex justify-between gap-2">
               <span>{{ member.name }}</span>
-              <span class="capitalize text-slate-400">{{ member.regard }}</span>
+              <span class="capitalize text-dust">{{ member.regard }}</span>
             </li>
           {% endfor %}
         </ul>
       {% elif payload.party and not payload.party.assists_total %}
-        <p class="text-sm text-slate-500 mt-1">Nobody follows you anywhere. (Charisma {{ player.stats.CHA }}.)</p>
+        <p class="text-sm text-ash mt-1">Nobody follows you anywhere. (Charisma {{ player.stats.CHA }}.)</p>
       {% else %}
-        <p class="text-sm text-slate-500 mt-1">Alone, for now.</p>
+        <p class="text-sm text-ash mt-1">Alone, for now.</p>
       {% endif %}
     </div>
   </div>
@@ -76,29 +76,29 @@
   {# This was a two-column grid holding exactly one box, so half the row was
      always empty. #}
   <div>
-    <div class="rounded-xl bg-night/80 border border-slate-700/80 p-4">
+    <div class="rounded-sm bg-soot/80 border border-edge p-4">
       {# Only groups that have heard of you. A faction you have never crossed
          has no opinion, and printing "neutral" would claim otherwise. #}
       {% if payload.factions %}
-        <p class="text-xs uppercase tracking-wide text-slate-400">Word has spread</p>
+        <p class="overline text-dust">Word has spread</p>
         <ul class="text-sm space-y-1 mt-1 mb-3">
           {% for faction in payload.factions %}
             <li class="flex justify-between gap-2">
               <span>{{ faction.name }}</span>
-              <span class="capitalize {{ 'text-rose-300' if faction.reputation < 0 else 'text-sky-300' }}">{{ faction.standing }}</span>
+              <span class="capitalize {{ 'text-flare' if faction.reputation < 0 else 'text-verdigris' }}">{{ faction.standing }}</span>
             </li>
           {% endfor %}
         </ul>
       {% endif %}
-      <p class="text-xs uppercase tracking-wide text-slate-400">Marks</p>
+      <p class="overline text-dust">Marks</p>
       {% if cond and (cond.wounds.wounds or cond.scars or cond.virtues) %}
         <ul class="text-sm space-y-1 mt-1">
-          {% for wound in cond.wounds.wounds %}<li class="text-rose-300">{{ wound.name }}</li>{% endfor %}
-          {% for scar in cond.scars %}<li class="text-amber-300">{{ scar.value }}</li>{% endfor %}
-          {% for virtue in cond.virtues %}<li class="text-sky-300">{{ virtue.value }}</li>{% endfor %}
+          {% for wound in cond.wounds.wounds %}<li class="text-flare">{{ wound.name }}</li>{% endfor %}
+          {% for scar in cond.scars %}<li class="text-brass">{{ scar.value }}</li>{% endfor %}
+          {% for virtue in cond.virtues %}<li class="text-verdigris">{{ virtue.value }}</li>{% endfor %}
         </ul>
       {% else %}
-        <p class="text-sm text-slate-500 mt-1">Unmarked, so far.</p>
+        <p class="text-sm text-ash mt-1">Unmarked, so far.</p>
       {% endif %}
     </div>
   </div>
@@ -107,17 +107,17 @@
      of names with no health at all, so a hit landed on nothing and nobody
      could be worn down. #}
   {% if payload.foes %}
-    <div class="rounded-xl border border-rose-500/60 bg-rose-500/10 p-4">
-      <p class="text-xs uppercase tracking-wide text-rose-300 mb-2">Against you</p>
+    <div class="rounded-sm border border-rust/60 bg-rust/10 p-4">
+      <p class="overline text-flare mb-2">Against you</p>
       <ul class="space-y-2 text-sm">
         {% for foe in payload.foes %}
           <li>
             <div class="flex justify-between gap-2">
               <span class="font-semibold">{{ foe.name }}</span>
-              <span class="text-slate-400 tabular-nums">{{ foe.hp }} / {{ foe.max_hp }}</span>
+              <span class="text-dust tabular-nums">{{ foe.hp }} / {{ foe.max_hp }}</span>
             </div>
-            <div class="mt-1 h-1.5 w-full rounded bg-slate-800">
-              <div class="h-full rounded bg-rose-400"
+            <div class="mt-1 h-1.5 w-full rounded bg-hearth">
+              <div class="h-full rounded bg-rust"
                    style="width: {{ (100 * foe.hp / (foe.max_hp or 1)) | round }}%"></div>
             </div>
           </li>
@@ -131,21 +131,21 @@
      is what happens when they collide with one; the collision is never
      authored. #}
   {% if payload.tides %}
-    <div class="rounded-xl bg-night/80 border border-slate-700/80 p-4">
-      <p class="text-xs uppercase tracking-wide text-slate-400 mb-2">What is moving</p>
+    <div class="rounded-sm bg-soot/80 border border-edge p-4">
+      <p class="overline text-dust mb-2">What is moving</p>
       <ul class="space-y-2 text-sm">
         {% for tide in payload.tides %}
           <li>
             <div class="flex justify-between gap-2">
               <span class="font-semibold">{{ tide.name }}</span>
-              <span class="text-slate-500 tabular-nums">{{ tide.filled }} / {{ tide.segments }}</span>
+              <span class="text-ash tabular-nums">{{ tide.filled }} / {{ tide.segments }}</span>
             </div>
             {# The model writes these as whole sentences -- "To find the map
                before the humans do." -- so pasting one straight after "It
                wants" gave "It wants To find the map before the humans do.." #}
             {% if tide.wants %}
               {% set want = tide.wants | trim | trim('.') %}
-              <p class="text-slate-400">It wants {{ want[0] | lower }}{{ want[1:] }}.</p>
+              <p class="text-dust">It wants {{ want[0] | lower }}{{ want[1:] }}.</p>
             {% endif %}
           </li>
         {% endfor %}
@@ -157,7 +157,7 @@
      this lags by a beat rather than holding the game up -- and the panel
      simply has no image block until the first one lands. #}
   {% if payload.image_url %}
-    <figure class="rounded-xl overflow-hidden border border-slate-700/80">
+    <figure class="rounded-sm overflow-hidden border border-edge">
       {# `payload.situation[:120]` -- slicing None raises, and the very line
          below this block already allows for the situation being empty. #}
       <img src="{{ payload.image_url }}" alt="{{ (payload.situation or 'The scene')[:120] }}"
@@ -169,28 +169,28 @@
      cannot see is a hidden meter, which is the thing this replaced. #}
   {% if payload.pacing %}
     {% set stance = payload.pacing.stance %}
-    <div class="rounded-xl border p-3
-                {{ 'border-rose-500/50 bg-rose-500/5' if stance == 'peak'
-                   else 'border-amber-500/40 bg-amber-500/5' if stance == 'building'
-                   else 'border-slate-700/80 bg-night/80' }}">
+    <div class="rounded-sm border p-3
+                {{ 'border-rust/50 bg-rust/5' if stance == 'peak'
+                   else 'border-brass/40 bg-brass/5' if stance == 'building'
+                   else 'border-edge bg-soot/80' }}">
       <p class="text-sm">{{ payload.pacing.text }}</p>
       {% if payload.pacing.why %}
-        <p class="text-xs text-slate-500 mt-1">{{ payload.pacing.why | join(' · ') }}</p>
+        <p class="text-xs text-ash mt-1">{{ payload.pacing.why | join(' · ') }}</p>
       {% endif %}
     </div>
   {% endif %}
 
-  <div class="rounded-xl bg-night/80 border border-slate-700/80 p-4 space-y-2">
-    <p class="text-xs uppercase tracking-wide text-slate-400">Situation</p>
-    <p class="text-slate-100 leading-relaxed">{{ payload.situation or 'Waiting for the first spark of adventure.' }}</p>
+  <div class="rounded-sm bg-soot/80 border border-edge p-4 space-y-2">
+    <p class="overline text-dust">Situation</p>
+    <p class="text-parchment leading-relaxed">{{ payload.situation or 'Waiting for the first spark of adventure.' }}</p>
   </div>
 
   <div>
-    <p class="text-xs uppercase tracking-wide text-slate-400 mb-2">SPECIAL spread</p>
+    <p class="overline text-dust mb-2">SPECIAL spread</p>
     <div class="grid grid-cols-7 gap-2 text-center text-sm">
       {% for code, stat in [('STR', player.stats.STR), ('PER', player.stats.PER), ('END', player.stats.END), ('CHA', player.stats.CHA), ('INT', player.stats.INT), ('AGI', player.stats.AGI), ('LUC', player.stats.LUC)] %}
-        <div class="rounded-lg bg-slate-900 border border-slate-700/80 py-2">
-          <p class="text-xs text-slate-400">{{ code }}</p>
+        <div class="rounded-sm bg-pitch border border-edge py-2">
+          <p class="text-xs text-dust">{{ code }}</p>
           <p class="text-lg font-semibold">{{ stat }}</p>
         </div>
       {% endfor %}
@@ -201,118 +201,118 @@
      dice, so leaving the ordinary menu clickable underneath would let the
      player walk past a decision the engine is waiting on. #}
   {% if payload.bargain %}
-    <div class="rounded-xl border border-amber-500/70 bg-amber-500/10 p-5 space-y-3">
-      <p class="text-xs uppercase tracking-wide text-amber-300">A bargain</p>
-      <p class="text-lg text-amber-50">{{ payload.bargain.text }}</p>
-      <p class="text-sm text-amber-200/80">Better odds now. It costs you: {{ payload.bargain.cost }}. The cost lands whether you succeed or not.</p>
+    <div class="rounded-sm border border-brass/70 bg-brass/10 p-5 space-y-3">
+      <p class="overline text-brass">A bargain</p>
+      <p class="text-lg text-bone">{{ payload.bargain.text }}</p>
+      <p class="text-sm text-brass/80">Better odds now. It costs you: {{ payload.bargain.cost }}. The cost lands whether you succeed or not.</p>
       <div class="grid gap-3 sm:grid-cols-2">
         <form hx-post="{{ url_for('handle_action') }}" hx-swap="none">
           <input type="hidden" name="action" value="bargain" />
           <input type="hidden" name="choice" value="{{ payload.bargain.take }}" />
-          <button class="w-full rounded-lg bg-amber-400 text-night font-semibold py-3 button-glow">Take it</button>
+          <button class="w-full rounded-sm bg-brass text-night font-semibold py-3 button-glow">Take it</button>
         </form>
         <form hx-post="{{ url_for('handle_action') }}" hx-swap="none">
           <input type="hidden" name="action" value="bargain" />
           <input type="hidden" name="choice" value="{{ payload.bargain.refuse }}" />
-          <button class="w-full rounded-lg bg-slate-800 font-semibold py-3 hover:bg-slate-700 transition">Refuse</button>
+          <button class="w-full rounded-sm bg-hearth font-semibold py-3 hover:bg-edge transition">Refuse</button>
         </form>
       </div>
     </div>
   {% elif payload.talk %}
   {# A conversation is several exchanges, so it takes over the panel the way
      a bargain does. Talking costs no turn -- what it costs is exposure. #}
-  <div class="rounded-xl border border-sky-500/60 bg-sky-500/5 p-5 space-y-4">
+  <div class="rounded-sm border border-verdigris/60 bg-verdigris/5 p-5 space-y-4">
     <div class="flex items-baseline justify-between gap-3">
       <div>
-        <p class="text-xs uppercase tracking-wide text-sky-300">Talking with</p>
+        <p class="overline text-verdigris">Talking with</p>
         <p class="text-xl font-semibold">{{ payload.talk.actor }}</p>
       </div>
       <div class="text-right">
-        <p class="text-xs uppercase tracking-wide text-slate-400">They find you</p>
+        <p class="overline text-dust">They find you</p>
         <p class="text-lg font-semibold capitalize">{{ payload.talk.regard }}</p>
       </div>
     </div>
 
     {% if payload.talk.log %}
-      <ul class="space-y-1 text-sm text-slate-300">
+      <ul class="space-y-1 text-sm text-tan">
         {% for line in payload.talk.log %}<li>{{ line }}</li>{% endfor %}
       </ul>
     {% endif %}
 
-    <p class="text-xs text-slate-500">
+    <p class="text-xs text-ash">
       Exchange {{ payload.talk.exchanges }} of {{ payload.talk.max_exchanges }}. This costs you no turn.
     </p>
 
     {% if not payload.talk.spent %}
       <div class="space-y-2">
         {% for option in payload.talk.options %}
-          <div class="rounded-lg border border-slate-700/80 bg-night/80 hover:border-sky-400/70 transition">
+          <div class="rounded-sm border border-edge bg-soot/80 hover:border-verdigris/70 transition">
             <form hx-post="{{ url_for('handle_action') }}" hx-swap="none">
               <input type="hidden" name="action" value="menu" />
               <input type="hidden" name="choice" value="{{ option.code }}" />
               <button type="submit" class="w-full text-left px-4 py-2">
-                <span class="text-sm text-slate-400">{{ option.stat }}</span>
+                <span class="text-sm text-dust">{{ option.stat }}</span>
                 <span class="block font-semibold">{{ option.label }}</span>
               </button>
             </form>
             <details class="px-4 pb-2">
-              <summary class="cursor-pointer text-sm text-slate-400 hover:text-slate-200">Say it in your own words</summary>
+              <summary class="cursor-pointer text-sm text-dust hover:text-parchment">Say it in your own words</summary>
               <form hx-post="{{ url_for('handle_action') }}" hx-swap="none" class="mt-2 space-y-2">
                 <input type="hidden" name="action" value="menu" />
                 <input type="hidden" name="choice" value="{{ option.code }}" />
                 <textarea name="describe" rows="2" required
-                          class="w-full rounded-md bg-slate-800 border-slate-700 text-sm"
+                          class="w-full rounded-sm bg-hearth border-edge text-sm"
                           placeholder="What do you say?"></textarea>
-                <button class="w-full rounded-lg bg-sky-500/90 text-night font-semibold py-2">Say it</button>
+                <button class="w-full rounded-sm bg-verdigris text-night font-semibold py-2">Say it</button>
               </form>
             </details>
           </div>
         {% endfor %}
       </div>
     {% else %}
-      <p class="text-sm text-amber-300">You have said enough for now.</p>
+      <p class="text-sm text-brass">You have said enough for now.</p>
     {% endif %}
 
     <form hx-post="{{ url_for('handle_action') }}" hx-swap="none">
       <input type="hidden" name="action" value="menu" />
       <input type="hidden" name="choice" value="{{ payload.talk.end }}" />
-      <button class="w-full rounded-lg bg-slate-800 font-semibold py-2 hover:bg-slate-700 transition">End the conversation</button>
+      <button class="w-full rounded-sm bg-hearth font-semibold py-2 hover:bg-edge transition">End the conversation</button>
     </form>
   </div>
 
   {% else %}
 
   <div>
-    <p class="text-xs uppercase tracking-wide text-slate-400 mb-2">What do you do?</p>
+    <p class="overline text-dust mb-2">What do you do?</p>
     <div class="space-y-2">
       {% for option in payload.options %}
-        <div class="rounded-xl border border-slate-700/80 bg-night/80 hover:border-ember/80 transition">
+        <div class="rounded-sm border border-edge bg-soot/80 hover:border-ember/80 transition">
           {% if not option.must_describe %}
             {# Quick: one click, the game fills in the details. #}
             <form hx-post="{{ url_for('handle_action') }}" hx-swap="none">
               <input type="hidden" name="action" value="menu" />
               <input type="hidden" name="choice" value="{{ option.code }}" />
               <button type="submit" class="w-full text-left px-4 py-3">
-                <p class="text-sm text-slate-400">{{ option.verb }} &bull; {{ option.stat }}</p>
+                <p class="text-sm text-dust">{{ option.verb }} &bull; {{ option.stat }}</p>
                 <p class="text-lg font-semibold">{{ option.label }}</p>
-                {% if option.note %}<p class="text-sm text-amber-300/90 mt-1">{{ option.note }}</p>{% endif %}
+                {% if option.note %}<p class="text-sm text-brass/90 mt-1">{{ option.note }}</p>{% endif %}
               </button>
             </form>
           {% endif %}
           {# Describe: your own words, read by the Keeper. Same Intent, same
              pipeline -- it is not a different game, just a longer sentence. #}
           <details class="px-4 {{ 'pb-3' if not option.must_describe else 'py-3' }}">
-            <summary class="cursor-pointer text-sm text-slate-400 hover:text-slate-200">
-              {% if option.must_describe %}<span class="text-lg font-semibold text-slate-100 block">{{ option.label }}</span>{% endif %}
+            <summary class="cursor-pointer text-sm text-dust hover:text-parchment">
+              {% if option.must_describe %}<span class="text-lg font-semibold text-parchment block">{{ option.label }}</span>{% endif %}
               Describe it yourself
             </summary>
             <form hx-post="{{ url_for('handle_action') }}" hx-swap="none" class="mt-2 space-y-2">
               <input type="hidden" name="action" value="menu" />
               <input type="hidden" name="choice" value="{{ option.code }}" />
               <textarea name="describe" rows="2" required
-                        class="w-full rounded-md bg-slate-800 border-slate-700 text-sm"
+                        class="w-full rounded-sm bg-hearth border-edge text-sm"
                         placeholder="What do you actually try?"></textarea>
-              <button class="w-full rounded-lg bg-ember/90 text-night font-semibold py-2 button-glow">Do it</button>
+              <button class="w-full rounded-sm bg-ember/90 text-night font-semibold py-2 button-glow">Do it</button>
             </form>
           </details>
         </div>
@@ -325,9 +325,9 @@
      visible directly above this button. #}
   <form hx-post="{{ url_for('handle_action') }}" hx-swap="none">
     <input type="hidden" name="action" value="rest" />
-    <button class="w-full rounded-xl bg-slate-800 px-4 py-3 text-left hover:bg-slate-700 transition">
+    <button class="w-full rounded-sm bg-hearth px-4 py-3 text-left hover:bg-edge transition">
       <span class="font-semibold">Camp for the night</span>
-      <span class="block text-sm text-slate-400">
+      <span class="block text-sm text-dust">
         Recover, and dream. The world moves while you sleep{% if payload.clocks and payload.clocks|length > 1 %} — {{ payload.clocks[1].name }} advances{% endif %}.
       </span>
     </button>
@@ -340,8 +340,8 @@
      it is the panel you read rather than the panel you act in. #}
 
   {% if payload.game_over %}
-    <div class="rounded-xl border border-red-500/60 bg-red-500/10 p-4">
-      <p class="text-lg font-semibold text-red-200">{{ payload.game_over_text }}</p>
+    <div class="rounded-sm border border-rust/70 bg-rust/10 p-4">
+      <p class="text-lg font-semibold text-flare">{{ payload.game_over_text }}</p>
     </div>
   {% endif %}
   </div>

@@ -57,7 +57,7 @@
   /* Extra breathing room inside the frame */
   --input-overlay: rgba(0, 0, 0, 0.15);
   /* Dark tint over input background */
-  --input-text: #e2e8f0;
+  --input-text: #e6dccb;
   /* Color of text in inputs (light gray) */
 
   /* --- SCENARIO SELECTOR SETTINGS ---
@@ -240,7 +240,7 @@ body.is-thinking .thinking-bar {
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: #c3c08d;
-  background: rgba(10, 8, 12, 0.75);
+  background: rgba(14, 11, 9, 0.78);
   border: 1px solid rgba(195, 192, 141, 0.35);
   border-radius: 2px;
   cursor: pointer;
@@ -287,8 +287,8 @@ body.is-thinking .thinking-bar {
 
 /* The actual panel box in the center */
 .settings-panel {
-  background: rgba(15, 20, 30, 0.95);
-  border: 2px solid rgba(255, 255, 255, 0.1);
+  background: rgba(20, 16, 14, 0.96);
+  border: 1px solid rgba(230, 220, 203, 0.12);
   border-radius: 16px;
   padding: 2.5rem 3rem;
   text-align: center;
@@ -310,14 +310,14 @@ body.is-thinking .thinking-bar {
 .settings-close {
   background: transparent;
   border: none;
-  color: rgba(226, 232, 240, 0.5);
+  color: rgba(230, 220, 203, 0.5);
   font-size: 0.85rem;
   cursor: pointer;
   transition: color 0.2s ease;
 }
 
 .settings-close:hover {
-  color: rgba(226, 232, 240, 0.8);
+  color: rgba(230, 220, 203, 0.8);
 }
 
 
@@ -474,7 +474,7 @@ body.is-thinking .thinking-bar {
   content: "";
   position: absolute;
   inset: var(--tile-gap);
-  background: rgba(18, 22, 32, 0.18);
+  background: rgba(28, 23, 21, 0.22);
   backdrop-filter: blur(0.6px);
   border-radius: calc(16px - var(--tile-gap) * 0.85);
   box-shadow:
@@ -492,8 +492,34 @@ body.is-thinking .thinking-bar {
 }
 
 
+/* The small uppercase label over a card -- "Your progress", "With you",
+   "Against you". Tailwind's `tracking-wide` is 0.025em, which is barely
+   letterspaced at all; the Continue cards this is modelled on sit at 0.09em
+   and that spacing is most of what makes them read as labels rather than as
+   very small sentences. Colour comes from whatever text-* class is alongside,
+   because the colour is the thing being said. */
+.overline {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* Tailwind's forms plugin paints every checked radio and checkbox
+   blue-600. Nothing is visibly blue today only because the scenario radios
+   happen to be transparent -- the next checkbox anyone adds would not be so
+   lucky. */
+:root {
+  accent-color: #f97316;
+}
+
+[type="radio"]:checked,
+[type="checkbox"]:checked {
+  background-color: #f97316;
+  border-color: #f97316;
+}
+
 .backdrop-overlay {
-  background: radial-gradient(circle at top, rgba(12, 16, 32, 0.2), rgba(5, 7, 12, 0.85));
+  background: radial-gradient(circle at top, rgba(30, 20, 14, 0.22), rgba(8, 6, 5, 0.86));
 }
 
 .scroll-fade {
@@ -502,12 +528,12 @@ body.is-thinking .thinking-bar {
 
 .button-glow {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
-  box-shadow: 0 6px 16px rgba(15, 118, 110, 0.35);
+  box-shadow: 0 6px 16px rgba(120, 52, 18, 0.45);
 }
 
 .button-glow:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 28px rgba(16, 185, 129, 0.45);
+  box-shadow: 0 10px 28px rgba(249, 115, 22, 0.35);
 }
 
 /* Universal Utilities */
@@ -576,7 +602,7 @@ textarea.u-input {
 }
 
 .u-input::placeholder {
-  color: rgba(226, 232, 240, 0.6);
+  color: rgba(230, 220, 203, 0.6);
 }
 
 /* Scenario selector cards */
@@ -760,7 +786,7 @@ textarea.u-input {
 .world-panel::-webkit-scrollbar-thumb,
 .roster-panel::-webkit-scrollbar-thumb,
 .creator-panel::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(230, 220, 203, 0.28);
   border-radius: 999px;
 }
 
@@ -782,7 +808,7 @@ textarea.u-input {
   text-transform: uppercase;
   letter-spacing: 0.15em;
   font-size: 0.65rem;
-  color: rgba(226, 232, 240, 0.7);
+  color: rgba(230, 220, 203, 0.7);
 }
 
 .panel-title {
@@ -793,7 +819,7 @@ textarea.u-input {
 
 .panel-subtle {
   font-size: 0.85rem;
-  color: rgba(226, 232, 240, 0.7);
+  color: rgba(230, 220, 203, 0.7);
   margin-bottom: 1rem;
 }
 
@@ -809,7 +835,7 @@ textarea.u-input {
 }
 
 .u-scroll::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(230, 220, 203, 0.22);
   border-radius: 999px;
 }
 
@@ -833,7 +859,7 @@ textarea.u-input {
   border-image-slice: var(--selector-slice) fill;
   border-image-width: calc(var(--selector-width) / 1.4);
   border-image-repeat: stretch;
-  background-color: rgba(6, 5, 10, 0.75);
+  background-color: rgba(11, 9, 8, 0.78);
   box-shadow:
     inset 0 0 25px rgba(0, 0, 0, 0.55),
     0 8px 18px rgba(0, 0, 0, 0.35);
@@ -849,7 +875,7 @@ textarea.u-input {
 
 .world-entry-subtitle {
   font-size: 0.85rem;
-  color: rgba(226, 232, 240, 0.8);
+  color: rgba(230, 220, 203, 0.8);
   margin-top: 0.25rem;
 }
 
@@ -896,7 +922,7 @@ textarea.u-input {
 
 .world-preview-copy {
   font-size: 0.9rem;
-  color: rgba(226, 232, 240, 0.8);
+  color: rgba(230, 220, 203, 0.8);
 }
 
 .world-blueprint {
@@ -914,7 +940,7 @@ textarea.u-input {
 .blueprint-grid dt {
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: rgba(226, 232, 240, 0.65);
+  color: rgba(230, 220, 203, 0.65);
   font-size: 0.7rem;
 }
 
@@ -932,12 +958,12 @@ textarea.u-input {
   text-transform: uppercase;
   font-size: 0.7rem;
   letter-spacing: 0.1em;
-  color: rgba(226, 232, 240, 0.65);
+  color: rgba(230, 220, 203, 0.65);
   margin-bottom: 0.4rem;
 }
 
 .blueprint-section .body {
-  color: rgba(248, 250, 252, 0.85);
+  color: rgba(230, 220, 203, 0.85);
   line-height: 1.5;
 }
 
@@ -975,7 +1001,7 @@ textarea.u-input {
   bottom: 0;
   margin-top: 1.5rem;
   padding-top: 0.75rem;
-  background: linear-gradient(to top, rgba(6, 5, 10, 0.95) 60%, transparent);
+  background: linear-gradient(to top, rgba(11, 9, 8, 0.95) 60%, transparent);
 }
 
 .roster-filter {
@@ -992,8 +1018,8 @@ textarea.u-input {
   font-size: 0.85rem;
   font-family: inherit;
   color: var(--input-text);
-  background: rgba(6, 5, 10, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(11, 9, 8, 0.75);
+  border: 1px solid rgba(230, 220, 203, 0.14);
   border-radius: 3px;
 }
 
@@ -1006,7 +1032,7 @@ textarea.u-input {
   font-size: 0.7rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(226, 232, 240, 0.55);
+  color: rgba(230, 220, 203, 0.55);
   white-space: nowrap;
 }
 
@@ -1014,7 +1040,7 @@ textarea.u-input {
   text-transform: uppercase;
   letter-spacing: 0.18em;
   font-size: 0.7rem;
-  color: rgba(226, 232, 240, 0.55);
+  color: rgba(230, 220, 203, 0.55);
   margin-top: 0.75rem;
 }
 
@@ -1041,8 +1067,8 @@ textarea.u-input {
   width: 36px;
   height: 36px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(15, 15, 20, 0.8);
+  border: 1px solid rgba(230, 220, 203, 0.2);
+  background: rgba(20, 16, 14, 0.85);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1071,8 +1097,8 @@ textarea.u-input {
   text-decoration: none;
   color: inherit;
   border-radius: 10px;
-  background: rgba(12, 10, 16, 0.65);
-  border: 1px solid rgba(255, 255, 255, 0.04);
+  background: rgba(20, 16, 14, 0.7);
+  border: 1px solid rgba(230, 220, 203, 0.05);
 }
 
 .roster-body img {
@@ -1089,7 +1115,7 @@ textarea.u-input {
 
 .roster-meta {
   font-size: 0.8rem;
-  color: rgba(226, 232, 240, 0.75);
+  color: rgba(230, 220, 203, 0.75);
 }
 
 .portrait-preview {
@@ -1200,8 +1226,8 @@ textarea.u-input {
   border-radius: 12px;
   text-decoration: none;
   color: inherit;
-  background: rgba(8, 8, 14, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(18, 14, 12, 0.75);
+  border: 1px solid rgba(230, 220, 203, 0.06);
   transition: filter 0.2s ease;
 }
 
@@ -1228,7 +1254,7 @@ textarea.u-input {
 
 .pc-meta {
   font-size: 0.8rem;
-  color: rgba(226, 232, 240, 0.7);
+  color: rgba(230, 220, 203, 0.7);
 }
 
 .creator-form {
@@ -1251,7 +1277,7 @@ textarea.u-input {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   font-size: 0.75rem;
-  color: rgba(226, 232, 240, 0.7);
+  color: rgba(230, 220, 203, 0.7);
 }
 /* ---- Continue cards: resume an unfinished campaign -------------------- */
 .continue-strip { margin: 0 0 1.5rem; }
@@ -1333,7 +1359,7 @@ textarea.u-input {
 }
 
 .play-panel::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(230, 220, 203, 0.28);
   border-radius: 999px;
 }
 

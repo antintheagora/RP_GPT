@@ -17,7 +17,7 @@
           <p class="panel-overline">Playable heroes</p>
           <h2 class="panel-title">Select a protagonist</h2>
         </div>
-        <a href="{{ url_for('world_roster', slug=world.slug) }}" class="text-xs uppercase tracking-wide text-slate-400 hover:text-white">Back to roster</a>
+        <a href="{{ url_for('world_roster', slug=world.slug) }}" class="overline text-dust hover:text-bone">Back to roster</a>
       </div>
       <p class="panel-subtle">Use an existing hero or craft a new one (builder coming soon).</p>
       <div class="pc-actions">
@@ -33,7 +33,7 @@
           </div>
         </a>
         {% else %}
-        <p class="text-xs text-slate-500">No player profiles found. Create one in Characters/Player_Character.</p>
+        <p class="text-xs text-ash">No player profiles found. Create one in Characters/Player_Character.</p>
         {% endfor %}
       </div>
     </div>
@@ -70,7 +70,7 @@
         <button class="u-button outline flex-1 min-w-[180px]" type="button" disabled title="Portrait regen coming soon">Regenerate portrait</button>
       </div>
       {% else %}
-      <p class="text-sm text-slate-400">Select a hero to preview their portrait.</p>
+      <p class="text-sm text-dust">Select a hero to preview their portrait.</p>
       {% endif %}
     </div>
   </div>
@@ -97,13 +97,13 @@
         <input type="hidden" name="player" value="{{ selected.slug }}" />
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-xs tracking-wide uppercase text-slate-400">Name</label>
+            <label class="block overline text-dust">Name</label>
             <div class="mt-1 u-input-shell">
               <input class="u-input" name="name" value="{{ selected.name }}" />
             </div>
           </div>
           <div>
-            <label class="block text-xs tracking-wide uppercase text-slate-400">Scenario label</label>
+            <label class="block overline text-dust">Scenario label</label>
             <div class="mt-1 u-input-shell">
               <input class="u-input" name="scenario_label" value="{{ selected.scenario_label }}" />
             </div>
@@ -111,32 +111,32 @@
         </div>
         <div class="grid grid-cols-3 gap-3">
           <div>
-            <label class="block text-xs tracking-wide uppercase text-slate-400">Sex</label>
+            <label class="block overline text-dust">Sex</label>
             <div class="mt-1 u-input-shell">
               <input class="u-input" name="sex" value="{{ selected.sex }}" />
             </div>
           </div>
           <div>
-            <label class="block text-xs tracking-wide uppercase text-slate-400">Age</label>
+            <label class="block overline text-dust">Age</label>
             <div class="mt-1 u-input-shell">
               <input class="u-input" type="number" name="age" value="{{ selected.age }}" />
             </div>
           </div>
           <div>
-            <label class="block text-xs tracking-wide uppercase text-slate-400">Clothing</label>
+            <label class="block overline text-dust">Clothing</label>
             <div class="mt-1 u-input-shell">
               <input class="u-input" name="clothing" value="{{ selected.clothing }}" />
             </div>
           </div>
         </div>
         <div>
-          <label class="block text-xs tracking-wide uppercase text-slate-400">Appearance</label>
+          <label class="block overline text-dust">Appearance</label>
           <div class="mt-1 u-input-shell">
             <textarea class="u-input" rows="3" name="appearance">{{ selected.appearance }}</textarea>
           </div>
         </div>
         <div>
-          <label class="block text-xs tracking-wide uppercase text-slate-400">SPECIAL stats</label>
+          <label class="block overline text-dust">SPECIAL stats</label>
           <div class="stat-grid">
             {% for stat in special_keys %}
             <label>
@@ -151,7 +151,7 @@
         <button class="u-button w-full" type="submit">Save hero</button>
       </form>
       {% else %}
-      <p class="text-sm text-slate-400">Select a hero on the left to edit their profile.</p>
+      <p class="text-sm text-dust">Select a hero on the left to edit their profile.</p>
       {% endif %}
     </div>
   </div>

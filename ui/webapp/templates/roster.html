@@ -17,7 +17,7 @@
           <p class="panel-overline">World roster</p>
           <h2 class="panel-title">{{ world.title }}</h2>
         </div>
-        <a href="{{ url_for('landing') }}" class="text-xs uppercase tracking-wide text-slate-400 hover:text-white">Back to worlds</a>
+        <a href="{{ url_for('landing') }}" class="overline text-dust hover:text-bone">Back to worlds</a>
       </div>
       <p class="panel-subtle">Toggle who travels with this world. Pick at least one companion to continue.</p>
       {# The registry is global and keeps everyone every campaign has ever
@@ -53,7 +53,7 @@
           </a>
         </div>
         {% else %}
-        <p class="text-xs text-slate-500">No {{ label|lower }} yet.</p>
+        <p class="text-xs text-ash">No {{ label|lower }} yet.</p>
         {% endfor %}
         {% endfor %}
       </div>
@@ -89,7 +89,7 @@
         <button class="u-button outline" disabled title="Coming soon">New character</button>
       </div>
       {% else %}
-      <p class="text-sm text-slate-400">No character selected. Add heroes via the desktop builder.</p>
+      <p class="text-sm text-dust">No character selected. Add heroes via the desktop builder.</p>
       {% endif %}
     </div>
   </div>
@@ -120,20 +120,20 @@
       <form method="post" action="{{ url_for('update_character_profile', slug=world.slug, role=current.role, char_slug=current.slug) }}" class="character-form u-scroll scroll-fade">
         <input type="hidden" name="char" value="{{ char_param or '' }}" />
         <div>
-          <label class="block text-xs tracking-wide uppercase text-slate-400">Name</label>
+          <label class="block overline text-dust">Name</label>
           <div class="mt-1 u-input-shell">
             <input class="u-input" name="name" value="{{ current.name }}" />
           </div>
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-xs tracking-wide uppercase text-slate-400">Role</label>
+            <label class="block overline text-dust">Role</label>
             <div class="mt-1 u-input-shell">
               <input class="u-input" value="{{ current.role }}" readonly />
             </div>
           </div>
           <div>
-            <label class="block text-xs tracking-wide uppercase text-slate-400">Kind</label>
+            <label class="block overline text-dust">Kind</label>
             <div class="mt-1 u-input-shell">
               <input class="u-input" name="kind" value="{{ current.kind }}" />
             </div>
@@ -141,45 +141,45 @@
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-xs tracking-wide uppercase text-slate-400">Sex</label>
+            <label class="block overline text-dust">Sex</label>
             <div class="mt-1 u-input-shell">
               <input class="u-input" name="sex" value="{{ current.sex }}" />
             </div>
           </div>
           <div>
-            <label class="block text-xs tracking-wide uppercase text-slate-400">Species</label>
+            <label class="block overline text-dust">Species</label>
             <div class="mt-1 u-input-shell">
               <input class="u-input" name="species" value="{{ current.species }}" />
             </div>
           </div>
         </div>
         <div>
-          <label class="block text-xs tracking-wide uppercase text-slate-400">Short description</label>
+          <label class="block overline text-dust">Short description</label>
           <div class="mt-1 u-input-shell">
             <input class="u-input" name="desc" value="{{ current.desc }}" />
           </div>
         </div>
         <div>
-          <label class="block text-xs tracking-wide uppercase text-slate-400">Bio</label>
+          <label class="block overline text-dust">Bio</label>
           <div class="mt-1 u-input-shell">
             <textarea class="u-input" name="bio" rows="4">{{ current.bio }}</textarea>
           </div>
         </div>
         <div>
-          <label class="block text-xs tracking-wide uppercase text-slate-400">Personality</label>
+          <label class="block overline text-dust">Personality</label>
           <div class="mt-1 u-input-shell">
             <input class="u-input" name="personality" value="{{ current.personality }}" />
           </div>
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-xs tracking-wide uppercase text-slate-400">HP</label>
+            <label class="block overline text-dust">HP</label>
             <div class="mt-1 u-input-shell">
               <input class="u-input" type="number" name="hp" value="{{ current.hp }}" />
             </div>
           </div>
           <div>
-            <label class="block text-xs tracking-wide uppercase text-slate-400">Attack</label>
+            <label class="block overline text-dust">Attack</label>
             <div class="mt-1 u-input-shell">
               <input class="u-input" type="number" name="attack" value="{{ current.attack }}" />
             </div>
@@ -188,7 +188,7 @@
         <button class="u-button w-full mt-4" type="submit">Save character</button>
       </form>
       {% else %}
-      <p class="text-sm text-slate-400">Select someone from the left column to edit their profile.</p>
+      <p class="text-sm text-dust">Select someone from the left column to edit their profile.</p>
       {% endif %}
       {# Sticky, because it sat under a 520px character form inside a panel
          that scrolls -- the only way forward from this screen was below the

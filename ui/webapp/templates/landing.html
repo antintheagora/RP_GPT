@@ -44,7 +44,7 @@
           <p class="panel-overline">World Directory</p>
           <h2 class="panel-title">World Roster</h2>
         </div>
-        <a href="{{ url_for('legacy_start') }}" class="text-xs uppercase tracking-wide text-slate-400 hover:text-white">Legacy setup</a>
+        <a href="{{ url_for('legacy_start') }}" class="overline text-dust hover:text-bone">Legacy setup</a>
       </div>
       <p class="panel-subtle">Select an existing setting or spin up a custom one.</p>
       <div class="world-list u-scroll scroll-fade">
@@ -94,7 +94,7 @@
         <button class="u-button w-full" {% if selected.is_virtual %}disabled title="World creation UI coming soon"{% endif %}>Use World</button>
       </form>
       {% else %}
-      <p class="text-sm text-slate-400">No saved worlds yet. Create one in the desktop client or via the upcoming builder.</p>
+      <p class="text-sm text-dust">No saved worlds yet. Create one in the desktop client or via the upcoming builder.</p>
       {% endif %}
     </div>
   </div>
@@ -119,7 +119,7 @@
       {% if selected %}
       <div class="world-blueprint u-scroll scroll-fade">
         {% if selected.is_virtual %}
-        <p class="text-sm text-slate-300 leading-relaxed">You're about to craft a brand new setting. The upcoming builder will capture lore bibles, act pacing, and roster choices. For now, continue via the legacy launcher if you need to spin up a bespoke run immediately.</p>
+        <p class="text-sm text-tan leading-relaxed">You're about to craft a brand new setting. The upcoming builder will capture lore bibles, act pacing, and roster choices. For now, continue via the legacy launcher if you need to spin up a bespoke run immediately.</p>
         {% else %}
         <dl class="blueprint-grid">
           <div>
@@ -150,7 +150,7 @@
         {% endif %}
       </div>
       {% else %}
-      <p class="text-sm text-slate-400">Select a world to review its blueprint.</p>
+      <p class="text-sm text-dust">Select a world to review its blueprint.</p>
       {% endif %}
     </div>
   </div>

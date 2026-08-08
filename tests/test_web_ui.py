@@ -228,6 +228,93 @@ def test_every_asset_is_spelled_the_way_it_is_stored():
             )
 
 
+# =============================
+# -------- ONE PALETTE --------
+# =============================
+#
+# The play screen was built out of Tailwind's stock `slate`, and `night` was
+# #0f172a -- which is slate-900, a *blue* black. So the part of the app you
+# spend the entire game looking at sat in cold blue-grey, while the world
+# cards, the Continue strip, the live chronicle and the frame art were all
+# warm near-black, rust and cream. Two applications on one screen.
+
+COOL_UTILITY = re.compile(
+    r"\b(?:text|bg|border|from|to|via|ring|divide|placeholder)-"
+    r"(?:slate|gray|zinc|neutral|stone|sky|cyan|teal|emerald|green|lime|"
+    r"indigo|violet|purple|fuchsia|blue)-\d+"
+)
+
+
+def _hues(css: str):
+    """Every colour literal in a stylesheet, as (r, g, b, where)."""
+    for match in re.finditer(r"rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)", css):
+        yield (int(match.group(1)), int(match.group(2)), int(match.group(3)),
+               match.group(0))
+    for match in re.finditer(r"#([0-9a-fA-F]{6})\b", css):
+        value = match.group(1)
+        yield (int(value[0:2], 16), int(value[2:4], 16), int(value[4:6], 16),
+               match.group(0))
+
+
+@pytest.mark.parametrize("name", [
+    "base.html", "landing.html", "play.html", "roster.html", "characters.html",
+    "legacy_start.html", "partials/turn_panel.html", "partials/log_panel.html",
+])
+def test_no_screen_reaches_for_a_cool_colour(name):
+    found = COOL_UTILITY.findall((TEMPLATES / name).read_text(encoding="utf-8"))
+    assert not found, f"{name} still uses {sorted(set(found))}"
+
+
+def test_the_stylesheet_has_no_blue_left_in_it():
+    """`rgba(226, 232, 240, x)` is slate-200 and it was the colour of nearly
+    every label on the setup screens. The grounds were worse: rgba(8, 8, 14)
+    and rgba(12, 10, 16) are near-black with a violet cast."""
+    css = (STATIC / "app.css").read_text(encoding="utf-8")
+    cool = [where for r, g, b, where in _hues(css) if b > r + 12 and b > g + 6]
+    assert not cool, f"cool tints left in app.css: {sorted(set(cool))}"
+
+
+def test_the_palette_is_declared_in_one_place():
+    base = (TEMPLATES / "base.html").read_text(encoding="utf-8")
+    for name in ("pitch", "night", "soot", "hearth", "edge",
+                 "bone", "parchment", "tan", "dust", "ash",
+                 "rust", "flare", "brass", "verdigris", "ember"):
+        assert f"{name}:" in base, f"{name} is not in the palette"
+    # The comment above the palette names the old value, so check the
+    # declaration rather than the file.
+    assert "night: '#0f172a'" not in base, "night is slate-900 again"
+
+
+def test_rust_builds_and_flare_speaks():
+    """#b3311f is 2.96:1 against a card -- right for a filled clock segment
+    or a hairline, and far too dark to read a word in. It was carrying
+    "Closing in", every wound, and the line that says the campaign is over."""
+    for path in TEMPLATES.rglob("*.html"):
+        text = path.read_text(encoding="utf-8")
+        assert not re.search(r"\btext-rust\b", text), (
+            f"{path.name} sets body text in the structural rust"
+        )
+
+
+def test_labels_are_letterspaced_like_labels():
+    """Tailwind's tracking-wide is 0.025em. The cards this is modelled on sit
+    near 0.09em, and that spacing is most of what makes a label read as a
+    label rather than as a very small sentence."""
+    css = (STATIC / "app.css").read_text(encoding="utf-8")
+    rule = css[css.index(".overline {"):]
+    spacing = re.search(r"letter-spacing:\s*([\d.]+)em", rule[:200])
+    assert spacing and float(spacing.group(1)) >= 0.08
+
+
+def test_the_forms_plugin_cannot_paint_anything_blue():
+    """Tailwind's forms plugin colours every checked control blue-600.
+    Nothing is visibly blue today only because the scenario radios happen to
+    be transparent; the next checkbox anyone adds would not be so lucky."""
+    css = (STATIC / "app.css").read_text(encoding="utf-8")
+    assert "accent-color" in css
+    assert '[type="radio"]:checked' in css
+
+
 def test_the_fog_can_be_turned_off_by_the_operating_system():
     """Eighty soft radial gradients, each up to 700px across, redrawn on every
     frame the display could offer -- forever, and on a laptop, audibly."""
