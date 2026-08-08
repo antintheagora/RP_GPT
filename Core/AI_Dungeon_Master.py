@@ -400,14 +400,41 @@ def compress_and_sanitize(text: str, max_len: int = 360) -> str:
     return text[:max_len]
 
 
+#: The look this campaign is being drawn in. A module-level override rather
+#: than a parameter because `image_style_prefix()` is read by nine prompt
+#: builders in Core/Image_Gen.py, none of which is handed the game state --
+#: the same reason `set_extra_world_text` exists a few lines above.
+#:
+#: Empty means "whatever the environment and Core.Config say", which is what
+#: every campaign started before this could be chosen.
+_CHOSEN_STYLE = ""
+
+
+def set_image_style(name: str) -> None:
+    """Draw this campaign in `name`. Unknown names are ignored, not fatal."""
+    global _CHOSEN_STYLE
+    from Core.Config import IMAGE_STYLES
+
+    name = (name or "").strip().lower()
+    _CHOSEN_STYLE = name if name in IMAGE_STYLES else ""
+
+
+def get_image_style() -> str:
+    """The chosen style, or the configured default."""
+    from Core.Config import get_config
+
+    return _CHOSEN_STYLE or get_config().image_style
+
+
 def default_image_style_prefix() -> str:
-    """Consistent vibe for renders (retro FMV / Bryce-like).
+    """Consistent vibe for renders.
 
-    Keep this short: style should *augment* content rather than dominate the token budget.
+    Keep this short: style should *augment* content rather than dominate the
+    token budget.
     """
-    from Core.Config import IMAGE_STYLES, get_config
+    from Core.Config import IMAGE_STYLES
 
-    return IMAGE_STYLES[get_config().image_style]
+    return IMAGE_STYLES[get_image_style()]
 
 
 def image_prompt_from_state(
@@ -1070,7 +1097,7 @@ __all__ = [
     # Image helpers (importable by your image pipeline)
     "SAFE_WORDS",
     "compress_and_sanitize",
-    "default_image_style_prefix",
+    "default_image_style_prefix", "set_image_style", "get_image_style",
     "image_prompt_from_state",
     # Narrative prompt builders
     "campaign_blueprint_prompt",

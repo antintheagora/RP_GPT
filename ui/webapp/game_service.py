@@ -33,6 +33,7 @@ from engine.bridge import (
     sync_foes,
 )
 from engine.events import collecting
+from engine import comfy
 from engine.imagery import ImageRequest, ImageResult, ImageWorker
 from engine.model import IMG_HEIGHT, IMG_WIDTH, MAX_CARRIED_STAT_BONUS
 from engine.keeper import ModelKeeper
@@ -55,6 +56,7 @@ from Core.AI_Dungeon_Master import (
     campaign_blueprint_prompt,
     campaign_blueprint_schema,
     set_extra_world_text,
+    set_image_style,
 )
 
 from Core.Helpers import sanitize_prose
@@ -388,6 +390,11 @@ class GameSession:
         # fetch is on a worker now and a turn never waits for it, so the
         # default goes back to on -- and the setup config can still say no.
         state.images_enabled = bool(config.get("images", True))
+        # Onto the state, then applied. Setting the module-level style without
+        # recording it would give the first session the chosen look and every
+        # resume of it the default.
+        state.image_style = str(config.get("image_style", "") or "").strip().lower()
+        set_image_style(state.image_style)
         begin_act(state, 1)
         try:
             core.queue_image_event(
@@ -410,6 +417,10 @@ class GameSession:
 
     def _apply_world_text(self) -> None:
         set_extra_world_text(self.world_text)
+        # Both are module-level state that a resumed session has to restore.
+        # The style is on the state rather than in the process config because
+        # two campaigns can want different looks and only one can be current.
+        set_image_style(getattr(self.state, "image_style", ""))
 
     def _append_event(self, text: str) -> None:
         cleaned = clean_output(text)
@@ -1193,6 +1204,26 @@ class GameSession:
         with self._lock:
             return list(self._events[-limit:])
 
+
+    def set_image_style(self, name: str) -> None:
+        """Change the look this campaign is drawn in, from here on.
+
+        Recorded on the state as well as applied, or the change would last
+        until the next resume and then quietly revert. Pictures already drawn
+        keep the style they were drawn in -- redrawing a campaign's back
+        catalogue on a settings change is a lot of GPU for a decision the
+        player may undo in ten seconds.
+        """
+        from Core.Config import IMAGE_STYLES
+
+        name = (name or "").strip().lower()
+        if name not in IMAGE_STYLES:
+            return
+        with self._lock:
+            self.state.image_style = name
+            set_image_style(name)
+            self.save()
+
     def _build_imagery(self) -> ImageWorker:
         """The picture worker for this run.
 
@@ -1204,8 +1235,35 @@ class GameSession:
         def fetch(prompt: str, out_path: str) -> None:
             # Seeded on the file itself, so the same turn always redraws to
             # the same picture but the next turn does not.
+            seed = abs(hash(out_path))
+
+            # The model on this machine first.
+            #
+            # Pictures were the last thing in the game that left the computer,
+            # and every prompt carried the player's own description of their
+            # character and paragraphs of their campaign. The whole argument
+            # for running the language model locally applies at least as hard
+            # to the images. A local render is also about five seconds against
+            # thirty, and it does not fail when the wifi does.
+            #
+            # Checked per picture rather than once at startup: ComfyUI is a
+            # separate application a player may quit, and finding that out at
+            # the moment of use costs one cheap request.
+            if comfy.available():
+                try:
+                    rendered = comfy.render(prompt, IMG_WIDTH, IMG_HEIGHT, seed)
+                    Path(out_path).write_bytes(rendered.data)
+                    _log.debug("rendered locally in %.1fs", rendered.seconds)
+                    return
+                except comfy.ComfyUnavailable:
+                    _log.info("local render failed; falling back to the host",
+                              exc_info=True)
+
+            # No ComfyUI, or it fell over mid-render. The old path still
+            # works, and a picture from anywhere beats no picture -- but the
+            # player was told at setup that this one leaves the machine.
             primary, simple = build_urls_with_fallbacks(
-                prompt, IMG_WIDTH, IMG_HEIGHT, seed=abs(hash(out_path)))
+                prompt, IMG_WIDTH, IMG_HEIGHT, seed=seed)
             download_image(primary, out_path, simplified_url=simple)
 
         return ImageWorker(

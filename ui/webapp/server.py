@@ -853,15 +853,68 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
                     state.act.undiscovered.append(actor)
                     known.add(actor.name.lower())
 
+
+    def _setup_context(previous=None, error=None):
+        """What the setup screen needs to draw itself.
+
+        Both the first GET and the error re-render want these, and the last
+        time this template gained a field only one of the two learned about
+        it. `available()` is a live check: ComfyUI is a separate application
+        the player may not have started, and the screen says something
+        different -- and true -- in each case.
+        """
+        from Core.Config import DEFAULT_IMAGE_STYLE, OFFERED_IMAGE_STYLES
+        from engine import comfy
+
+        previous = previous or {}
+        return {
+            "has_active": bool(_current_session()),
+            "previous": previous,
+            "error": error,
+            "default_model": DEFAULT_MODEL,
+            "styles": OFFERED_IMAGE_STYLES,
+            "chosen_style": previous.get("image_style") or DEFAULT_IMAGE_STYLE,
+            "local_art": comfy.available(),
+        }
+
+
+    @app.context_processor
+    def _art_styles():
+        """The style picker's data, on every page that has a menu.
+
+        A context processor rather than a per-route argument: the menu lives
+        in base.html, so every template that extends it would otherwise have
+        to remember to pass these -- which is exactly how the setup screen
+        ended up with a field only one of its two render paths knew about.
+        """
+        from Core.Config import DEFAULT_IMAGE_STYLE, OFFERED_IMAGE_STYLES
+
+        # A context processor runs for *every* render, including the ones the
+        # tests do inside an app context with no request behind them --
+        # `_current_session` reads the cookie session, which needs one. A
+        # template with no request has no campaign, which is the same answer
+        # as no session.
+        try:
+            session = _current_session()
+        except RuntimeError:
+            session = None
+        if session is None:
+            return {"art_styles": None, "art_style": DEFAULT_IMAGE_STYLE}
+        return {
+            "art_styles": OFFERED_IMAGE_STYLES,
+            "art_style": getattr(session.state, "image_style", "") or DEFAULT_IMAGE_STYLE,
+        }
+
+    @app.post("/style")
+    def choose_style():
+        """Change the look of a campaign already under way."""
+        session = _require_session()
+        session.set_image_style(request.form.get("image_style") or "")
+        return redirect(url_for("play"))
+
     @app.get("/legacy-start")
     def legacy_start():
-        return render_template(
-            "legacy_start.html",
-            has_active=bool(_current_session()),
-            previous={},
-            error=None,
-            default_model=DEFAULT_MODEL,
-        )
+        return render_template("legacy_start.html", **_setup_context())
 
     @app.post("/start")
     def start_game():
@@ -877,6 +930,10 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
             # reads as "no". Nothing posted `images` before, so the default
             # was taken every time and the answer was always yes.
             "images": bool(form.get("images")),
+            # The look. Validated against the table on the way in, so a
+            # hand-posted value cannot put the campaign in a style that
+            # does not exist.
+            "image_style": form.get("image_style") or "",
             "player": {
                 "name": form.get("player_name") or "Explorer",
                 "age": form.get("player_age") or None,
@@ -890,8 +947,8 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
             session = _store().create_session(config)
         except GemmaError as exc:
             return (
-                render_template("legacy_start.html", error=str(exc),
-                                previous=form.to_dict(flat=True),
+                render_template("legacy_start.html",
+                                **_setup_context(form.to_dict(flat=True), str(exc)),
                                 has_active=False, default_model=DEFAULT_MODEL),
                 400,
             )

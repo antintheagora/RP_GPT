@@ -108,14 +108,47 @@
                      {% if not previous or previous.get('images') %}checked{% endif %} />
               <span>
                 <span class="block text-parchment">Generate pictures</span>
-                <span class="block text-sm text-dust mt-1">
-                  Scenes and portraits are drawn by an outside service, so the
-                  description of your character and the situation you are in
-                  are sent to it. Everything else in the game runs on this
-                  machine. Turn this off and nothing leaves it.
-                </span>
+                {# What this actually costs depends on what is running. It
+                   said "an outside service" flatly, which stopped being true
+                   the moment a local renderer existed -- and the whole point
+                   of saying it was that it was true. #}
+                {% if local_art %}
+                  <span class="block text-sm text-dust mt-1">
+                    Drawn on this machine by FLUX.2 Klein, through ComfyUI.
+                    Nothing leaves the computer. About five seconds a picture.
+                  </span>
+                {% else %}
+                  <span class="block text-sm text-dust mt-1">
+                    ComfyUI is not running, so scenes and portraits would be
+                    drawn by an outside service &mdash; which means the
+                    description of your character and the situation you are in
+                    are sent to it. Start ComfyUI to keep it all on this
+                    machine, or turn this off and nothing leaves it.
+                  </span>
+                {% endif %}
               </span>
             </label>
+          </div>
+
+          {# The look. A taste decision, so it is a question rather than a
+             constant -- and the local model is good enough at style that the
+             answer changes the game rather than tinting it. #}
+          <div>
+            <p class="block text-sm">Art style</p>
+            <div class="mt-1 space-y-2">
+              {% for key, label, blurb in styles %}
+                <label class="flex items-start gap-3 rounded-sm border p-3 cursor-pointer transition
+                              {{ 'border-ember/70 bg-ember/5' if key == chosen_style else 'border-edge bg-soot/60 hover:border-brass/60' }}">
+                  <input type="radio" name="image_style" value="{{ key }}"
+                         class="mt-1 h-4 w-4 accent-ember"
+                         {% if key == chosen_style %}checked{% endif %} />
+                  <span>
+                    <span class="block text-parchment">{{ label }}</span>
+                    <span class="block text-sm text-dust mt-0.5">{{ blurb }}</span>
+                  </span>
+                </label>
+              {% endfor %}
+            </div>
           </div>
 
           <div>

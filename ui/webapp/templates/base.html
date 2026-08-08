@@ -55,6 +55,31 @@
   <div id="settings-overlay" class="settings-overlay hidden">
     <div class="settings-panel">
       <h2 class="settings-title">Menu</h2>
+
+      {# The look, changeable mid-campaign. It is a taste decision and taste
+         changes -- and unlike the model or the world bible, nothing already
+         written depends on it. Only offered inside a game, because there is
+         no campaign to restyle from the landing page. #}
+      {% if art_styles %}
+        <form method="post" action="{{ url_for('choose_style') }}" class="settings-styles" data-quiet>
+          <p class="settings-label">Art style</p>
+          {% for key, label, blurb in art_styles %}
+            <label class="settings-style {{ 'is-chosen' if key == art_style else '' }}">
+              <input type="radio" name="image_style" value="{{ key }}"
+                     {% if key == art_style %}checked{% endif %} />
+              <span>
+                <span class="settings-style-name">{{ label }}</span>
+                <span class="settings-style-note">{{ blurb }}</span>
+              </span>
+            </label>
+          {% endfor %}
+          <button type="submit" class="u-button settings-btn">Use this look</button>
+          <p class="settings-style-note">
+            Pictures already drawn keep the style they were drawn in.
+          </p>
+        </form>
+      {% endif %}
+
       <div class="settings-actions">
         <a href="{{ url_for('landing') }}" class="u-button" data-menu="close">Worlds</a>
         <form method="post" action="{{ url_for('reset') }}" class="settings-form">

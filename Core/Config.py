@@ -72,23 +72,67 @@ IMAGE_MODELS = ("flux", "gptimage", "turbo")
 # whatever house style the host felt like. It leads the prompt now, so it
 # survives, and it is a setting because it is a taste decision.
 IMAGE_STYLES = {
+    # Every one of these was tuned by rendering the same scene at the same
+    # seed and looking at the results, not by writing words that sound right.
+    # The differences below are the differences that survived that.
+    "keeper": (
+        "dark fantasy game key art, near-monochrome cold blue-grey palette, "
+        "heavy volumetric fog, symmetrical centred composition, wet reflective "
+        "ground, pale luminous overcast sky behind dark silhouetted forms, "
+        "high contrast, desaturated, matte painting finish"),
+
+    # The one Config.py has carried a note about since the beginning: "it does
+    # not currently work: these models are trained on photographs and will not
+    # degrade themselves on request... Getting this look needs a model
+    # fine-tuned for it, or post-processing. Left in place for when there is
+    # one." There is one. FLUX.2 Klein renders this on the first try.
+    #
+    # "no user interface, no text, no HUD" is load-bearing. Pushed any harder
+    # -- "screenshot of a 1994 CD-ROM game" -- it draws a whole fake game
+    # window, portrait box and score and all, inside a picture the game is
+    # about to draw its own stone frame around.
+    "bryce": (
+        "1990s pre-rendered CGI backdrop, Bryce 3D landscape render, early "
+        "computer graphics, procedural fractal terrain, banded gradient sky, "
+        "mirror-flat reflective water, hard specular highlights, slightly "
+        "plastic materials, ray-traced, CD-ROM era adventure game background "
+        "plate, no user interface, no text, no HUD"),
+
+    # Wasteland, 1988. Asked for "box art" it rendered a photograph of a
+    # boxed game sitting on a table, complete with garbled title lettering:
+    # the illustration was right and the object was not. This asks for the
+    # painting rather than the product.
+    "wasteland": (
+        "1980s post-apocalyptic desert, painted illustration, ochre and rust "
+        "and bone palette, blinding white sun in a bleached sky, cracked "
+        "hardpan, ruined concrete, rusted iron, heat shimmer, airbrush "
+        "gradients, visible paper grain, no text"),
+
+    # The three above are the offered ones. These predate the local model and
+    # are kept because they are one setting away and cost nothing.
     "cinematic": ("cinematic film still, anamorphic, volumetric light, "
                   "muted colour grade, shallow depth of field"),
-    # Kept, but it does not currently work: these models are trained on
-    # photographs and will not degrade themselves on request. Tried through
-    # flux and turbo, and with far harder wording (PS1, flat polygons, 240p,
-    # "not photorealistic"), and every attempt came back photoreal. Getting
-    # this look needs a model fine-tuned for it, or post-processing. Left in
-    # place for when there is one.
-    "retro3d": ("early CGI, 1990s Bryce 3D render, FMV cutscene aesthetic, "
-                "low-poly textures, eerie lighting, muted palette"),
     "painted": ("digital matte painting, painterly brushwork, dramatic light, "
                 "concept art"),
     "grim": ("bleak photographic realism, overcast, desaturated, "
              "documentary framing, harsh natural light"),
 }
 
-DEFAULT_IMAGE_STYLE = "grim"
+#: What the setup screen offers, in order, with the words a player picks by.
+#: A style the player cannot name is a style they cannot choose.
+OFFERED_IMAGE_STYLES = (
+    ("keeper", "The Keeper",
+     "Cold, foggy, near-monochrome. Dark fantasy key art -- the look the "
+     "game has had until now."),
+    ("bryce", "Pre-rendered 1995",
+     "Early CGI. Banded skies, mirror water, faintly plastic stone: a "
+     "CD-ROM adventure backdrop."),
+    ("wasteland", "Sun-bleached",
+     "Airbrushed post-apocalyptic illustration. Ochre, rust and bone under "
+     "a white desert sun."),
+)
+
+DEFAULT_IMAGE_STYLE = "keeper"
 
 
 # =============================

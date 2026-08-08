@@ -345,8 +345,12 @@ def test_no_dungeon_words_in_a_refinery():
 
 
 @pytest.mark.parametrize("style,marker", [
+    # The three the setup screen offers.
+    ("keeper", "dark fantasy game key art"),
+    ("bryce", "bryce 3d landscape render"),
+    ("wasteland", "painted illustration"),
+    # And the ones kept from before the local model.
     ("cinematic", "cinematic film still"),
-    ("retro3d", "1990s Bryce"),
     ("painted", "matte painting"),
     ("grim", "photographic realism"),
 ])
@@ -421,3 +425,33 @@ def test_the_visual_field_is_not_filled_with_personality():
     }], 1)
     assert seeded[0].personality.startswith("Ruthless")
     assert seeded[0].desc == ""
+
+
+
+def test_every_offered_style_is_a_style_that_exists():
+    """The setup screen lists three by name. A name with no entry behind it
+    is a choice that silently does nothing."""
+    from Core.Config import IMAGE_STYLES, OFFERED_IMAGE_STYLES
+
+    for key, label, blurb in OFFERED_IMAGE_STYLES:
+        assert key in IMAGE_STYLES, f"{label!r} points at nothing"
+        assert label and blurb, "a style the player cannot read about"
+
+
+def test_the_default_is_one_of_the_offered_ones():
+    from Core.Config import DEFAULT_IMAGE_STYLE, OFFERED_IMAGE_STYLES
+
+    assert DEFAULT_IMAGE_STYLE in {key for key, _, _ in OFFERED_IMAGE_STYLES}
+
+
+def test_a_campaign_keeps_the_look_it_was_started_in():
+    """The style is module-level state, so without recording it on the game
+    the first session gets the chosen look and every resume gets the
+    default."""
+    from Core.AI_Dungeon_Master import get_image_style, set_image_style
+
+    set_image_style("bryce")
+    assert get_image_style() == "bryce"
+    set_image_style("not-a-style")
+    assert get_image_style() != "not-a-style", "an unknown name must not stick"
+    set_image_style("")

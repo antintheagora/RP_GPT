@@ -241,6 +241,9 @@ class GameState:
     stall_count:int=0
     companions:List[Actor]=field(default_factory=list)
     images_enabled:bool=ENABLE_TURN_IMAGE
+    #: The look this campaign is drawn in. Saved with it, so a
+    #: resumed game does not silently change its art halfway.
+    image_style:str=""
     last_image_path:Optional[str]=None
     last_image_url:Optional[str]=None
     last_actor:Optional[Actor]=None
