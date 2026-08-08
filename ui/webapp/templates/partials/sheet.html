@@ -181,9 +181,15 @@
       </div>
 
       {# Written once per act by three separate call sites since the pygame
-         build, and rendered here for the first time. #}
+         build, and rendered here for the first time.
+
+         Called "Your own account" at first, which the content does not
+         support: two of the three call sites write the act's opening
+         paragraph and the third writes a recap, so these are the briefings
+         rather than anything the character thought. A heading that promises
+         a diary and delivers a summary is a small lie on every screen. #}
       <div class="rounded-sm bg-soot/80 border border-edge p-4">
-        <p class="overline text-dust mb-2">Your own account</p>
+        <p class="overline text-dust mb-2">The road so far</p>
         {% if payload.chronicle %}
           <ol class="space-y-2 text-sm text-parchment leading-relaxed">
             {% for entry in payload.chronicle | reverse %}
