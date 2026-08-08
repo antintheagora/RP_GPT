@@ -27,7 +27,6 @@ from Core.AI_Dungeon_Master import (
     GemmaClient,
     recap_prompt,
 )
-from Core.Scene_Evolution import evolve_situation
 
 
 def sync_affinity(state, act: int) -> None:
