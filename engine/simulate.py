@@ -114,6 +114,17 @@ def _pick_stat(
 
 
 
+
+#: Fights, which the simulated campaign did not have.
+#:
+#: Damage only ever reaches the player through a HARM consequence -- that is
+#: true of the real turn loop too, so the shape was right. What was missing is
+#: the situation that produces HARM over and over: standing in front of
+#: something that is hitting back. Out of combat the Keeper picks harm now and
+#: then; in a fight it is most of what there is to pick.
+FIGHT_CHANCE_PER_TURN = 0.10   # roughly one fight every other act
+FIGHT_LENGTH = (2, 5)          # exchanges before it is settled either way
+HARM_IN_A_FIGHT = 0.8          # against 0.4 when nothing is swinging at you
 #: How often the Keeper reaches for each rung, and how well the player tends
 #: to describe what they are doing. Guesses, but stated ones -- the simulator
 #: used the default 12 for every single roll in every campaign, so the gate
@@ -180,21 +191,32 @@ def simulate_campaign(
         ])
         project, danger = board.get("project"), board.get("danger")
 
+        fighting = 0        # exchanges left in the fight, if any
         for _ in range(config.max_turns_per_act):
             total_turns += 1
 
+            # A fight starts, or the one you are in continues.
+            if fighting <= 0 and rng.random() < FIGHT_CHANCE_PER_TURN:
+                fighting = rng.randint(*FIGHT_LENGTH)
+
             bearings = _roll_bearings(rng)
             stat = _pick_stat(bearings, stats, rng, config.picks_best_approach)
+            harm_chance = HARM_IN_A_FIGHT if fighting > 0 else 0.4
             assessment = Assessment(
                 stat=stat,
                 bearings=bearings,
                 base_difficulty=_rated(rng),
-                consequence=Consequence.HARM if rng.random() < 0.4 else Consequence.CLOCK_TICK,
+                consequence=(Consequence.HARM if rng.random() < harm_chance
+                             else Consequence.CLOCK_TICK),
             )
 
             facts = PositionFacts(
                 carrying_serious_harm=condition.wounds.carries_serious,
                 danger_clock_over_half=danger.over_half,
+                # Something is in the way of leaving. Position is what decides
+                # whether a consequence is allowed to be harm at all, so a
+                # fight that does not press you cannot hurt you.
+                cornered=fighting > 0 and rng.random() < 0.5,
             )
             # The simulator has its own turn loop, so anything added to the
             # real one has to be added here too or the balance gate measures
@@ -209,6 +231,10 @@ def simulate_campaign(
             )
             if result.roll.roll == 1:
                 condition.wounds.worsen_applicable(stat)
+
+            if fighting > 0:
+                # Landing a good blow settles it sooner than trading them.
+                fighting -= 2 if result.succeeded else 1
 
             # The player's own progress.
             if result.clock_segments:

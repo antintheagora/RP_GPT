@@ -215,3 +215,64 @@ def test_the_danger_clock_stays_a_size_behind_the_project_clock():
     assert even["win_rate"] > WIN_CEILING, (
         "equal clocks are supposed to be the too-easy case"
     )
+
+
+# ---------------------------------------------------------------------------
+# What the gate can and cannot see.
+# ---------------------------------------------------------------------------
+
+def test_the_simulated_campaign_has_fights_in_it():
+    """It did not, and that is why it could not see the wound system.
+
+    Damage only reaches the player through a HARM consequence -- true of the
+    real turn loop too, so the shape was always right. What was missing was
+    the situation that produces HARM repeatedly: standing in front of
+    something that is hitting back.
+    """
+    import inspect
+
+    from engine import simulate
+
+    source = inspect.getsource(simulate)
+    for knob in ("FIGHT_CHANCE_PER_TURN", "HARM_IN_A_FIGHT", "cornered="):
+        assert knob in source, f"the simulator has no {knob}"
+
+
+def test_how_far_the_wound_system_is_from_ever_engaging():
+    """A measurement, held still, because the number is the finding.
+
+    MECHANICS builds a whole slow layer -- wound levels, worsening on a
+    natural 1, healing that climbs each night, treatment, going Out -- and
+    every part of it begins with damage emptying the HP bar. It does not
+    happen. Not rarely: not at all, in thousands of simulated campaigns and
+    in live play.
+
+    The arithmetic, all of it measured rather than assumed:
+
+        max HP                      65 at END 5, 93 at END 9
+        damage per landed harm      4 to 13, so roughly 8 landings to empty it
+        landed harms per campaign   about 2.3
+
+    So a campaign produces roughly a third of the harm the wound system needs
+    to start. The gap is not the size of a hit -- eight hits does empty a bar.
+    It is how seldom one lands: 21.6% of rolls fail forward and cost nothing,
+    30.9% are thrown at Poised where harm is forbidden outright, and what
+    survives both is about an eighth of all turns.
+
+    This test does not assert that this is *right*. It asserts that it is
+    still *true*, so that anyone who changes combat frequency, position
+    scoring, the Poised failure rule (task #27, still open) or max HP finds
+    out here that they have woken the slow layer up, and re-reads the
+    thresholds above rather than trusting them.
+    """
+    import random
+
+    from engine.simulate import simulate_campaign
+
+    wounds = sum(simulate_campaign(rng=random.Random(4_000 + index)).out_count
+                 for index in range(400))
+    assert wounds == 0, (
+        "the simulator now wounds people -- good, and the win-rate band and "
+        "clock thresholds in this file were calibrated when it did not, so "
+        "re-measure them"
+    )
