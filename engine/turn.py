@@ -156,6 +156,9 @@ class TurnResult:
     # How exposed the attempt left you, and why. Position bounds how bad a
     # consequence may be and never touched the screen.
     exposure: str = ""
+    # A Tide that ran its whole list, and what that left behind. Emitted to
+    # the log and nowhere else, so the narrator was never told.
+    tide_completed: str = ""
     # What a fail forward taught. MECHANICS requires one to reveal the true
     # Bearing of the approach; the outcome existed and revealed nothing.
     learned: str = ""
@@ -467,7 +470,7 @@ def advance_turn(
     else:
         result.ticks = _apply_clocks(run, resolution, intent)
         result.new_obstacle = _next_stage(run)
-        result.tide_moves = _advance_tides(run, resolution)
+        result.tide_moves = _advance_tides(run, resolution, result)
         _strike(run, resolution, intent, result)
         if not resolution.can_withdraw:
             _apply_harm(run, resolution, intent, result, rng)
@@ -648,7 +651,8 @@ def _apply_clocks(run: Run, resolution: Resolution,
     return ticks
 
 
-def _advance_tides(run: Run, resolution: Resolution) -> List[TideMove]:
+def _advance_tides(run: Run, resolution: Resolution,
+                   result: Optional[TurnResult] = None) -> List[TideMove]:
     """Tides move on failure, not on a timer.
 
     Losing ground always moves one -- that is the rule, and the Director does
@@ -676,6 +680,8 @@ def _advance_tides(run: Run, resolution: Resolution) -> List[TideMove]:
         # said only the last step of it.
         if move.is_final and urgent.if_completed:
             ev.chapter(urgent.if_completed)
+            if result is not None:
+                result.tide_completed = urgent.if_completed
     return moves
 
 

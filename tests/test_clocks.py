@@ -325,3 +325,58 @@ def test_a_tide_still_running_does_not_announce_its_ending():
     while tide.fired < len(tide.moves):
         fired = tide.advance(1) or fired
     assert fired[-1].is_final, "the last move has to say it is the last"
+
+
+def test_what_a_tide_did_reaches_the_narrator():
+    """Every prose prompt summarises `state.history[-6:]`.
+
+    The only things that ever reached that list were talks, item uses and act
+    boundaries. So a Tide could carry out its entire plan -- checkpoints,
+    arrests, a raid, the quarter falling -- and the model writing the world
+    would not know any of it had happened. A force with an agenda that nobody
+    downstream hears about is a log line, not a pressure.
+    """
+    import sys
+
+    sys.path.insert(0, "tests")
+    from test_menu_flow import _session
+    from engine.actions import Verb
+    from engine.tides import Tide
+
+    # Tides move on lost ground, so the session needs a Keeper that loses it.
+    # The default stub rates everything Sound and mostly succeeds, which is
+    # why the first version of this test proved nothing.
+    from engine.model import SPECIAL_KEYS
+    from engine.keeper import StubKeeper
+    from engine.resolve import Assessment, Bearing, Consequence
+
+    class _Hopeless(StubKeeper):
+        def assess(self, intent, scene, obstacle):
+            self.calls += 1
+            return Assessment(stat=intent.stat_hint or "STR",
+                              bearings={k: Bearing.FUTILE for k in SPECIAL_KEYS},
+                              consequence=Consequence.CLOCK_TICK)
+
+    session = _session(keeper=_Hopeless())
+    tide = Tide(id="patrol", name="Patrol", wants="you",
+                moves=["checkpoints go up", "they raid the safehouse"],
+                if_completed="the quarter belongs to them")
+    session.run.tides = type(session.run.tides)([tide])
+
+    before = len(session.state.history)
+    for _ in range(20):
+        # Not Observe: `advance_turn` routes looking around down a branch
+        # that never touches the Tides, which is why the first version of this
+        # test watched a Tide sit at 0/4 for twenty turns.
+        option = next(o for o in session.ensure_options() if o.verb is Verb.PARLEY)
+        session.apply_choice(option.key, {})
+        if tide.fired >= len(tide.moves):
+            break
+
+    added = session.state.history[before:]
+    assert tide.fired, "the Tide never moved, so this proves nothing"
+    assert any("checkpoints go up" in line for line in added), (
+        "a Tide moved and the narrator was not told"
+    )
+    if tide.spent:
+        assert any("the quarter belongs to them" in line for line in added)

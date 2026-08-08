@@ -1714,6 +1714,18 @@ class GameSession:
                         )
                         consumed = result.consumed_turn
                         self._last_result = result
+                        # What the world did, into the history the narrator
+                        # reads. Every prose prompt in the project summarises
+                        # `state.history[-6:]`, and the only things that ever
+                        # reached it were talks, item uses and act boundaries
+                        # -- so a Tide could carry out its entire plan, and
+                        # the model writing the world would not know. A force
+                        # with an agenda that nobody downstream hears about is
+                        # a log line, not a pressure.
+                        for move in result.tide_moves:
+                            self.state.history.append(move.text)
+                        if result.tide_completed:
+                            self.state.history.append(result.tide_completed)
                         # Only a conversation code is a conversation. Acting
                         # on the ordinary menu with a conversation open is
                         # walking away mid-sentence: it does not count as an
