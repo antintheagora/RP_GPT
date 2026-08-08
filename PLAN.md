@@ -6,6 +6,7 @@
 
 ## Table of Contents
 
+0. [**Status — August 2026**](#0-status--august-2026) *(the only section that changes)*
 1. [Where This Project Actually Stands](#1-where-this-project-actually-stands)
 2. [The Vision](#2-the-vision)
 3. [Architecture Target](#3-architecture-target)
@@ -18,7 +19,134 @@
 
 ---
 
+# 0. Status — August 2026
+
+*This section is the only part of the plan that changes. Everything below it is
+the design as compiled on 2026-07-28 and is still the plan; this says how far
+along it is.*
+
+## The headline has changed
+
+The plan opened with **"the game does not run"** and **"0% wins over 5,000
+campaigns."** Both are fixed.
+
+The game runs, saves, resumes, streams its prose as it is written, and is
+winnable **50.7%** of the time at average stats — 27% for a weak character,
+85% for a strong one played well. `python RP_GPT.py`'s pygame stack is gone;
+the Flask/HTMX surface is the game. 1,015 tests run with no GPU, no Ollama and
+no network.
+
+**Phases 0, 1 and 2 are done. Phase 3 has not started.**
+
+| Phase | | State |
+|---|---|---|
+| **0** | Foundation & Truth | ✅ done |
+| **1** | The Engine Breathes | ✅ done |
+| **2** | The Game Becomes a Game | ✅ done |
+| **3** | The World Remembers | ⬜ not started — the next phase |
+| **4** | The Chronicle | ⬜ not started, partly overtaken (see below) |
+| **5** | The Plate Press | ⬜ not started |
+| **6** | Vigil | ⬜ not started |
+
+Two Phase-2 items landed differently from the plan and are worth naming:
+
+- **The Director was built.** The plan called it "designed but unscheduled"
+  ([§7 Phase 2 task 9](#phase-2--the-game-becomes-a-game-)). It exists, with
+  hysteresis: a stance holds for a minimum number of turns so a campaign has
+  peaks and troughs instead of a thermostat's flat line.
+- **Resistance as an interrupt** shipped as the **Bargain** offer flow
+  (`PendingOffer`) rather than a `PendingResist` yield. Same shape — the turn
+  stops between the Keeper and the dice — different name.
+
+## What Phase 4 still needs, after the fact
+
+The plan's Phase 4 assumed the play screen would be thrown away and rebuilt as
+`codex.html`. Some of that work has been done early, out of order, because the
+screen was unusable:
+
+- ✅ The frame clamp, `.htmx-request` (**B27**), the palette, the loading
+  state, keyboard escape, the live chronicle pacing layer.
+- ⬜ **Still open:** `codex.html` itself (the leaf-and-rail layout, 80% prose),
+  vendoring htmx and the fonts so there are **zero external requests**, Session
+  Zero as an interview, the Chronicle view, the Chronicler's Margin, audio,
+  and accessibility (landmarks, focus trap, `:focus-visible`).
+
+`fog.js` was scheduled for deletion in Phase 4. It is still there, now
+honouring `prefers-reduced-motion` and its own frame limit. Deleting it is
+still the plan; it is not urgent.
+
+## The bug list
+
+Of the 28 verified defects in [§8](#8-verified-bug-list), **B01–B24, B27 and
+B28 are fixed.** The stragglers:
+
+| # | State |
+|---|---|
+| **B23** | `generate_turn_image` no longer runs, but the function and its re-export are still on disk. Dead code, not an active bug. |
+| **B25** | Fixed at the source — `desc` is no longer filled with personality — but the **82 existing profiles** where `desc == personality` have never been migrated. |
+| **B26** | `personality_roll()` is still a `random.choice` over ten labels, uncorrelated with the character, still driving dialogue tone. |
+
+## What is actually next
+
+In the order I would do it.
+
+1. **Phase 3, the ledger.** The single largest remaining piece and the one the
+   game most visibly lacks: nothing remembers anything across an act boundary
+   except through the save file. The roster still shows 126 characters
+   including six Elaras. This is 60–90 hours and should not be compressed.
+
+2. **Reach a fight.** Combat is fully built, fully tested, and in twelve turns
+   of real play across three acts it never once started. One enemy spawned, on
+   the turn an act ended, and the rollover deleted it. That path is fixed, but
+   *nobody has ever seen the combat menu in a live game.* Until someone has,
+   treat it as unverified.
+
+3. **The two open rulings** — see [MECHANICS](MECHANICS.md):
+   - Whether failing from **Poised** should cost the turn. It currently does.
+     The spec's wording ("the action simply does not happen") can be read
+     either way. One line, either direction.
+   - **Stat traits leaking into dialogue as nicknames.** An NPC opened with
+     "Step back, giant" — the character block's Strength line read as a form
+     of address.
+
+4. **The remaining narration leaks.** B25's 82 stale profiles and B26's random
+   personality are both *content* bugs that survive every code fix, because
+   they are baked into files on disk.
+
+5. **Close the "runs on your own machine" gap.** Two things break it, and
+   neither is hard:
+   - The page fetches Tailwind, htmx and two Google fonts from the internet on
+     every load. With no connection it renders unstyled and `hx-boost` stops
+     working. Vendor all three ([§7 Phase 4 task 4](#phase-4--the-chronicle--partly-done-early-out-of-order)).
+   - Scene pictures come from pollinations.ai, and although every campaign
+     carries an `images_enabled` flag, **nothing on screen ever sets it** — to
+     play without them you edit `engine/model.py`.
+
+## The lesson, recorded because it keeps repeating
+
+**Nearly every real defect in this project has been found by playing it.**
+
+Systems that were built, tested, and completely unreachable: the verb menu, the
+Bargain, combat, images, Reputation, the authored world roster, the live
+chronicle. Bugs that 972 green tests did not notice: a play screen that could
+not be scrolled, so no action button could be clicked; a conversation panel
+showing neither party's words; an act that lasted two turns; an enemy narrated
+and then deleted.
+
+The suite is excellent at stopping things from breaking twice. It has never
+once noticed that something was never reachable in the first place. The test
+that would have caught the act-length bug did not exist because **the balance
+gate only ever asked whether the game was too hard.**
+
+Budget play time. Not as QA — as the primary way defects are found.
+
+---
+
 # 1. Where This Project Actually Stands
+
+> **As of 2026-07-28.** Kept unedited: it is the record of what was
+> wrong and why the plan is shaped the way it is. For where the project
+> stands today, see [§0](#0-status--august-2026).
 
 ## 1.1 The headline
 
@@ -156,7 +284,7 @@ The web UI additionally loads **four external CDNs** (`fonts.googleapis.com`, `f
 
 Plus, from the tree: 458 tracked JPEGs, 95 `.pyc`, ~50 MB of asset duplicates, `world_journal.txt`, `image_events.jsonl`, two `tmp_*.txt`, `turn_00000.jpg`.
 
-**This is not a working UI being sacrificed.** It is a second, broken, un-runnable copy of the rules with a genuinely good character creator bolted on. Six things must be salvaged before it goes — see [§7 Phase 0](#phase-0--foundation--truth).
+**This is not a working UI being sacrificed.** It is a second, broken, un-runnable copy of the rules with a genuinely good character creator bolted on. Six things must be salvaged before it goes — see [§7 Phase 0](#phase-0--foundation--truth-).
 
 ---
 
@@ -430,7 +558,7 @@ And for the Keeper, add `"format": <json-schema>` and drop temperature to 0.1. *
 
 - **GBNF grammars** (`-j` / `--json-schema` / `--grammar`) — strictly more expressive than JSON Schema; can constrain non-JSON shapes.
 - **DRY and XTC samplers** — DRY penalizes repeated *n-gram sequences* rather than individual tokens, so it kills phrase loops without flattening the articles and connectives good prose needs. XTC probabilistically drops the top choice to force divergence. Both are fiction-specific and both are unavailable through Ollama.
-- **Backtracking anti-slop** — logit bias cannot suppress multi-token phrases; you need to rewind the stream. This is what makes [§5 The Grain](#the-grain--per-campaign-anti-slop-) possible.
+- **Backtracking anti-slop** — logit bias cannot suppress multi-token phrases; you need to rewind the stream. This is what makes [§5, M29 The Grain](#52-the-decided-verdict-table) possible.
 - **Slot save/restore** (`POST /slots/{id}?action=save`, `--slot-save-path`) — persist the warmed world-bible prefix **across sessions**, so it is prefilled once *ever*.
 - **`--cache-ram`** — prompt cache in the 32 GB of system RAM instead of competing for the 16 GB of VRAM.
 - **Router mode** (`--models-dir`, `--models-max 2`) — both models in one process, one endpoint.
@@ -553,7 +681,7 @@ Two renames: **Fronts → Tides**, **The Night Shift → Vigil**. One addition w
 | M08 | SPECIAL | **IMPROVE** | [§1.1](MECHANICS.md#11-special) — each stat gets a unique job |
 | M09 | `random.sample(SPECIAL_KEYS, 3)` | **FIX** | Deleted. Violates "every approach is legal." |
 | M10 | Microplans | **IMPROVE** | [§4.5](MECHANICS.md#45-how-a-described-action-gets-resolved) — becomes the assessment call |
-| M11 | Combat | **IMPROVE** | [§4.3](MECHANICS.md#43-the-combat-menu) — menu kept, Quick/Describe, one engine |
+| M11 | Combat | **IMPROVE** | [§4.3](MECHANICS.md#43-the-action-menu) — menu kept, Quick/Describe, one engine |
 | M12 | Talk | **FIX** then **IMPROVE** | [§7](MECHANICS.md#75-conversation) — separate loop kept, NPC memory added |
 | M13 | Custom action | **FIX** | [§4.5](MECHANICS.md#45-how-a-described-action-gets-resolved) — the orphaned prompt gets a home |
 | M14 | Random encounters | **IMPROVE** | [§6.4](MECHANICS.md#64-random-encounters) — kept and weighted; must actually fire |
@@ -803,7 +931,7 @@ Three volume sliders that actually work. And **author the four SFX that `Core/Ma
 
 ---
 
-## PHASE 0 — Foundation & Truth
+## PHASE 0 — Foundation & Truth ✅
 ### *"It runs, it finishes, it remembers, and it is honest about what it needs."*
 
 **Effort: 25–40 hours** — raised from 15–25 once the creation flows had to be *ported* rather than deleted.
@@ -841,7 +969,7 @@ Three volume sliders that actually work. And **author the four SFX that `Core/Ma
 
 ---
 
-## PHASE 1 — The Engine Breathes
+## PHASE 1 — The Engine Breathes ✅
 ### *"One turn pipeline. Streaming prose. Structured output. And it saves."*
 
 **Effort: 40–60 hours**
@@ -868,8 +996,13 @@ Three volume sliders that actually work. And **author the four SFX that `Core/Ma
 
 ---
 
-## PHASE 2 — The Game Becomes a Game
+## PHASE 2 — The Game Becomes a Game ✅
 ### *"Visible odds, real dice, named consequences, filling clocks. And it is winnable."*
+
+> **Done.** 50.7% win rate at average stats, from 0%. The Director was built
+> after all, and Resistance-as-an-interrupt shipped as the Bargain offer flow.
+> One number in the definition of done was wrong and had to be re-measured:
+> see the act-length note below.
 
 **Effort: 50–70 hours**
 
@@ -889,14 +1022,21 @@ Three volume sliders that actually work. And **author the four SFX that `Core/Ma
 
 ### Definition of done
 - Every action shows **stat · Bearing hint · position** before commitment; the target and roll are shown **after**, per the odds-visibility setting (default: after only).
-- 5,000 simulated campaigns → **35–55% win rate** at budget-average SPECIAL (from **0%**).
+- 5,000 simulated campaigns → **35–55% win rate** at budget-average SPECIAL (from **0%**). *(Met: 50.7%.)*
+- **An act lasts 7–10 turns.** *Added after the fact.* The gate as written
+  measured only whether a campaign could be **won**, and ran every trial with
+  every approach rated Dire — the pessimistic case. It proved the game was not
+  too hard and nothing looked the other way, so it passed a build in which a
+  capable character finished an act in three turns or fewer one time in six.
+  A real playthrough had a two-turn Act 2. Act clocks are ten segments now,
+  eight for the danger clock racing them, and the gate measures act length.
 - Zero passive meters. Every tick is traceable to a fiction event.
 - A player can push, resist, bargain, take a Scar, earn a Virtue, and retire a character.
 - No mechanic is invisible to the player.
 
 ---
 
-## PHASE 3 — The World Remembers
+## PHASE 3 — The World Remembers ⬜ **next**
 ### *"An NPC mentions something you had forgotten. And it is right."*
 
 **Effort: 60–90 hours** *(the largest phase; do not compress it)*
@@ -925,8 +1065,13 @@ Three volume sliders that actually work. And **author the four SFX that `Core/Ma
 
 ---
 
-## PHASE 4 — The Chronicle
+## PHASE 4 — The Chronicle ⬜ *(partly done early, out of order)*
 ### *"It stops looking like software."*
+
+> Items 2 and 3 largely landed ahead of schedule because the play screen was
+> unusable: the frame clamp, the palette, the loading state, the pacing layer.
+> What is left is the structural half — `codex.html`, vendoring, Session Zero,
+> the Chronicle view, the Margin, audio, accessibility.
 
 **Effort: 60–80 hours**
 
@@ -953,7 +1098,7 @@ Three volume sliders that actually work. And **author the four SFX that `Core/Ma
 
 ---
 
-## PHASE 5 — The Plate Press & The Sharper Tongue
+## PHASE 5 — The Plate Press & The Sharper Tongue ⬜
 ### *"It illustrates itself, in one style, with faces that persist."*
 
 **Effort: 40–60 hours**
@@ -979,7 +1124,7 @@ Three volume sliders that actually work. And **author the four SFX that `Core/Ma
 
 ---
 
-## PHASE 6 — Vigil 🔮
+## PHASE 6 — Vigil 🔮 ⬜
 ### *"You close the laptop. The world keeps writing."*
 
 **Effort: 40–60 hours**
@@ -988,7 +1133,7 @@ Three volume sliders that actually work. And **author the four SFX that `Core/Ma
 
 1. **`nightshift/run.py`** — headless, 4B only, Windows Scheduled Task with an idle trigger and `--stop-if-not-idle`. Ticks Tides, resolves NPC intentions from unresolved ledger entries, writes a session recap.
 2. **The Dispatch.** A `dispatch` record surfaced on the Desk as a wax-sealed letter.
-3. **All five guardrails** from [§5 M30](#m30--the-night-shift-), enforced in code and covered by tests. Especially: **never touch the player character**, and **every offscreen event is reversible by truncating to a `seq`.**
+3. **All five guardrails** from [§5, M30 Vigil](#52-the-decided-verdict-table), enforced in code and covered by tests. Especially: **never touch the player character**, and **every offscreen event is reversible by truncating to a `seq`.**
 4. **In-play speculative Warden** — fired from the SSE handler the moment narration starts.
 5. **`engine/bundle.py` 🔮** — the Bound Volume export (self-contained HTML, data-URI images, `@page` print stylesheet) and the `.world` Inheritance bundle (export = zip + manifest; import = replay read-only into a fresh run, mark `first_seen_generation`, and **declare** the fate of unfinished Tides across the elapsed years rather than simulating them — see [MECHANICS §11.3](MECHANICS.md#113-the-world-as-the-save-file)).
 6. **Epitaph generation** at seal time, reusing the callback query pointed at the *end* of the story instead of the middle.
@@ -1005,13 +1150,13 @@ Three volume sliders that actually work. And **author the four SFX that `Core/Ma
 
 | Phase | Name | Hours | Ends with |
 |---|---|---:|---|
-| **0** | Foundation & Truth | 25–40 | It runs. It saves nothing yet, but it finishes. Creation flows ported. |
-| **1** | The Engine Breathes | 40–60 | Streaming prose, one pipeline, save/load, the wizard works |
-| **2** | The Game Becomes a Game | 75–100 | Bearing, degrees of success, clocks, combat rebuilt, **winnable** |
-| **3** | The World Remembers | 80–115 | The ledger, standing & factions, callbacks, no more Elaras |
-| **4** | The Chronicle | 60–80 | It stops looking like software |
-| **5** | The Plate Press | 40–60 | It illustrates itself; faces persist |
-| **6** | Vigil 🔮 | 40–60 | The world moves while you sleep |
+| **0** ✅ | Foundation & Truth | 25–40 | It runs. It saves nothing yet, but it finishes. Creation flows ported. |
+| **1** ✅ | The Engine Breathes | 40–60 | Streaming prose, one pipeline, save/load, the wizard works |
+| **2** ✅ | The Game Becomes a Game | 75–100 | Bearing, degrees of success, clocks, combat rebuilt, **winnable** |
+| **3** ⬜ | The World Remembers | 80–115 | The ledger, standing & factions, callbacks, no more Elaras |
+| **4** ◐ | The Chronicle | 60–80 | It stops looking like software |
+| **5** ⬜ | The Plate Press | 40–60 | It illustrates itself; faces persist |
+| **6** ⬜ | Vigil 🔮 | 40–60 | The world moves while you sleep |
 | | **Total** | **365–520** | |
 
 ---
@@ -1075,7 +1220,7 @@ They are bad content, but they are *the user's* content, and the migration runs 
 ### R4 — Vigil could feel like the game played itself.
 The line between "the world moved" and "you missed the good part" is thin, and getting it wrong poisons the feature's entire premise.
 
-**Mitigation:** the five guardrails in [§5 M30](#m30--the-night-shift-), enforced in code and covered by tests. Especially: **at most one portent per front per real day**, **never touch the player character**, and **fully reversible by truncating to a `seq`.** Ship it off by default with an explicit opt-in and a clear description of what it will do.
+**Mitigation:** the five guardrails in [§5, M30 Vigil](#52-the-decided-verdict-table), enforced in code and covered by tests. Especially: **at most one portent per front per real day**, **never touch the player character**, and **fully reversible by truncating to a `seq`.** Ship it off by default with an explicit opt-in and a clear description of what it will do.
 
 ### R5 — Prose quality might not actually improve as much as expected.
 Every architectural change here is about *coherence*, *pacing*, and *latency*. None of it makes the model write better sentences. If `gemma4:12b` at good sampler settings still produces slop, the whole edifice sits on mediocre prose.

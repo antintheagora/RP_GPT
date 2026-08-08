@@ -2,7 +2,7 @@
 name = "rp-gpt"
 version = "0.2.0"
 description = "A local-LLM roleplaying game with an AI dungeon master."
-readme = "README_WEB_UI.md"
+readme = "README.md"
 requires-python = ">=3.11,<3.15"
 
 # Derived by parsing every import in the tree and subtracting the standard

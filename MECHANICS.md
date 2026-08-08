@@ -509,7 +509,7 @@ Every one of them also offers **Describe**.
 
 **Approach is the block the menu was missing.** Attack only appears in a fight, so outside one the entire menu was preparation — look, talk, rummage — and a player clicking through it could never resolve an act. The only way to attempt the thing the act was about was "Something else", and typing.
 
-**The approaches offered come from your sheet, not the obstacle's ratings.** Two reasons. The ratings are the Keeper's private reading of the scene, and Observe is what buys them — offering the best-rated approach for free would hand over the answer and make looking around pointless ([A5](#axioms): hints, not guarantees). And on turn one there is nothing to sort by: an obstacle's Bearings are filled lazily on first contact. Picking by the sheet also means a bruiser and a burglar get two different menus, which is the point of the stats differing at all.
+**The approaches offered come from your sheet, not the obstacle's ratings.** Two reasons. The ratings are the Keeper's private reading of the scene, and Observe is what buys them — offering the best-rated approach for free would hand over the answer and make looking around pointless ([A5](#0-the-five-axioms): hints, not guarantees). And on turn one there is nothing to sort by: an obstacle's Bearings are filled lazily on first contact. Picking by the sheet also means a bruiser and a burglar get two different menus, which is the point of the stats differing at all.
 
 **What you have learned leads, and says why.** An approach you found by observing is offered above the rest with its reason attached — "a weakness you found" — even when it leans on your worst stat. That is the other half of [§4.4](#44-observe-produces-mechanical-output): finding the way in has to put the way in on the menu.
 
@@ -1320,4 +1320,8 @@ The ruling on question 2 was a genuine design correction rather than a preferenc
 
 3. **Every Affinity and Reputation magnitude in [§7](#7-people--standing-and-talking-to-them) is a first guess.** The bands are sound, but the shift table, the ×0.25 bleed, and the CHA scaling have not been simulated against a full campaign. If Affinity saturates at Devoted by act two, the shift table is too generous — that is the number to move, not the bands.
 
-4. **Aspects and the Director** ([§13](#13-later-phases--designed-not-scheduled)) are designed but unscheduled by decision.
+4. **Aspects** ([§13.1](#131-aspects)) is designed but unscheduled by decision. **The Director** ([§13.2](#132-the-director)) was built.
+
+5. **Failing from Poised costs the turn.** The spec's wording is "no consequence, the action simply does not happen", which can be read as the turn being free too. It is not: avoiding the *consequence* is the reward for being well positioned, and making the turn free as well turned a critical failure into an undo button — six successes in a row, with every failure between them silently deleted. Flagged rather than settled: reverting is one line, and the argument for it is real.
+
+6. **Stat traits reach dialogue as forms of address.** An NPC opened a conversation with "Step back, giant" — the character block's Strength line read as something to call the player. The block is doing its job; the framing around it is not.
