@@ -133,12 +133,25 @@ def decode(value: Any) -> Any:
 
 # ------------------------------------------------------------------- files
 
-def _run_dir(root: Path, world: str, run_id: str) -> Path:
+def run_dir(root: Path, world: str, run_id: str) -> Path:
+    """Where one run's files live. The only answer to that question.
+
+    Public because the ledger has to land in the same place. `open_ledger`
+    used to build its own path from the raw world name while this one strips
+    it to alphanumerics, so a campaign labelled "The Drowned Steps" wrote its
+    save to TheDrownedSteps/ and its memory to "The Drowned Steps"/ -- two
+    directories for one run, and a world.db that is not beside the state.json
+    it belongs to, contrary to every comment saying it is.
+    """
     def safe(part: str) -> str:
         cleaned = "".join(c for c in (part or "") if c.isalnum() or c in "-_")
         return cleaned or "default"
 
     return Path(root) / safe(world) / safe(run_id)
+
+
+#: Kept so older call sites and saves keep working.
+_run_dir = run_dir
 
 
 def save_run(
@@ -224,4 +237,5 @@ def list_runs(root: Path) -> list:
     return sorted(out, key=lambda r: r["saved_at"], reverse=True)
 
 
-__all__ = ["SAVE_VERSION", "encode", "decode", "save_run", "load_run", "describe", "list_runs"]
+__all__ = ["SAVE_VERSION", "encode", "decode", "save_run", "load_run",
+           "describe", "list_runs", "run_dir"]

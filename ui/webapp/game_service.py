@@ -1342,6 +1342,27 @@ class GameSession:
     def world_slug(self) -> str:
         return (getattr(self.state, "world_folder", None) or self.label or "default")
 
+    def _adopt_stray_ledger(self, wanted: "Path") -> None:
+        """Move a ledger written to the old unsanitised path, if there is one.
+
+        Only when the right place is empty and the wrong place is not, and
+        only for this exact run. A campaign that has been remembering things
+        for twenty scenes should not lose them to a bug fix.
+        """
+        if wanted.exists():
+            return
+        stray = Path(paths.SAVES_DIR) / self.world_slug / self.id / "world.db"
+        if stray == wanted or not stray.exists():
+            return
+        try:
+            for suffix in ("", "-wal", "-shm"):
+                source = stray.with_name(stray.name + suffix)
+                if source.exists():
+                    source.replace(wanted.with_name(wanted.name + suffix))
+            _log.info("moved a ledger from %s to %s", stray.parent, wanted.parent)
+        except Exception:
+            _log.exception("could not move the ledger from %s", stray)
+
     def open_ledger(self) -> None:
         """Attach this campaign's memory, and let the rest of the game find it.
 
@@ -1359,7 +1380,16 @@ class GameSession:
         from ledger.store import LedgerStore
 
         try:
-            path = Path(paths.SAVES_DIR) / self.world_slug / self.id / "world.db"
+            # The same directory the save uses, computed the same way. This
+            # built its own path from the raw world name while save_run strips
+            # it to alphanumerics, so any label with a space in it put the
+            # campaign's memory in one folder and its state in another.
+            from engine.persistence import run_dir
+
+            folder = run_dir(paths.SAVES_DIR, self.world_slug, self.id)
+            folder.mkdir(parents=True, exist_ok=True)
+            path = folder / "world.db"
+            self._adopt_stray_ledger(path)
             self.ledger_store = LedgerStore(path)
             self.state.ledger_store = self.ledger_store
             # Tier 4 of the resolution ladder, on the small cold model. The

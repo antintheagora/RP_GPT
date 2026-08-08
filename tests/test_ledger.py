@@ -15,6 +15,8 @@ A wrong merge deletes someone from the story.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from ledger.identity import resolve_or_create
@@ -747,3 +749,53 @@ def test_a_death_with_no_owner_is_still_findable(store):
     """Attached to nobody, so somebody who was not there can bring it up."""
     store.record("death", "you killed Kael")
     assert store.search("Kael"), "nobody could ever hear about it"
+
+
+# ---------------------------------------------------------------------------
+# Where the ledger lives. Found by playing a campaign called "The Drowned
+# Steps" and finding two directories where there should have been one.
+# ---------------------------------------------------------------------------
+
+def test_the_ledger_lands_in_the_same_folder_as_the_save(tmp_path):
+    """A world name with a space in it split one run across two directories.
+
+    save_run strips the world name to alphanumerics; open_ledger built its
+    path from the raw name. So "The Drowned Steps" wrote state.json to
+    TheDrownedSteps/ and world.db to "The Drowned Steps"/ -- and every comment
+    in the code saying the database sits beside the save was wrong for any
+    label anyone would actually type.
+    """
+    import RP_GPT as core
+    from engine.persistence import run_dir, save_run
+
+    state = core.GameState(
+        scenario=core.Scenario.DARK_FANTASY, scenario_label="The Drowned Steps",
+        player=core.Player(name="Wren"),
+        blueprint=core.blueprint_from_json(
+            {"campaign_goal": "g", "pressure_name": "p",
+             "acts": {"1": {"goal": "g", "intro_paragraph": "x"}}}),
+        pressure_name="p")
+
+    saved = save_run(state, root=tmp_path, world="The Drowned Steps",
+                     run_id="abc123", label="The Drowned Steps")
+    expected = run_dir(tmp_path, "The Drowned Steps", "abc123")
+    assert Path(saved).parent == expected
+    assert expected.name == "abc123"
+    assert expected.parent.name == "TheDrownedSteps", (
+        "the sanitiser is what both sides have to agree on"
+    )
+
+
+def test_open_ledger_uses_the_sanitised_directory():
+    """The two paths must be computed by the same function, not by two."""
+    import inspect
+
+    import ui.webapp.game_service as game_service
+
+    source = inspect.getsource(game_service.GameSession.open_ledger)
+    assert "run_dir(" in source, (
+        "open_ledger must ask engine.persistence where the run lives"
+    )
+    assert "SAVES_DIR) / self.world_slug" not in source, (
+        "building the path by hand is exactly how the two drifted apart"
+    )

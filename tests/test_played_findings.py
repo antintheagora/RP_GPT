@@ -423,3 +423,91 @@ def test_the_turn_panel_never_calls_a_method_on_the_player():
         assert forbidden not in panel, (
             f"{forbidden} in the template can take the whole screen down"
         )
+
+
+def test_a_companion_comes_from_the_world_when_the_world_has_one():
+    """A loyal dog joined a drowned kingdom of flooded crypts.
+
+    Act one handed out one of three hardcoded companions -- a survivor scout
+    "who watches the ridgelines", a rogue, and a dog -- in every campaign
+    whatever the setting. The blueprint already writes a cast for this exact
+    world, so a friendly face out of seed_actors always fits better.
+    """
+    import RP_GPT as core
+    from Core.Turn_And_Act_Flow import starting_companions
+
+    seeded = [
+        core.Actor("Salt-Guard Captain", "guard", role="enemy", disposition=-30),
+        core.Actor("Ferryman Osric", "ferryman", role="npc", disposition=5),
+    ]
+    state = core.GameState(
+        scenario=core.Scenario.DARK_FANTASY, scenario_label="Drowned",
+        player=core.Player(name="Wren"),
+        blueprint=core.blueprint_from_json(
+            {"campaign_goal": "g", "pressure_name": "p",
+             "acts": {"1": {"goal": "g", "intro_paragraph": "x"}}}),
+        pressure_name="p")
+
+    chosen = starting_companions(state, seeded, core.Actor)
+    assert [c.name for c in chosen] == ["Ferryman Osric"]
+    assert chosen[0].role == "companion" and chosen[0].discovered
+    assert chosen[0].disposition == 5, "the blueprint's number is the number"
+    assert seeded == [seeded[0]], "a promoted actor is no longer waiting to be met"
+
+
+def test_a_hostile_is_never_promoted_to_a_friend():
+    import RP_GPT as core
+    from Core.Turn_And_Act_Flow import starting_companions
+
+    seeded = [core.Actor("Reaver", "raider", role="enemy", disposition=-40)]
+    state = core.GameState(
+        scenario=core.Scenario.APOCALYPSE, scenario_label="W",
+        player=core.Player(name="A"),
+        blueprint=core.blueprint_from_json(
+            {"campaign_goal": "g", "pressure_name": "p",
+             "acts": {"1": {"goal": "g", "intro_paragraph": "x"}}}),
+        pressure_name="p")
+    chosen = starting_companions(state, seeded, core.Actor)
+    assert all(c.name != "Reaver" for c in chosen)
+    assert seeded and seeded[0].name == "Reaver"
+
+
+def test_the_fallback_fits_the_scenario():
+    """No dogs in the crypt, no hedge-witches in the wasteland."""
+    import RP_GPT as core
+    from Core.Turn_And_Act_Flow import FALLBACK_COMPANIONS, starting_companions
+
+    for scenario, expected in ((core.Scenario.DARK_FANTASY, "Dark Fantasy"),
+                               (core.Scenario.APOCALYPSE, "Apocalypse"),
+                               (core.Scenario.HAUNTED_HOUSE, "Haunted House")):
+        state = core.GameState(
+            scenario=scenario, scenario_label="X", player=core.Player(name="A"),
+            blueprint=core.blueprint_from_json(
+                {"campaign_goal": "g", "pressure_name": "p",
+                 "acts": {"1": {"goal": "g", "intro_paragraph": "x"}}}),
+            pressure_name="p")
+        chosen = starting_companions(state, [], core.Actor)
+        allowed = {row[0] for row in FALLBACK_COMPANIONS[expected]}
+        assert chosen, "starting alone removes assists and Affinity from act one"
+        assert {c.name for c in chosen} <= allowed, (
+            f"{scenario} drew a companion from another setting"
+        )
+
+
+def test_only_the_companions_taken_get_a_character_profile():
+    """All three archetypes were persisted on every act one, used or not.
+
+    That is why Scout, Sable and Brutus are in the character registry of every
+    world in the game -- the registry is global, and act one wrote all three
+    into it before choosing between them.
+    """
+    import inspect
+
+    from Core import Turn_And_Act_Flow
+
+    source = inspect.getsource(Turn_And_Act_Flow.begin_act)
+    profile_call = source.index("ensure_character_profile")
+    chosen_first = source.index("state.companions = starting_companions")
+    assert chosen_first < profile_call, (
+        "profiles must be written after the choice, not before it"
+    )
