@@ -31,6 +31,7 @@ _log = get_logger("keeper")
 
 VERB_FRAMING: Dict[Verb, str] = {
     Verb.ATTACK: "attacking",
+    Verb.APPROACH: "going straight at what is in their way",
     Verb.USE_ITEM: "using something they carry",
     Verb.PARLEY: "trying to talk their way through",
     Verb.WITHDRAW: "trying to get out",

@@ -489,20 +489,33 @@ Quick keeps routine turns fast. Describe is there when you actually care. Both g
 
 That single rule is what kills the current bugs: two divergent damage formulas, the Observe-then-Parley exploit, the unbounded attack inflation, and the `AttributeError` on every pygame combat branch all exist because combat is a separate code path. It stops being one.
 
-## 4.3 The combat menu
+## 4.3 The action menu
 
-Combat keeps its menu. It is not a separate mode — it is a scene with a hostile actor present and a clock on the wall — but the menu is a good, fast affordance and it stays.
+**Built.** Combat keeps its menu. It is not a separate mode — it is a scene with a hostile actor present and a clock on the wall — but the menu is a good, fast affordance and it stays.
 
-| Verb | Options |
-|---|---|
-| **Attack** | bare hands · *each weapon you carry* · **Describe** |
-| **Use item** | *each usable item* · **Describe** |
-| **Parley** | Quick · **Describe what you say** |
-| **Withdraw** | Quick · **Describe** |
-| **Observe** | the enemy · the environment · a weakness · **Other** |
-| **Other** | free text, no category |
+The order below is load-bearing. What the menu lists first is what the game is telling you to consider first.
+
+| Block | Options | When |
+|---|---|---|
+| **Approach** | up to three ways at what is in your way, plus anything you have learned about it | always |
+| **Attack** | bare hands · *each weapon you carry* | a hostile is present |
+| **Talk** | *each person here, by name* — or **Call out** when nobody is | always |
+| **Look** | Study the ground · Look for a weakness · Size them up | *Size them up* needs someone to size up |
+| **Use** | *each item you carry* | you are carrying something |
+| **Withdraw** | Quick | there is a fight or somewhere to go |
+| **Something else** | free text, no category | always |
+
+Every one of them also offers **Describe**.
+
+**Approach is the block the menu was missing.** Attack only appears in a fight, so outside one the entire menu was preparation — look, talk, rummage — and a player clicking through it could never resolve an act. The only way to attempt the thing the act was about was "Something else", and typing.
+
+**The approaches offered come from your sheet, not the obstacle's ratings.** Two reasons. The ratings are the Keeper's private reading of the scene, and Observe is what buys them — offering the best-rated approach for free would hand over the answer and make looking around pointless ([A5](#axioms): hints, not guarantees). And on turn one there is nothing to sort by: an obstacle's Bearings are filled lazily on first contact. Picking by the sheet also means a bruiser and a burglar get two different menus, which is the point of the stats differing at all.
+
+**What you have learned leads, and says why.** An approach you found by observing is offered above the rest with its reason attached — "a weakness you found" — even when it leans on your worst stat. That is the other half of [§4.4](#44-observe-produces-mechanical-output): finding the way in has to put the way in on the menu.
 
 Weapons appear in the Attack list because you carry them; with none, only bare hands. This is generated from inventory, not hardcoded.
+
+**An item the engine has no rule for is Describe-only.** One campaign seeded "The Sunken Map" — the object the act existed to retrieve — into the inventory, and the menu offered *use it* as a one-click move. The engine cannot keep that promise, so it does not make it: say what you are doing with the thing and it will resolve that.
 
 **Companions finally participate** — assists, and taking a wound for you. The rules are in [§7.5](#74-companion-assists).
 
@@ -516,6 +529,8 @@ Observing is a real tactical option, not a flavour turn. Every Observe returns s
 | the environment | a feature that **changes a Bearing** — an alley that lifts Withdraw from Uphill to Sound |
 | a weakness | one approach becomes **Ideal** against this target |
 | *(Other)* | whatever you asked about, if your character could perceive it |
+
+*Other* is reachable by Describe but is no longer a menu entry: it rendered as "Observe: other", which tells a player neither what they would be doing nor what it would buy them.
 
 The bearing change is a real, stored modifier on that obstacle — not a suggestion in prose. Finding the alley makes running away genuinely easier, and the number moves.
 

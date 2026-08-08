@@ -30,11 +30,25 @@ from engine.scene import Obstacle, Scene, worsen
 
 class Verb(str, Enum):
     ATTACK = "attack"
+    APPROACH = "approach"   # go at the problem in front of you
     USE_ITEM = "use_item"
     PARLEY = "parley"
     WITHDRAW = "withdraw"
     OBSERVE = "observe"
     OTHER = "other"
+
+
+# What the player is shown. The screen printed the enum value, so the menu
+# read "use_item • INT" -- a Python identifier, in the game.
+VERB_LABEL: Dict[Verb, str] = {
+    Verb.ATTACK: "strike",
+    Verb.APPROACH: "act",
+    Verb.USE_ITEM: "use",
+    Verb.PARLEY: "talk",
+    Verb.WITHDRAW: "pull back",
+    Verb.OBSERVE: "look",
+    Verb.OTHER: "your own way",
+}
 
 
 class Depth(str, Enum):
@@ -53,6 +67,7 @@ class ObserveTarget(str, Enum):
 # can override it from a Describe, and Bearing decides what it is worth.
 DEFAULT_STAT: Dict[Verb, str] = {
     Verb.ATTACK: "STR",
+    Verb.APPROACH: "INT",
     Verb.USE_ITEM: "INT",
     Verb.PARLEY: "CHA",
     Verb.WITHDRAW: "AGI",
@@ -65,6 +80,53 @@ OBSERVE_STAT: Dict[ObserveTarget, str] = {
     ObserveTarget.ENVIRONMENT: "PER",
     ObserveTarget.WEAKNESS: "INT",
     ObserveTarget.OTHER: "PER",
+}
+
+# "Observe: other" is not a thing anyone wants to do. These are.
+OBSERVE_LABEL: Dict[ObserveTarget, str] = {
+    ObserveTarget.ENEMY: "Size them up",
+    ObserveTarget.ENVIRONMENT: "Study the ground",
+    ObserveTarget.WEAKNESS: "Look for a weakness",
+    ObserveTarget.OTHER: "Take it in",
+}
+
+# One way at the problem per stat. The menu is a shortcut, so these are
+# deliberately plain -- the specific version of any of them is Describe.
+#
+# CHA is "brazen it out" rather than anything about talking: Talk opens a
+# conversation with a person, and this is charm aimed at the obstacle.
+APPROACH_PHRASE: Dict[str, str] = {
+    "STR": "Force it",
+    "PER": "Wait for the moment",
+    "END": "Push through",
+    "CHA": "Brazen it out",
+    "INT": "Work it out",
+    "AGI": "Go quick and quiet",
+    "LUC": "Chance it",
+}
+
+# How many fresh approaches to put in front of the player. All seven is a
+# wall of near-identical buttons; three is a choice.
+APPROACHES_OFFERED = 3
+# Anything learned is offered on top of those, because finding a way in
+# should visibly add a way in. This is the ceiling on the pair, so a scene
+# the player has studied hard does not turn back into the wall of buttons.
+APPROACHES_MAX = 5
+
+# Three is enough to choose from; a crowded room should not push everything
+# else off the screen.
+PARLEY_TARGETS = 3
+
+# A canteen is not an act of intelligence. Items were all filed under INT
+# regardless of what they were.
+ITEM_STAT_TAGS: Dict[str, str] = {
+    "food": "END", "drink": "END", "water": "END", "medicine": "END",
+    "medkit": "END", "stimulant": "END",
+    "tool": "AGI", "rope": "AGI", "lockpick": "AGI", "climbing": "AGI",
+    "book": "INT", "map": "INT", "document": "INT", "note": "INT",
+    "key": "INT", "device": "INT", "boon": "INT",
+    "torch": "PER", "lamp": "PER", "lantern": "PER", "optic": "PER",
+    "charm": "CHA", "gift": "CHA", "token": "LUC",
 }
 
 
@@ -148,12 +210,25 @@ def _weight_of(item) -> WeaponWeight:
     return WeaponWeight.LIGHT
 
 
-def build_menu(scene: Scene, player, *, strength: Optional[int] = None) -> List[MenuOption]:
+def build_menu(scene: Scene, player, *, strength: Optional[int] = None,
+               present: Optional[List[str]] = None) -> List[MenuOption]:
     """The whole menu for this scene.
 
-    Attack and Use Item only appear when they make sense, but Observe, Parley
-    and Other are always available -- there is no state in which the player has
-    nothing to do.
+    **Order is the argument here.** What the menu offers first is what it is
+    telling the player to consider first, and it used to open with three
+    identical `use_item • INT` rows -- Canteen, Old Journal, and, in one real
+    campaign, "The Sunken Map", which was the thing the act was about
+    retrieving. Below them: Talk, and four ways to Observe, one of which was
+    labelled "Observe: other".
+
+    Worse than the order: **there was nothing on it that attempted the
+    obstacle.** Attack only appears in a fight, and outside a fight the whole
+    menu was preparation -- look, talk, rummage. A player clicking through it
+    could never resolve an act. The only way to actually try the thing the act
+    was about was "Something else", and typing it.
+
+    So the menu now leads with approaches to the problem in front of you, and
+    the preparation verbs sit under them where they belong.
     """
     stats = getattr(player, "stats", None)
     if strength is None:
@@ -162,34 +237,74 @@ def build_menu(scene: Scene, player, *, strength: Optional[int] = None) -> List[
 
     options: List[MenuOption] = []
 
+    # 1. Going at it. Always present, because there is always something in
+    #    the way and A2 says every approach is legal.
+    options.extend(approach_options(scene, stats))
+
+    # 2. Fighting, when there is someone to fight.
     if scene.in_combat:
         options.extend(weapon_options(inventory, strength))
 
-    for item in inventory:
-        tags = [t.lower() for t in getattr(item, "tags", []) or []]
-        if "weapon" in tags:
-            continue
-        options.append(MenuOption(
-            Verb.USE_ITEM, getattr(item, "name", "Item"),
-            key=f"item:{getattr(item, 'name', 'item')}", stat="INT",
-        ))
+    # 3. Talking, to somebody in particular.
+    options.extend(parley_options(present))
 
-    options.append(MenuOption(Verb.PARLEY, "Talk", key="parley", stat="CHA"))
-    if scene.in_combat or scene.exits:
-        options.append(MenuOption(Verb.WITHDRAW, "Withdraw", key="withdraw", stat="AGI"))
-
-    for target in ObserveTarget:
+    # 4. Looking. Three at most, and each of them says what it is for.
+    for target in (ObserveTarget.ENVIRONMENT, ObserveTarget.WEAKNESS,
+                   ObserveTarget.ENEMY):
         if target is ObserveTarget.ENEMY and not scene.in_combat:
             continue
         options.append(MenuOption(
-            Verb.OBSERVE, f"Observe: {target.value}", key=f"observe:{target.value}",
+            Verb.OBSERVE, OBSERVE_LABEL[target], key=f"observe:{target.value}",
             stat=OBSERVE_STAT[target], detail=target.value,
         ))
 
-    options.extend(learned_options(scene))
+    # 5. Your kit, below the things that move the act along.
+    options.extend(item_options(inventory))
+
+    if scene.in_combat or scene.exits:
+        options.append(MenuOption(Verb.WITHDRAW, "Withdraw", key="withdraw", stat="AGI"))
+
     options.append(MenuOption(Verb.OTHER, "Something else", key="other",
                               depth=Depth.DESCRIBE))
     return options
+
+
+def approach_options(scene: Scene, stats=None) -> List[MenuOption]:
+    """Ways at the obstacle, offered up front.
+
+    Chosen from the player's **own** strongest stats rather than the
+    obstacle's ratings. Two reasons. The ratings are the Keeper's private
+    reading and Observe is what buys them -- offering the best-rated approach
+    for free would give away the answer and make looking around pointless
+    (A5: hints, not guarantees). And on turn one the obstacle has no ratings
+    at all: they are filled lazily on first contact, so every Bearing reads
+    Sound and there is nothing to sort by.
+
+    Picking by the sheet also means two characters get two different menus,
+    which is the whole point of the stats being different.
+
+    Anything already learned about this obstacle comes first and says why --
+    that part the player paid for.
+    """
+    learned = learned_options(scene)[:APPROACHES_MAX]
+    taken = {option.stat for option in learned}
+
+    values = {key: int(getattr(stats, key, 5)) if stats else 5
+              for key in SPECIAL_KEYS}
+    ranked = sorted(SPECIAL_KEYS, key=lambda k: (-values[k], SPECIAL_KEYS.index(k)))
+
+    room = min(APPROACHES_OFFERED + len(learned), APPROACHES_MAX)
+    out = list(learned)
+    for stat in ranked:
+        if len(out) >= room:
+            break
+        if stat in taken:
+            continue
+        out.append(MenuOption(
+            Verb.APPROACH, APPROACH_PHRASE.get(stat, f"Try {stat}"),
+            key=f"approach:{stat}", stat=stat, detail=stat,
+        ))
+    return out
 
 
 def learned_options(scene: Scene) -> List[MenuOption]:
@@ -209,14 +324,78 @@ def learned_options(scene: Scene) -> List[MenuOption]:
                 continue
             seen.add(stat)
             options.append(MenuOption(
-                Verb.OTHER,
-                f"Use what you found: {stat}",
+                # An approach, not "something else". These used to be filed
+                # under OTHER, which put the one option the player had earned
+                # in the same category as the free-text box.
+                Verb.APPROACH,
+                APPROACH_PHRASE.get(stat, f"Try {stat}"),
                 key=f"learned:{stat}",
                 stat=stat,
                 detail=stat,
                 note=why,
             ))
     return options
+
+
+def parley_options(present: Optional[List[str]] = None) -> List[MenuOption]:
+    """Talk, to somebody by name.
+
+    A single "Talk" gave no clue who it meant, and the engine picked the
+    first actor in the scene -- which, with a party of three, meant a player
+    who wanted to question the sentry opened a conversation with their own
+    dog.
+
+    Nobody present is a legal state rather than an error: calling out and
+    negotiating with the situation is still a parley, so the option never
+    disappears (A2).
+    """
+    names = [n for n in (present or []) if n][:PARLEY_TARGETS]
+    if not names:
+        return [MenuOption(Verb.PARLEY, "Call out", key="parley", stat="CHA")]
+    return [MenuOption(Verb.PARLEY, f"Talk to {name}",
+                       key=f"parley:{name}", stat="CHA", detail=name)
+            for name in names]
+
+
+def item_options(inventory: List) -> List[MenuOption]:
+    """What you are carrying, and what using it would actually be.
+
+    Everything was filed under INT, so drinking from a canteen was an act of
+    intelligence. And anything with no mechanical hook at all -- a map, a
+    journal entry, a keepsake the blueprint seeded as scenery -- was offered
+    as a one-click plan, which is a promise the engine cannot keep. Those are
+    Describe-only: the game will not pretend to know what you mean by "use
+    the map", but it will happily resolve what you say you are doing with it.
+    """
+    options: List[MenuOption] = []
+    for item in inventory or []:
+        tags = [t.lower() for t in getattr(item, "tags", []) or []]
+        if "weapon" in tags:
+            continue
+        name = getattr(item, "name", "Item")
+        options.append(MenuOption(
+            Verb.USE_ITEM, name, key=f"item:{name}",
+            stat=_item_stat(tags),
+            depth=Depth.QUICK if _item_does_something(item, tags) else Depth.DESCRIBE,
+        ))
+    return options
+
+
+def _item_stat(tags: List[str]) -> str:  # noqa: E302 - grouped with its caller
+    for tag in tags:
+        if tag in ITEM_STAT_TAGS:
+            return ITEM_STAT_TAGS[tag]
+    return "INT"
+
+
+def _item_does_something(item, tags: List[str]) -> bool:
+    """Whether the engine has any idea what using this would do."""
+    if any(int(getattr(item, field, 0) or 0)
+           for field in ("hp_delta", "attack_delta", "goal_delta", "pressure_delta")):
+        return True
+    if getattr(item, "special_mods", None):
+        return True
+    return any(tag in ITEM_STAT_TAGS for tag in tags)
 
 
 def intent_from_option(option: MenuOption, described: str = "") -> Intent:
@@ -248,6 +427,10 @@ def intent_from_option(option: MenuOption, described: str = "") -> Intent:
         observe=observe,
         item=option.label if option.verb is Verb.USE_ITEM else "",
         weapon=weapon,
+        # Who the player picked. Talk used to carry nobody, so the engine
+        # took the first actor in the scene and a player who wanted the
+        # sentry got their own dog.
+        target=option.detail if option.verb is Verb.PARLEY else "",
     )
 
 
@@ -340,7 +523,9 @@ def bearing_after_gear(bearing, weapon: Optional[WeaponWeight], strength: int):
 
 __all__ = [
     "Verb", "Depth", "ObserveTarget", "MenuOption", "Intent",
-    "build_menu", "learned_options", "weapon_options", "intent_from_option",
+    "build_menu", "approach_options", "learned_options", "parley_options",
+    "item_options", "weapon_options", "intent_from_option",
     "ObserveResult", "apply_observation", "bearing_after_gear",
-    "DEFAULT_STAT", "OBSERVE_STAT",
+    "DEFAULT_STAT", "OBSERVE_STAT", "OBSERVE_LABEL", "VERB_LABEL",
+    "APPROACH_PHRASE", "APPROACHES_OFFERED", "PARLEY_TARGETS",
 ]

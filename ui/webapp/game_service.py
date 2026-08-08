@@ -16,7 +16,15 @@ from typing import Any, Dict, List, Optional
 
 import RP_GPT as core
 from engine import events as ev
-from engine.actions import Depth, Intent, MenuOption, Verb, build_menu, intent_from_option
+from engine.actions import (
+    VERB_LABEL,
+    Depth,
+    Intent,
+    MenuOption,
+    Verb,
+    build_menu,
+    intent_from_option,
+)
 from engine.bridge import (
     build_run,
     intent_for,
@@ -257,6 +265,20 @@ def intercepted_io(responses: Optional[List[str]] = None):
         sys.stdout = original_stdout
 
 
+# What each stat is, said across a table. The two non-CHA rows were labelled
+# "Try PER" and "Try INT" -- the name of the column, handed to the player as
+# a line of dialogue.
+TALK_PHRASE = {
+    "CHA": "Appeal to them",
+    "INT": "Reason with them",
+    "PER": "Read them, and press",
+    "STR": "Lean on them",
+    "END": "Wear them down",
+    "AGI": "Change the subject",
+    "LUC": "Chance a joke",
+}
+
+
 def clean_output(raw: str) -> str:
     text = raw.replace("\r", "\n")
     lines: List[str] = []
@@ -370,8 +392,22 @@ class GameSession:
         every time the same situation comes up.
         """
         if self._options is None:
-            self._options = build_menu(self.run.scene, self.state.player)
+            self._options = build_menu(self.run.scene, self.state.player,
+                                       present=self._who_is_here())
         return self._options
+
+    def _who_is_here(self) -> List[str]:
+        """Everyone the player could turn and speak to, in the order met.
+
+        Only the discovered: naming somebody the player has not run into yet
+        would put them in the menu before they exist in the fiction.
+        """
+        names = []
+        for actor in getattr(self.state.act, "actors", []) or []:
+            name = getattr(actor, "name", "")
+            if name and getattr(actor, "alive", True) and name not in names:
+                names.append(name)
+        return names
 
     def _stage_turn(self, code: str, payload: Dict[str, Any]):
         """Decide what this click means, and whether the dice may roll yet.
@@ -419,7 +455,7 @@ class GameSession:
         # resolving one check and ending, which is all it did before.
         if (intent.verb is Verb.PARLEY and self._talk is None
                 and not code.startswith(TALK_PREFIX)):
-            partner = self._talk_partner()
+            partner = self._talk_partner(intent.target)
             if partner is not None:
                 self._talk = talk_engine.Conversation(
                     actor_name=partner.name, opened_at=self.run.turn
@@ -513,17 +549,24 @@ class GameSession:
         # dialogue needs room to finish.
         return sanitize_prose(self.client.text(prompt, tag="Talk", max_chars=340))
 
-    def _talk_partner(self):
+    def _talk_partner(self, wanted: str = ""):
         """Who is here to talk to.
+
+        `wanted` is who the player picked off the menu. Without it this took
+        the first actor in the scene, which with a party of three meant
+        someone who wanted a word with the sentry got their own dog.
 
         Nobody present is a legal state, not an error: Talk still resolves as
         a single parley -- calling out, negotiating with the situation -- so
         the option is never greyed out. Axiom A2.
         """
-        for actor in getattr(self.state.act, "actors", []) or []:
-            if getattr(actor, "alive", True) and getattr(actor, "name", ""):
-                return actor
-        return None
+        alive = [a for a in (getattr(self.state.act, "actors", []) or [])
+                 if getattr(a, "alive", True) and getattr(a, "name", "")]
+        if wanted:
+            for actor in alive:
+                if actor.name == wanted:
+                    return actor
+        return alive[0] if alive else None
 
     def _actor_named(self, name: str):
         for actor in (list(getattr(self.state.act, "actors", []) or [])
@@ -566,8 +609,11 @@ class GameSession:
             "max_exchanges": self._talk.max_exchanges,
             "spent": self._talk.spent,
             "log": [x.text for x in self._talk.exchanges if x.text],
-            "options": [{"code": TALK_PREFIX + "CHA", "label": "Appeal", "stat": "CHA"}]
-                       + [{"code": TALK_PREFIX + k, "label": f"Try {k}", "stat": k} for k in best],
+            "options": [{"code": TALK_PREFIX + "CHA",
+                         "label": TALK_PHRASE["CHA"], "stat": "CHA"}]
+                       + [{"code": TALK_PREFIX + k,
+                           "label": TALK_PHRASE.get(k, f"Try {k}"), "stat": k}
+                          for k in best],
             "end": TALK_END,
         }
 
@@ -622,7 +668,9 @@ class GameSession:
                 {
                     "code": option.key,
                     "label": option.label,
-                    "verb": option.verb.value,
+                    # Not the enum value. The screen printed "use_item • INT"
+                    # -- a Python identifier, in front of the player.
+                    "verb": VERB_LABEL.get(option.verb, option.verb.value),
                     "stat": option.stat,
                     "detail": option.detail,
                     "note": option.note,
