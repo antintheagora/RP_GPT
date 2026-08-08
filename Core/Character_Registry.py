@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import Core.Paths as paths
 from Core.Logging import get_logger
 
 _log = get_logger("character_registry")
@@ -18,7 +19,21 @@ if TYPE_CHECKING:  # pragma: no cover - for type hints only
     from RP_GPT import Actor
 
 # Directory structure and defaults
-BASE_DIR = Path("Characters")
+def base_dir() -> Path:
+    """Where profiles live, asked for at the moment of use.
+
+    This was `BASE_DIR = Path("Characters")` -- a *relative* path, so the
+    registry wrote to whatever directory the game happened to be launched
+    from. Core/Paths.py exists precisely to stop that, and this module never
+    got converted; it only ever worked because everything started from the
+    repo root.
+
+    A function rather than a constant because the tests reload Core.Paths
+    with a temporary user-data directory, and a name bound at import time
+    would keep pointing at the real one.
+    """
+    adopt_seed_registry()
+    return Path(paths.CHARACTERS_DIR)
 ROLE_DIRS: Dict[str, str] = {
     "npc": "NPC",
     "enemy": "Enemies",
@@ -146,8 +161,8 @@ def _index() -> Dict[str, Path]:
     global _FOLDER_INDEX
     if _FOLDER_INDEX is None:
         index: Dict[str, Path] = {}
-        if BASE_DIR.exists():
-            for meta in BASE_DIR.rglob(METADATA_FILE):
+        if base_dir().exists():
+            for meta in base_dir().rglob(METADATA_FILE):
                 name = meta.parent.name.replace("_", " ")
                 try:
                     data = json.loads(meta.read_text(encoding="utf-8-sig"))
@@ -211,9 +226,9 @@ def _discover_portrait(folder: Path) -> Optional[Path]:
 
 
 def ensure_directories() -> None:
-    BASE_DIR.mkdir(exist_ok=True)
+    base_dir().mkdir(exist_ok=True)
     for sub in ROLE_DIRS.values():
-        (BASE_DIR / sub).mkdir(parents=True, exist_ok=True)
+        (base_dir() / sub).mkdir(parents=True, exist_ok=True)
 
 
 def register_default_characters() -> None:
@@ -221,7 +236,7 @@ def register_default_characters() -> None:
     ensure_directories()
     for entry in DEFAULT_CHARACTERS:
         role = entry.get("role", "npc").lower()
-        folder = BASE_DIR / ROLE_DIRS.get(role, ROLE_DIRS["npc"]) / _sanitize(entry.get("name", "Character"))
+        folder = base_dir() / ROLE_DIRS.get(role, ROLE_DIRS["npc"]) / _sanitize(entry.get("name", "Character"))
         meta_path = folder / METADATA_FILE
         if meta_path.exists():
             continue
@@ -261,6 +276,41 @@ def set_persistence(enabled: bool) -> bool:
     return previous
 
 
+
+_adopted = False
+
+
+def adopt_seed_registry() -> None:
+    """Carry an existing registry over the first time this runs. Once, ever.
+
+    The registry used to live in the repo and now lives beside the saves. A
+    player who has been running this for months has a hundred and fifty
+    characters in the old place, and none of them should disappear because a
+    directory moved.
+
+    Copies rather than moves: if anything about this is wrong, the original is
+    still sitting there. Runs once per process, and does nothing at all once
+    the destination exists.
+    """
+    global _adopted
+    if _adopted:
+        return
+    _adopted = True
+
+    destination = Path(paths.CHARACTERS_DIR)
+    if destination.exists() and any(destination.iterdir()):
+        return
+    source = Path(paths.SEED_CHARACTERS_DIR)
+    if not source.exists():
+        destination.mkdir(parents=True, exist_ok=True)
+        return
+    try:
+        shutil.copytree(source, destination, dirs_exist_ok=True)
+        _log.info("carried the character registry across to %s", destination)
+    except Exception:
+        _log.exception("could not carry the registry across from %s", source)
+        destination.mkdir(parents=True, exist_ok=True)
+
 def ensure_character_profile(actor: "Actor") -> CharacterProfile:
     """Attach (and persist) metadata for the supplied actor."""
     if not _PERSIST:
@@ -268,7 +318,7 @@ def ensure_character_profile(actor: "Actor") -> CharacterProfile:
         return CharacterProfile(
             name=actor.name or "Character",
             role=role,
-            folder=BASE_DIR / ROLE_DIRS.get(role, ROLE_DIRS["npc"]) / _sanitize(actor.name or "Character"),
+            folder=base_dir() / ROLE_DIRS.get(role, ROLE_DIRS["npc"]) / _sanitize(actor.name or "Character"),
             metadata={},
             portrait_path=None,
         )
@@ -281,7 +331,7 @@ def ensure_character_profile(actor: "Actor") -> CharacterProfile:
     folder = existing_folder_for(actor.name or "")
     known_as = ""
     if folder is None:
-        folder = BASE_DIR / ROLE_DIRS.get(role, ROLE_DIRS["npc"]) / _sanitize(actor.name or "Character")
+        folder = base_dir() / ROLE_DIRS.get(role, ROLE_DIRS["npc"]) / _sanitize(actor.name or "Character")
     else:
         known_as = actor.name or ""
     folder.mkdir(parents=True, exist_ok=True)
@@ -418,7 +468,7 @@ def lookup_profile(name: str) -> Optional[CharacterProfile]:
     ensure_directories()
     safe = _sanitize(name)
     for role, sub in ROLE_DIRS.items():
-        folder = BASE_DIR / sub / safe
+        folder = base_dir() / sub / safe
         meta_path = folder / METADATA_FILE
         if meta_path.exists():
             try:
@@ -469,7 +519,7 @@ def load_profile_aliases(name: str) -> List[str]:
 
     aliases: List[str] = []
     for role_dir in ROLE_DIRS.values():
-        candidate = BASE_DIR / role_dir / _sanitize(name) / METADATA_FILE
+        candidate = base_dir() / role_dir / _sanitize(name) / METADATA_FILE
         if not candidate.exists():
             continue
         try:

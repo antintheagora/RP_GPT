@@ -38,3 +38,11 @@ tests/fixtures/**/*.live.json
 
 # --- Node, only used to build the stylesheet ---
 node_modules/
+
+# --- Runtime state, not source ---
+# The character registry moved to the user data directory beside the saves
+# (Core/Paths.py: CHARACTERS_DIR). The copy left here is the seed the game
+# carries across once, on first run after the move, and is safe to delete
+# afterwards. It is not tracked because the game writes to it every turn:
+# six turns of play produced twenty-four modified or new files.
+Characters/

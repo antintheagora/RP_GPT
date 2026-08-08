@@ -25,7 +25,10 @@ def store(tmp_path, monkeypatch):
     """A character tree of its own, so tests never touch authored profiles."""
     import RP_GPT  # noqa: F401  -- importing it writes the starter cast
 
-    monkeypatch.setattr(registry, "BASE_DIR", tmp_path)
+    # A function now, not a constant: the registry moved out of the repo
+    # to the user data directory, and asks Core.Paths at the moment of
+    # use so a reloaded Paths is respected.
+    monkeypatch.setattr(registry, "base_dir", lambda: tmp_path)
     # The suite disables profile writing so it cannot dirty authored
     # characters. These tests are about writing, and write somewhere safe.
     previous = registry.set_persistence(True)

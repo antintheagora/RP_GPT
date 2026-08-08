@@ -19,8 +19,12 @@ from pathlib import Path
 
 PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent
 ASSETS_DIR: Path = PROJECT_ROOT / "Assets"
-CHARACTERS_DIR: Path = PROJECT_ROOT / "Characters"
 WORLDS_DIR: Path = PROJECT_ROOT / "Worlds"
+
+#: The registry that ships with the repo. Read once, ever: the first time the
+#: game runs after the registry moved, to carry an existing one across. See
+#: CHARACTERS_DIR below for why it moved.
+SEED_CHARACTERS_DIR: Path = PROJECT_ROOT / "Characters"
 CONTENT_DIR: Path = PROJECT_ROOT / "content"
 
 
@@ -43,6 +47,20 @@ def _user_data_root() -> Path:
 USER_DATA: Path = _user_data_root()
 SAVES_DIR: Path = USER_DATA / "saves"
 LOGS_DIR: Path = USER_DATA / "logs"
+
+#: Every character the game has ever met.
+#:
+#: This was PROJECT_ROOT / "Characters", filed at the top of this file under
+#: "Read-only, ships with the game" -- and the game writes to it constantly.
+#: `ensure_character_profile` bumps `updated_at`, `last_seen` and `encounters`
+#: on every actor it touches, and every name the model invents gets a folder.
+#: Six turns of play produced twenty-four modified or new files. The tree was
+#: dirty after any session, and a real diff had to be picked out of the churn.
+#:
+#: It is runtime state, so it belongs where the saves are. PLAN says the same
+#: thing in more words: the repo holds authored seed content, and what the
+#: game generates is not authority.
+CHARACTERS_DIR: Path = USER_DATA / "characters"
 IMAGES_DIR: Path = USER_DATA / "ui_images"
 JOURNALS_DIR: Path = USER_DATA / "journals"
 
@@ -66,7 +84,8 @@ def journal_path(campaign_id: str = "") -> Path:
 
 
 __all__ = [
-    "PROJECT_ROOT", "ASSETS_DIR", "CHARACTERS_DIR", "WORLDS_DIR", "CONTENT_DIR",
+    "PROJECT_ROOT", "ASSETS_DIR", "CHARACTERS_DIR", "SEED_CHARACTERS_DIR",
+    "WORLDS_DIR", "CONTENT_DIR",
     "USER_DATA", "SAVES_DIR", "LOGS_DIR", "IMAGES_DIR", "JOURNALS_DIR",
     "ensure_dirs", "journal_path",
 ]

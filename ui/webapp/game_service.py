@@ -326,6 +326,11 @@ class GameSession:
         self._reset_transient()
         self.state = state
         self.client = client
+        # Reachable from anything holding a state, the same way the ledger is
+        # -- `encode` walks declared dataclass fields, so a plain attribute
+        # never reaches the save file. begin_act is handed a state and nothing
+        # else, and it is where companions arrive needing a description.
+        self.state.gemma = client
         self.label = scenario_label
         self.world_text = world_text.strip()
         self.created_at = time.time()

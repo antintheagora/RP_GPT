@@ -25,7 +25,7 @@ from Core.Config import DEFAULT_MODEL
 from Core.Logging import get_logger
 from engine.validation import repair, validate_world
 from Core.Character_Registry import (
-    BASE_DIR as CHAR_BASE_DIR,
+    base_dir as _character_base_dir,
     ROLE_DIRS as CHAR_ROLE_DIRS,
     METADATA_FILE as CHAR_META_FILE,
     PORTRAIT_EXTS as CHAR_PORTRAIT_EXTS,
@@ -40,7 +40,9 @@ from Core.Character_Registry import (
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 ASSETS_DIR = PROJECT_ROOT / "Assets"
 WORLDS_DIR = PROJECT_ROOT / "Worlds"
-CHARACTERS_ROOT = PROJECT_ROOT / CHAR_BASE_DIR
+# Absolute already, and no longer under the repo: the registry is
+# runtime state and lives with the saves.
+CHARACTERS_ROOT = _character_base_dir()
 PLAYER_ROOT = PROJECT_ROOT / "Characters" / "Player_Character"
 _log = get_logger("server")
 _log.info("project root %s | assets %s (exists=%s)", PROJECT_ROOT, ASSETS_DIR, ASSETS_DIR.exists())
