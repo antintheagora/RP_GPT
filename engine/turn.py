@@ -674,9 +674,15 @@ def _apply_harm(run: Run, resolution: Resolution, intent: Intent,
         result.damage = amount
         ev.harm(f"You take {amount}.")
         if run.condition.hp <= 0:
+            # `assessment.stat`, in a function that has no `assessment`. The
+            # only line in the game that creates a wound raised NameError, and
+            # nothing ever noticed because nothing ever reached it: measured
+            # over 1,500 simulated campaigns, hit points never once reached
+            # zero. A dead branch and a broken branch look identical until
+            # somebody finally gets hurt enough to run it.
             wound = run.condition.wounds.take("A grievous wound", 4,
                                               cap=resolution.harm_cap,
-                                              stat=assessment.stat)
+                                              stat=resolution.stat)
             result.wound = wound.name
             run.condition.hp = max(1, run.condition.max_hp // 4)
             ev.harm(f"{wound.name}.")

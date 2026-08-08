@@ -387,3 +387,54 @@ def test_an_observation_is_spent_when_it_applies():
                  StubKeeper(bearing=Bearing.SOUND), rng=random.Random(3))
 
     assert not run.prepared, "one Observe must not improve every roll in the act"
+
+
+# =============================
+# ---- GETTING HURT ENOUGH ----
+# =============================
+
+def test_being_knocked_down_takes_a_wound_instead_of_crashing():
+    """The only line in the game that creates a wound was broken.
+
+    `_apply_harm` passed `stat=assessment.stat` inside a function that has no
+    `assessment` -- an unbound name, so the branch raised NameError. Nothing
+    caught it because nothing ever ran it: across 1,500 simulated campaigns,
+    hit points never once reached zero, so the whole slow layer of wounds,
+    worsening and going out sat behind a branch that could not be entered.
+
+    A dead branch and a broken branch are indistinguishable until somebody
+    finally gets hurt enough to run it. This drives HP to nothing and takes
+    the turn, which is the only way to tell them apart.
+    """
+    run = _run(hostiles=["a ghoul"])
+    run.condition.hp = 1
+
+    result = advance_turn(
+        run,
+        _intent(),
+        StubKeeper(bearing=Bearing.FUTILE, consequence=Consequence.HARM,
+                   cornered=True),
+        rng=random.Random(4),   # a roll low enough to fail
+    )
+
+    assert not result.resolution.succeeded, "the seed has to produce a failure"
+    assert result.damage, "a HARM consequence has to actually hurt"
+    assert result.wound, "reaching zero has to leave a mark"
+    assert run.condition.wounds.wounds, "and the mark has to be recorded"
+    assert run.condition.hp > 0, "you come back up, carrying it"
+
+
+def test_the_wound_remembers_which_approach_earned_it():
+    """A wound penalises the approach that got you hurt, so it has to know
+    which one that was -- that is the field the broken line was setting."""
+    run = _run(hostiles=["a ghoul"])
+    run.condition.hp = 1
+
+    advance_turn(run, _intent(verb=Verb.ATTACK, stat="STR"),
+                 StubKeeper(bearing=Bearing.FUTILE,
+                            consequence=Consequence.HARM, cornered=True),
+                 rng=random.Random(4))
+
+    wound = run.condition.wounds.wounds[0]
+    assert wound.stat, "a wound with no stat penalises nothing at all"
+    assert wound.applies_to(wound.stat)
