@@ -986,6 +986,13 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
         session = _require_session()
         return render_template("partials/log_panel.html", events=session.get_events(), payload=session.get_turn_payload())
 
+    @app.get("/ui/scene")
+    def scene_panel():
+        """The picture, on its own. Same payload, same refresh event."""
+        session = _require_session()
+        return render_template("partials/scene_panel.html",
+                               payload=session.get_turn_payload())
+
     @app.get("/ui/sheet")
     def character_sheet():
         """The character sheet, fetched when the player opens it.

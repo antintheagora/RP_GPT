@@ -180,17 +180,10 @@
     </div>
   {% endif %}
 
-  {# The scene, when one has arrived. Pictures are fetched off the turn, so
-     this lags by a beat rather than holding the game up -- and the panel
-     simply has no image block until the first one lands. #}
-  {% if payload.image_url %}
-    <figure class="rounded-sm overflow-hidden border border-edge">
-      {# `payload.situation[:120]` -- slicing None raises, and the very line
-         below this block already allows for the situation being empty. #}
-      <img src="{{ payload.image_url }}" alt="{{ (payload.situation or 'The scene')[:120] }}"
-           class="w-full object-cover" style="aspect-ratio: 16 / 9;" loading="lazy" />
-    </figure>
-  {% endif %}
+  {# The scene has moved to partials/scene_panel.html, at the top of the
+     screen. It was one block among fifteen here, below the clocks, the
+     party, the marks and the tides -- so the thing the eye goes to first
+     was the thing you had to scroll to. #}
 
   {# How hard the world is leaning, and why. Shown because pacing the player
      cannot see is a hidden meter, which is the thing this replaced. #}

@@ -13,7 +13,13 @@
        stamped "Turn 5" on every one of them, six times down the column. The
        number is now a divider between turns, which is what it was for. #}
     {% if events %}
-      <div class="space-y-3 max-h-[32rem] overflow-y-auto pr-2 scroll-fade">
+      {# One scroller, not two. This capped itself at 32rem and scrolled inside
+         the panel, which was reasonable when the panel was a full-height
+         column. The panel is now pinned to the height of the picture beside
+         it -- 425px of content well -- so a 512px inner cap is both taller
+         than its container and a second thing to scroll before the first one
+         moves. The frame scrolls its own content now; this just flows. #}
+      <div class="space-y-3 pr-2">
         {# Keyed on the act as well as the turn. Turn numbers restart at 1 with
            every act and this column runs newest first, so an act boundary
            produced "Turn 1" sitting above "Turn 6" and the whole panel read

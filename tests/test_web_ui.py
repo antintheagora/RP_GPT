@@ -54,16 +54,53 @@ def test_sideways_is_still_clamped():
     assert "overflow-x: hidden" in _text("static", "app.css")
 
 
-def test_the_play_panels_scroll_by_themselves():
-    """The play screen is by far the tallest in the app and was the only one
-    with no scroller of its own -- every other screen already does this."""
+def test_the_log_scrolls_inside_the_height_of_the_picture():
+    """The play screen is by far the tallest in the app.
+
+    It used to be two columns that each scrolled themselves. It is now a
+    picture across most of the top, the log beside it, and the turn panel full
+    width underneath -- so only the log needs a scroller of its own, because
+    only the log is pinned to a height it did not choose. The turn panel is
+    the tallest thing on the screen and scrolls with the page, which is what
+    a page is for; trapping it in a viewport-high box would nest one scroller
+    inside another.
+    """
     play = _text("templates", "play.html")
-    assert play.count("play-panel") == 2, "both columns, or the tall one hides"
+    assert play.count("play-panel") == 1, "only the log is height-constrained"
+    assert "play-turn" in play and "play-scene" in play
 
     css = _text("static", "app.css")
-    rule = css[css.index(".play-panel"):]
+    # Anchored at a line start: `.play-aside > .play-panel {` also contains
+    # ".play-panel {", and an unanchored search finds that one first.
+    rule = css[css.index("\n.play-panel {"):]
     assert "overflow-y: auto" in rule[:400]
-    assert "max-height" in rule[:400]
+
+
+def test_the_log_cannot_stretch_the_row_past_the_picture():
+    """A grid row is as tall as its tallest item, and the log is a scrolling
+    column of narration routinely three times the height of a 16:9 picture.
+    Left in flow it would set the row height and leave the image floating in
+    a tall empty column beside it."""
+    css = _text("static", "app.css")
+    block = css[css.index(".play-aside > .play-panel"):]
+    assert "position: absolute" in block[:220], (
+        "the log is in flow, so it sizes the row rather than the picture"
+    )
+
+
+def test_the_picture_holds_its_place_before_it_arrives():
+    """Pictures are fetched off the turn, so every act opens with a beat where
+    there is nothing to show. A block that appears from nothing shoves the
+    whole screen down as it lands."""
+    css = _text("static", "app.css")
+    frame = css[css.index(".scene-frame {"):]
+    assert "aspect-ratio" in frame[:300]
+
+    scene = _text("templates", "partials", "scene_panel.html")
+    assert "scene-frame" in scene
+    opening = scene[scene.index("<figure")]
+    assert opening, "the frame is drawn outside the if, not inside it"
+    assert scene.index("<figure") < scene.index("{% if payload.image_url %}")
 
 
 def test_the_frame_does_not_eat_the_window():

@@ -1,0 +1,28 @@
+{# The scene, at the top of the screen and most of its width.
+
+   It used to be one block among fifteen inside the turn panel, which put the
+   picture below the clocks, the party, the marks and the tides -- so the
+   thing the eye goes to first was the thing you had to scroll to. It is its
+   own htmx target now for the same reason the other two are: it refreshes on
+   the same event and a swap cannot catch it mid-render.
+
+   The frame is always drawn, even before the first picture lands. Pictures
+   are fetched off the turn, so there is a beat at the start of every act
+   where there is nothing yet -- and a block that appears from nothing shoves
+   the whole layout down as it arrives. #}
+<figure class="scene-frame">
+  {% if payload.image_url %}
+    {# `payload.situation[:120]` -- slicing None raises, and the situation is
+       allowed to be empty. #}
+    <img src="{{ payload.image_url }}"
+         alt="{{ (payload.situation or 'The scene')[:120] }}" loading="lazy" />
+  {% else %}
+    <figcaption class="scene-waiting">
+      {% if payload.images_enabled %}
+        The scene is being drawn.
+      {% else %}
+        Pictures are off for this campaign.
+      {% endif %}
+    </figcaption>
+  {% endif %}
+</figure>

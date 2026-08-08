@@ -1623,10 +1623,98 @@ textarea.u-input {
   align-items: start;
 }
 
+/* One column on anything narrow: the picture, then the log, then the turn.
+   Reading order matches the source order, so nothing has to be reordered. */
+.play-scene,
+.play-aside,
+.play-turn {
+  min-width: 0;
+}
+
 @media (min-width: 1024px) {
   .play-grid {
-    grid-template-columns: 1.05fr 1fr;
+    /* The picture takes most of it; the log takes what is left. */
+    grid-template-columns: minmax(0, 2.15fr) minmax(0, 1fr);
+    grid-template-areas:
+      "scene aside"
+      "turn  turn";
   }
+
+  .play-scene { grid-area: scene; }
+  .play-aside { grid-area: aside; }
+  .play-turn { grid-area: turn; }
+
+  /* The log ends where the picture ends.
+     A grid row is as tall as its tallest item, and the log is a scrolling
+     column of narration that is routinely three times the height of a 16:9
+     picture -- so left to itself it sets the row height and the image floats
+     in a tall empty column beside it. Taking the log out of flow inside a
+     relative box means the row is sized by the picture alone, and the log
+     fills exactly that and scrolls inside it. */
+  .play-aside {
+    position: relative;
+    /* The grid sets `align-items: start`, which stops this stretching to the
+       row -- and with nothing but an absolutely positioned child inside, it
+       has no height of its own to fall back on. Measured at 0px tall before
+       this line: the log was drawn as a 371x0 box and rendered nothing. */
+    align-self: stretch;
+  }
+
+  .play-aside > .play-panel {
+    position: absolute;
+    inset: 0;
+    max-height: none;      /* the box is the limit now, not the viewport */
+    overflow: hidden;      /* the frame is fixed; the content scrolls */
+  }
+
+  /* Scroll the content, not the frame.
+     The log is drawn in a nine-slice stone frame, and with the scroller on
+     the outside the frame scrolled too -- so the bottom edge of the stone sat
+     six hundred pixels below the visible box and the panel simply had no
+     bottom. Pinning the frame and scrolling `.nine-content` inside it is the
+     same arrangement the character sheet uses. */
+  .play-aside .ninebox {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .play-aside .nine-content {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+
+/* The picture. The frame is drawn whether or not there is anything in it
+   yet: pictures are fetched off the turn, so there is a beat at the start of
+   every act with nothing to show, and a block that appears from nothing
+   shoves the rest of the screen down as it arrives. */
+.scene-frame {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 1px solid #332a24;
+  border-radius: 2px;
+  background: #0b0908;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scene-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.scene-waiting {
+  font-size: 0.85rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #8f7f64;
 }
 
 .play-panel {

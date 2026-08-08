@@ -5,9 +5,29 @@
      arrives -- see chronicle.js. #}
   <div id="chronicle" class="chronicle-feed" aria-live="polite"></div>
 
+  {# Three areas rather than two columns:
+
+         scene   aside
+         turn    turn
+
+     The picture leads, across most of the width. The log sits beside it and
+     stops where it stops -- it scrolls inside that height rather than running
+     on past the bottom of the image. The turn panel, which is the tallest
+     thing on the screen by a distance, gets the full width underneath. #}
   <div class="play-grid">
-    <div id="turn-panel" class="play-panel" hx-get="{{ url_for('turn_panel') }}" hx-trigger="load, refresh-turn from:body" hx-target="this"></div>
-    <div id="log-panel" class="play-panel" hx-get="{{ url_for('log_panel') }}" hx-trigger="load, refresh-turn from:body" hx-target="this"></div>
+    <div id="scene-panel" class="play-scene"
+         hx-get="{{ url_for('scene_panel') }}"
+         hx-trigger="load, refresh-turn from:body" hx-target="this"></div>
+
+    <div class="play-aside">
+      <div id="log-panel" class="play-panel"
+           hx-get="{{ url_for('log_panel') }}"
+           hx-trigger="load, refresh-turn from:body" hx-target="this"></div>
+    </div>
+
+    <div id="turn-panel" class="play-turn"
+         hx-get="{{ url_for('turn_panel') }}"
+         hx-trigger="load, refresh-turn from:body" hx-target="this"></div>
   </div>
 {% endblock %}
 

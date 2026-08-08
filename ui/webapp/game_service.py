@@ -1007,6 +1007,11 @@ class GameSession:
                 # A plain path rather than url_for: this payload is built by
                 # tests and by the playthrough harness, neither of which has
                 # a Flask application context, and url_for raises without one.
+                # Whether a picture is ever coming. The scene panel says "the
+                # scene is being drawn" while it waits, and for a campaign
+                # with pictures switched off that would be a promise nothing
+                # is going to keep.
+                "images_enabled": bool(getattr(self.state, "images_enabled", True)),
                 "image_url": (
                     f"/run-image/{self.id}/{Path(self._images[-1]['path']).name}"
                     if self._images else ""
