@@ -462,3 +462,44 @@ def test_an_authored_party_replaces_the_seeded_one():
         "allow_random_characters has a button on the roster screen and was "
         "read by nothing at all"
     )
+
+
+# =============================
+# --- THE FORMS ARE USABLE ----
+# =============================
+
+def test_every_visible_label_names_a_real_field():
+    """Thirty-two labels across four screens, none tied to anything.
+
+    They looked correct and did nothing. Clicking "Personality" did not put
+    the cursor in the Personality box, and a screen reader announced a row of
+    unlabelled text inputs. A label is either connected to a control or it is
+    decoration that happens to look like a label.
+    """
+    field = re.compile(r"<(input|textarea|select)\b[^>]*?>", re.I | re.S)
+    label = re.compile(r"<label\b([^>]*)>(.*?)</label>", re.I | re.S)
+
+    orphans = []
+    for page in ("characters.html", "landing.html", "legacy_start.html", "roster.html"):
+        source = _text("templates", page)
+        ids = set(re.findall(r'id="([^"{}]+)"', source))
+        for match in label.finditer(source):
+            attrs, inner = match.group(1), match.group(2)
+            # A label wrapping its own control needs no `for`.
+            if field.search(inner):
+                continue
+            named = re.search(r'for="([^"]+)"', attrs)
+            text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", inner)).strip()[:30]
+            if not named:
+                orphans.append(f"{page}: {text!r} points at nothing")
+            elif named.group(1) not in ids:
+                orphans.append(f"{page}: {text!r} points at a missing id")
+
+    assert not orphans, "\n".join(orphans)
+
+
+def test_no_two_fields_claim_the_same_id():
+    """A duplicate id sends every label to the first one that matches."""
+    for page in ("characters.html", "legacy_start.html", "roster.html"):
+        found = re.findall(r'id="(f-[^"{}]+)"', _text("templates", page))
+        assert len(found) == len(set(found)), f"{page} has duplicate field ids"

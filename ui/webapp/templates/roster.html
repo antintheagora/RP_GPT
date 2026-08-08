@@ -120,68 +120,68 @@
       <form method="post" action="{{ url_for('update_character_profile', slug=world.slug, role=current.role, char_slug=current.slug) }}" class="character-form u-scroll scroll-fade">
         <input type="hidden" name="char" value="{{ char_param or '' }}" />
         <div>
-          <label class="block overline text-dust">Name</label>
+          <label class="block overline text-dust" for="f-name">Name</label>
           <div class="mt-1 u-input-shell">
-            <input class="u-input" name="name" value="{{ current.name }}" />
+            <input class="u-input" name="name" value="{{ current.name }}" id="f-name" />
           </div>
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block overline text-dust">Role</label>
+            <label class="block overline text-dust" for="f-role">Role</label>
             <div class="mt-1 u-input-shell">
-              <input class="u-input" value="{{ current.role }}" readonly />
+              <input class="u-input" value="{{ current.role }}" readonly id="f-role" />
             </div>
           </div>
           <div>
-            <label class="block overline text-dust">Kind</label>
+            <label class="block overline text-dust" for="f-kind">Kind</label>
             <div class="mt-1 u-input-shell">
-              <input class="u-input" name="kind" value="{{ current.kind }}" />
+              <input class="u-input" name="kind" value="{{ current.kind }}" id="f-kind" />
             </div>
           </div>
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block overline text-dust">Sex</label>
+            <label class="block overline text-dust" for="f-sex">Sex</label>
             <div class="mt-1 u-input-shell">
-              <input class="u-input" name="sex" value="{{ current.sex }}" />
+              <input class="u-input" name="sex" value="{{ current.sex }}" id="f-sex" />
             </div>
           </div>
           <div>
-            <label class="block overline text-dust">Species</label>
+            <label class="block overline text-dust" for="f-species">Species</label>
             <div class="mt-1 u-input-shell">
-              <input class="u-input" name="species" value="{{ current.species }}" />
+              <input class="u-input" name="species" value="{{ current.species }}" id="f-species" />
             </div>
           </div>
         </div>
         <div>
-          <label class="block overline text-dust">Short description</label>
+          <label class="block overline text-dust" for="f-desc">Short description</label>
           <div class="mt-1 u-input-shell">
-            <input class="u-input" name="desc" value="{{ current.desc }}" />
+            <input class="u-input" name="desc" value="{{ current.desc }}" id="f-desc" />
           </div>
         </div>
         <div>
-          <label class="block overline text-dust">Bio</label>
+          <label class="block overline text-dust" for="f-bio">Bio</label>
           <div class="mt-1 u-input-shell">
-            <textarea class="u-input" name="bio" rows="4">{{ current.bio }}</textarea>
+            <textarea class="u-input" name="bio" rows="4" id="f-bio">{{ current.bio }}</textarea>
           </div>
         </div>
         <div>
-          <label class="block overline text-dust">Personality</label>
+          <label class="block overline text-dust" for="f-personality">Personality</label>
           <div class="mt-1 u-input-shell">
-            <input class="u-input" name="personality" value="{{ current.personality }}" />
+            <input class="u-input" name="personality" value="{{ current.personality }}" id="f-personality" />
           </div>
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block overline text-dust">HP</label>
+            <label class="block overline text-dust" for="f-hp">HP</label>
             <div class="mt-1 u-input-shell">
-              <input class="u-input" type="number" name="hp" value="{{ current.hp }}" />
+              <input class="u-input" type="number" name="hp" value="{{ current.hp }}" id="f-hp" />
             </div>
           </div>
           <div>
-            <label class="block overline text-dust">Attack</label>
+            <label class="block overline text-dust" for="f-attack">Attack</label>
             <div class="mt-1 u-input-shell">
-              <input class="u-input" type="number" name="attack" value="{{ current.attack }}" />
+              <input class="u-input" type="number" name="attack" value="{{ current.attack }}" id="f-attack" />
             </div>
           </div>
         </div>

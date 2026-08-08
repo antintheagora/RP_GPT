@@ -97,46 +97,46 @@
         <input type="hidden" name="player" value="{{ selected.slug }}" />
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block overline text-dust">Name</label>
+            <label class="block overline text-dust" for="f-name">Name</label>
             <div class="mt-1 u-input-shell">
-              <input class="u-input" name="name" value="{{ selected.name }}" />
+              <input class="u-input" name="name" value="{{ selected.name }}" id="f-name" />
             </div>
           </div>
           <div>
-            <label class="block overline text-dust">Scenario label</label>
+            <label class="block overline text-dust" for="f-scenario_label">Scenario label</label>
             <div class="mt-1 u-input-shell">
-              <input class="u-input" name="scenario_label" value="{{ selected.scenario_label }}" />
+              <input class="u-input" name="scenario_label" value="{{ selected.scenario_label }}" id="f-scenario_label" />
             </div>
           </div>
         </div>
         <div class="grid grid-cols-3 gap-3">
           <div>
-            <label class="block overline text-dust">Sex</label>
+            <label class="block overline text-dust" for="f-sex">Sex</label>
             <div class="mt-1 u-input-shell">
-              <input class="u-input" name="sex" value="{{ selected.sex }}" />
+              <input class="u-input" name="sex" value="{{ selected.sex }}" id="f-sex" />
             </div>
           </div>
           <div>
-            <label class="block overline text-dust">Age</label>
+            <label class="block overline text-dust" for="f-age">Age</label>
             <div class="mt-1 u-input-shell">
-              <input class="u-input" type="number" name="age" value="{{ selected.age }}" />
+              <input class="u-input" type="number" name="age" value="{{ selected.age }}" id="f-age" />
             </div>
           </div>
           <div>
-            <label class="block overline text-dust">Clothing</label>
+            <label class="block overline text-dust" for="f-clothing">Clothing</label>
             <div class="mt-1 u-input-shell">
-              <input class="u-input" name="clothing" value="{{ selected.clothing }}" />
+              <input class="u-input" name="clothing" value="{{ selected.clothing }}" id="f-clothing" />
             </div>
           </div>
         </div>
         <div>
-          <label class="block overline text-dust">Appearance</label>
+          <label class="block overline text-dust" for="f-appearance">Appearance</label>
           <div class="mt-1 u-input-shell">
-            <textarea class="u-input" rows="3" name="appearance">{{ selected.appearance }}</textarea>
+            <textarea class="u-input" rows="3" name="appearance" id="f-appearance">{{ selected.appearance }}</textarea>
           </div>
         </div>
         <div>
-          <label class="block overline text-dust">SPECIAL stats</label>
+          <p class="block overline text-dust">SPECIAL stats</p>
           <div class="stat-grid">
             {% for stat in special_keys %}
             <label>
