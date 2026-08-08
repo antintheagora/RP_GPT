@@ -40,7 +40,14 @@ from engine.rest import render_rest, take_rest
 from engine import talk as talk_engine
 from engine.turn import advance_turn, prepare_turn
 from engine.persistence import list_runs, load_run, save_run
-from Core.Paths import IMAGES_DIR, SAVES_DIR
+# Imported as a module, not as two names. `from ... import SAVES_DIR`
+# binds the Path object at import time, and the test fixture that
+# redirects the user data directory works by reloading Core.Paths --
+# which rebinds it there and not here. Every test that saved a run was
+# writing into the real %LOCALAPPDATA%\RP_GPT\saves, and had been for
+# as long as there has been a save. `T`, `X` and `The Ashfall` in a
+# player's save list are test fixtures that escaped.
+import Core.Paths as paths
 from pathlib import Path
 from Core.AI_Dungeon_Master import (
     GemmaClient,
@@ -314,6 +321,7 @@ class GameSession:
         self.run = build_run(state)
         self.keeper = ModelKeeper(client, self._character_block(), self._recall)
         self.imagery = self._build_imagery()
+        self.open_ledger()
         intro = sanitize_prose(self.state.act.situation or "Act begins.")
         if intro:
             self._append_event(intro)
@@ -593,10 +601,41 @@ class GameSession:
         if actor is None:
             return
         talk_engine.close(conversation, actor, self.run)
-        self.state.history.append(
-            f"Talked to {conversation.actor_name} "
-            f"({talk_engine.band(talk_engine.affinity_of(actor)).value})"
-        )
+        regard = talk_engine.band(talk_engine.affinity_of(actor)).value
+        self.state.history.append(f"Talked to {conversation.actor_name} ({regard})")
+        # And into the ledger, where it can be looked up in forty scenes'
+        # time. `history` is a flat list the prompts truncate; this is
+        # queryable and attached to the person it happened with.
+        self._remember(actor, "talk",
+                       f"You spoke with {conversation.actor_name}; "
+                       f"they came away {regard}.")
+        for exchange in conversation.exchanges:
+            if exchange.reply:
+                self._remember(actor, "said",
+                               f"{conversation.actor_name} told you: {exchange.reply}")
+
+    def _remember(self, actor, kind: str, summary: str) -> None:
+        """Write one thing that happened with one person into the ledger."""
+        store = getattr(self, "ledger_store", None)
+        if store is None or actor is None:
+            return
+        try:
+            from ledger.identity import resolve_or_create
+
+            entity_id = getattr(actor, "entity_id", None)
+            if entity_id is None:
+                entity_id = resolve_or_create(
+                    store, getattr(actor, "name", "") or "someone",
+                    ask=getattr(self.state, "ledger_ask", None)).entity_id
+                actor.entity_id = entity_id
+            store.record(kind, summary, entity_id=entity_id,
+                         act=self.state.act.index,
+                         turn=self.state.act.turns_taken)
+        except Exception:
+            # Loud, not debug. A ledger that quietly writes nothing looks
+            # exactly like a ledger that is working, which cost an hour once.
+            _log.exception("could not record %s for %s", kind,
+                           getattr(actor, "name", "?"))
 
     @staticmethod
     def _talk_log(conversation, actor) -> List[Dict[str, str]]:
@@ -812,7 +851,7 @@ class GameSession:
             download_image(primary, out_path, simplified_url=simple)
 
         return ImageWorker(
-            directory=IMAGES_DIR / self.id,
+            directory=paths.IMAGES_DIR / self.id,
             fetch=fetch,
             on_ready=self._image_ready,
             enabled=bool(getattr(self.state, "images_enabled", True)),
@@ -834,6 +873,10 @@ class GameSession:
         self._talk: Optional[talk_engine.Conversation] = None
         self._images: List[Dict[str, Any]] = []
         self._lock = threading.RLock()
+        # Opened by open_ledger once there is a state to hang it on. Declared
+        # here so a session built by __new__ -- which the tests and the
+        # playthrough harness both do -- has the attribute either way.
+        self.ledger_store = None
 
     def _character_block(self) -> str:
         """Who the player is, handed to the Keeper with every assessment."""
@@ -1121,7 +1164,7 @@ class GameSession:
         try:
             path = save_run(
                 self.state,
-                root=SAVES_DIR,
+                root=paths.SAVES_DIR,
                 world=self.world_slug,
                 run_id=self.id,
                 label=self.label,
@@ -1134,6 +1177,40 @@ class GameSession:
     @property
     def world_slug(self) -> str:
         return (getattr(self.state, "world_folder", None) or self.label or "default")
+
+    def open_ledger(self) -> None:
+        """Attach this campaign's memory, and let the rest of the game find it.
+
+        The store hangs off `state` rather than being passed down through five
+        signatures, because the code that meets people -- the encounter beat --
+        is handed a state and nothing else. `encode` only walks declared
+        dataclass fields, so a plain attribute is invisible to the save file,
+        which is what keeps a live SQLite connection out of the JSON.
+
+        The db sits beside state.json rather than replacing it. Swapping the
+        persistence layer and adding memory in one move would mean neither
+        could be verified alone.
+        """
+        from ledger.identity import keeper_asker
+        from ledger.store import LedgerStore
+
+        try:
+            path = Path(paths.SAVES_DIR) / self.world_slug / self.id / "world.db"
+            self.ledger_store = LedgerStore(path)
+            self.state.ledger_store = self.ledger_store
+            # Tier 4 of the resolution ladder, on the small cold model. The
+            # narrator is busy and this is a one-word question.
+            from Core.AI_Dungeon_Master import GemmaClient
+            from Core.Config import DEFAULT_KEEPER_MODEL
+
+            self.state.ledger_ask = keeper_asker(
+                GemmaClient(model=DEFAULT_KEEPER_MODEL))
+        except Exception:
+            # A campaign without memory is worse, not broken.
+            _log.exception("could not open the ledger for %s", self.id)
+            self.ledger_store = None
+            self.state.ledger_store = None
+            self.state.ledger_ask = None
 
     @classmethod
     def resume(cls, path: str) -> "GameSession":
@@ -1152,6 +1229,7 @@ class GameSession:
         session.keeper = ModelKeeper(session.client, session._character_block(),
                                      session._recall)
         session.imagery = session._build_imagery()
+        session.open_ledger()
         resumed = sanitize_prose(
             getattr(state, "last_situation_para", "") or state.act.situation or "The story resumes."
         )

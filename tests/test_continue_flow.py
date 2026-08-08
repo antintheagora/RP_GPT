@@ -92,7 +92,11 @@ def test_a_turn_writes_a_save(tmp_path, monkeypatch):
     import ui.webapp.game_service as gs
     from engine.persistence import list_runs
 
-    monkeypatch.setattr(gs, "SAVES_DIR", tmp_path)
+    # Patched on Core.Paths, not on game_service. game_service used to bind
+    # the Path at import and this test patched the copy; every other test
+    # that saved a run went to the real user directory, which is how `T`, `X`
+    # and `The Ashfall` ended up in a player's Continue list.
+    monkeypatch.setattr(paths, "SAVES_DIR", tmp_path)
 
     import RP_GPT as core
 
