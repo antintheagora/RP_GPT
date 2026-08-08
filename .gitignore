@@ -35,3 +35,6 @@ tmp_*
 
 # --- Recorded LLM fixtures are committed on purpose; caches are not ---
 tests/fixtures/**/*.live.json
+
+# --- Node, only used to build the stylesheet ---
+node_modules/

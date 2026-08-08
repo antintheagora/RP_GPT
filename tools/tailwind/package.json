@@ -1,0 +1,12 @@
+{
+  "name": "rp-gpt-styles",
+  "private": true,
+  "description": "Builds the game's stylesheet so it needs nothing from the internet.",
+  "scripts": {
+    "build": "tailwindcss -c tailwind.config.js -i input.css -o ../../ui/webapp/static/vendor/tailwind.css --minify"
+  },
+  "devDependencies": {
+    "@tailwindcss/forms": "^0.5.7",
+    "tailwindcss": "^3.4.1"
+  }
+}

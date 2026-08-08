@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Cinzel was configured as the titles face, downloaded on every page load,
+     and applied to nothing at all -- `font-fantasy` appeared in no template
+     and app.css never named the family, so every heading in the game
+     rendered in the body face. Two font files fetched for a typeface nobody
+     ever saw.
+
+     Declared here rather than as a utility on each heading: it is a property
+     of what an h1 *is* in this app, not a decision to be repeated in thirty
+     templates and forgotten in the thirty-first. */
+  h1, h2, h3 {
+    font-family: theme('fontFamily.fantasy');
+    letter-spacing: 0.01em;
+  }
+}

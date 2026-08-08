@@ -5,72 +5,25 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{{ title or "RP-GPT Web" }}</title>
-  <!-- Google Fonts: Cinzel (titles) + IM Fell English (body) -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=IM+Fell+English:ital@0;1&display=swap"
-    rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
-  <script>
-    /* The palette, and where it comes from.
-     *
-     * The play screen was built out of Tailwind's stock `slate` -- and
-     * `night` was #0f172a, which is slate-900: a *blue* black. So every card
-     * in the game sat in cold blue-grey while the rest of the app -- the
-     * world cards, the Continue strip, the live chronicle, the frame art --
-     * was warm near-black, rust and cream. Two applications on one screen.
-     *
-     * Nothing here is invented. The values are the ones already in app.css:
-     * #e6dccb and #8a7a5c and #a89a80 from the chronicle, #b3311f from the
-     * Continue cards, #fdf5e4 from the world selectors. They just never
-     * reached the part of the app you spend the whole game looking at.
-     */
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            /* grounds, darkest first */
-            pitch: '#0b0908',    /* wells: inputs, an unfilled clock segment */
-            night: '#14100e',    /* the page itself */
-            soot: '#1c1715',     /* a card lifted off it */
-            hearth: '#2a221e',   /* a quiet button, a hover */
-            edge: '#332a24',     /* hairlines */
+  {# Nothing in this file may reach the internet.
 
-            /* ink, brightest first */
-            bone: '#fdf5e4',     /* headings */
-            parchment: '#e6dccb',/* body */
-            tan: '#a89a80',      /* secondary */
-            dust: '#8a7a5c',     /* labels and meta */
-            ash: '#7f7159',      /* the dimmest thing still meant to be read */
+     The game runs a language model on the player's own machine, and the
+     whole point of that is that it works without a network. It did not: the
+     typeface came from Google, the stylesheet was compiled in the browser by
+     a script from a CDN, and htmx -- without which not one turn can be
+     taken -- came from unpkg. Offline, the app was an unstyled column of
+     text with dead buttons.
 
-            /* the three things the game needs to say in colour */
-            rust: '#b3311f',       /* it is coming for you */
-            /* Rust is 2.96:1 against a card. That is fine for a filled clock
-               segment or a border and far too dark to read a word in, and it
-               was carrying "Closing in", every wound, and the line that tells
-               you the campaign is over. So: rust builds, flare speaks. */
-            flare: '#d97757',
-            brass: '#d8b26a',      /* you are getting somewhere; also temptation */
-            verdigris: '#6f8f86',  /* someone is talking */
-            ember: '#f97316'       /* the button you actually press */
-          },
-          borderRadius: {
-            /* Tailwind's rounded-xl is 12px, which is a SaaS dashboard. The
-               cards this is modelled on are almost square. */
-            sm: '3px'
-          },
-          fontFamily: {
-            fantasy: ['Cinzel', 'serif'],
-            body: ['"IM Fell English"', 'serif']
-          }
-        }
-      }
-    }
-  </script>
+     Tailwind is a real build now: tools/tailwind, `npm run build`, output
+     committed. 19KB of exactly the classes these templates use, instead of
+     400KB of compiler doing it again in every player's browser on every
+     page load. The palette that used to be configured inline here is
+     tools/tailwind/tailwind.config.js. #}
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/fonts.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/tailwind.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}" />
   <link rel="icon" href="{{ url_for('static', filename='ui/nine_slice.png') }}" />
-  <script src="https://unpkg.com/htmx.org@1.9.10" defer></script>
+  <script src="{{ url_for('static', filename='vendor/htmx.min.js') }}" defer></script>
   {# Loaded from <head> so hx-boost, which replaces the whole of <body>, does
      not re-run them and stack up a second copy of every listener. #}
   <script src="{{ url_for('static', filename='shell.js') }}" defer></script>

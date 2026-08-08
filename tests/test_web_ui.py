@@ -275,7 +275,13 @@ def test_the_stylesheet_has_no_blue_left_in_it():
 
 
 def test_the_palette_is_declared_in_one_place():
-    base = (TEMPLATES / "base.html").read_text(encoding="utf-8")
+    """One place -- which is the Tailwind build config now, not base.html.
+
+    It used to be a `tailwind.config = {...}` script tag handed to the CDN's
+    in-browser compiler. The compiler is gone; the palette is a build input.
+    """
+    base = (TEMPLATES.parent.parent.parent / "tools" / "tailwind"
+            / "tailwind.config.js").read_text(encoding="utf-8")
     for name in ("pitch", "night", "soot", "hearth", "edge",
                  "bone", "parchment", "tan", "dust", "ash",
                  "rust", "flare", "brass", "verdigris", "ember"):
