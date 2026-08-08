@@ -1052,7 +1052,14 @@ class GameSession:
 
         if state.act.index >= state.act_count:
             state.running = False
-            ev.chapter("The line holds. Choices converge; the world loosens its grip.")
+            # `ending` as well as `running`, because `is_game_over` reads
+            # `ending` and the screen reads `is_game_over`. The losing path
+            # sets it and the winning path did not, so finishing a campaign
+            # narrated one triumphant line and then went straight back to
+            # offering the menu -- clocks full, act 3 of 3, "what do you do?".
+            # Winning was the one ending the game did not acknowledge.
+            state.ending = "The line holds. Choices converge; the world loosens its grip."
+            ev.chapter(state.ending)
             return
 
         state.scene_phase = 0

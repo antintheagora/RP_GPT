@@ -148,8 +148,17 @@ def handle_post_turn_beat(state, g: GemmaClient):
     core = _core()
     TurnMode = core.TurnMode
 
-    if state.act.turns_taken <= 3:
-        return
+    # There used to be a `if state.act.turns_taken <= 3: return` here, to
+    # "keep early pacing clean". The Director now owns that decision -- it is
+    # the whole reason it exists, and it opens every campaign in QUIET, where
+    # may_interrupt() is false, for exactly this reason.
+    #
+    # Two rules doing one job, and the invisible one compounded badly.
+    # `turns_taken` resets at every act, and the Director's cycle does not, so
+    # the first three turns of *every* act were guaranteed silent even at
+    # PEAK -- the point where the world is supposed to be leaning hardest.
+    # Fourteen turns of a real campaign produced two beats, and neither was
+    # an encounter, which is why nobody had ever seen a fight.
 
     goal = goal_lock_active(state, state.last_turn_success)
     related_bias = 0.8 if goal else 0.55

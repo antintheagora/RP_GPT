@@ -236,6 +236,66 @@ def test_the_act_boundary_is_announced():
             assert "_announce_act()" in body, f"{method} does not say the act turned"
 
 
+def test_winning_is_an_ending_the_screen_can_see():
+    """Both halves of _advance_act end the campaign, and only one of them
+    said so in a way anything could read. The losing branch sets
+    `state.ending`, which `is_game_over` returns and the panel renders. The
+    winning branch set only `state.running = False`, so finishing a campaign
+    narrated one triumphant line and then went straight back to offering the
+    menu: clocks full, act 3 of 3, "What do you do?"."""
+    from pathlib import Path
+
+    source = (Path(__file__).resolve().parent.parent / "ui" / "webapp"
+              / "game_service.py").read_text(encoding="utf-8")
+    body = source[source.index("def _advance_act"):]
+    body = body[:body.index("\n    def ", 10)]
+    won = body[body.index("if state.act.index >= state.act_count"):]
+    assert "state.ending" in won[:600], "a won campaign never sets an ending"
+
+
+def test_pacing_is_decided_in_one_place():
+    """Combat is fully built and had never once run in a live game. It was not
+    broken -- a fight driven straight through advance_turn resolves perfectly.
+    It was unreachable, and for two reasons that multiplied.
+
+    The first was act length: at six-segment clocks an act ran about five
+    turns (see test_balance), and `handle_post_turn_beat` opened with
+    `if state.act.turns_taken <= 3: return`. Three silent turns out of five is
+    most of the campaign. Measured over 20,000 simulated campaigns, the chance
+    of ever meeting a seeded enemy was **57%** at five-turn acts and **91%**
+    at the nine-turn acts the clock fix produced.
+
+    The second is that the gate should not exist at all. The Director owns
+    when the world leans in -- that is the entire reason it was built -- and
+    it opens every campaign in QUIET, where may_interrupt() is false, for
+    exactly this purpose. `turns_taken` also resets at every act while the
+    Director's cycle does not, so the first three turns of *every* act were
+    silent even at PEAK, which is the moment the world is meant to be leaning
+    hardest. Removing it takes 91% to **97%**.
+    """
+    from pathlib import Path
+
+    source = (Path(__file__).resolve().parent.parent
+              / "Core" / "Random_Encounters.py").read_text(encoding="utf-8")
+    body = source[source.index("def handle_post_turn_beat"):]
+    code = "\n".join(line for line in body.splitlines()
+                     if not line.strip().startswith("#"))
+    assert "turns_taken <= 3" not in code, (
+        "a second, invisible pacing rule alongside the Director"
+    )
+
+
+def test_the_director_is_the_only_thing_that_opens_the_door():
+    from pathlib import Path
+
+    source = (Path(__file__).resolve().parent.parent / "ui" / "webapp"
+              / "game_service.py").read_text(encoding="utf-8")
+    body = source[source.index("def _maybe_beat"):]
+    body = body[:body.index("\n    def ", 10)]
+    assert "may_interrupt()" in body
+    assert "handle_post_turn_beat" in body
+
+
 def test_a_night_gives_the_party_their_nerve_back():
     """Assists are counted per scene and nothing reset them, so a companion
     who had helped twice stayed spent across every night that followed."""
