@@ -304,9 +304,25 @@ def test_the_menu_never_shows_an_identifier():
         assert "_" not in option.label, f"{option.label!r} is an identifier"
 
 
-def test_every_verb_has_something_to_show():
+def test_every_verb_has_a_label_and_none_of_them_leak_an_enum():
+    """Defined for every verb, and never the enum's own name.
+
+    APPROACH is deliberately blank. It is the catch-all, so every option that
+    was not a strike, an item, a conversation or a look printed "act" above
+    its stat -- a word that never told one option from another, next to a stat
+    that already says how you are going about it. The template drops the
+    separator when the label is empty; what must never happen is a verb with
+    no entry at all, which is what puts `use_item` on screen.
+    """
     for verb in Verb:
-        assert VERB_LABEL.get(verb), f"{verb} has no label"
+        assert verb in VERB_LABEL, f"{verb} has no entry"
+        shown = VERB_LABEL[verb]
+        assert shown != verb.value, f"{verb} is showing its own enum value"
+        assert "_" not in shown, f"{shown!r} is an identifier"
+    assert VERB_LABEL[Verb.APPROACH] == "", "the catch-all verb stays unlabelled"
+    assert all(VERB_LABEL[v] for v in Verb if v is not Verb.APPROACH), (
+        "only APPROACH may be blank"
+    )
 
 
 def test_the_keeper_knows_what_an_approach_is():

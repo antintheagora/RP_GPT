@@ -4,7 +4,16 @@
     {
       "name": "rpgpt-web",
       "runtimeExecutable": ".venv/Scripts/python.exe",
-      "runtimeArgs": ["-m", "flask", "--app", "ui.webapp.server:create_app", "run", "--port", "5111"],
+      "runtimeArgs": [
+        "-m",
+        "flask",
+        "--app",
+        "ui.webapp.server:create_app",
+        "run",
+        "--port",
+        "5111",
+        "--reload"
+      ],
       "port": 5111
     }
   ]

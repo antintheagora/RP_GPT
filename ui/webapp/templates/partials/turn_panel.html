@@ -330,7 +330,7 @@
               <input type="hidden" name="action" value="menu" />
               <input type="hidden" name="choice" value="{{ option.code }}" />
               <button type="submit" class="w-full text-left px-4 py-3">
-                <p class="text-sm text-dust">{{ option.verb }} &bull; {{ option.stat }}</p>
+                <p class="text-sm text-dust">{% if option.verb %}{{ option.verb }} &bull; {% endif %}{{ option.stat }}</p>
                 <p class="text-lg font-semibold">{{ option.label }}</p>
                 {% if option.note %}<p class="text-sm text-brass/90 mt-1">{{ option.note }}</p>{% endif %}
               </button>

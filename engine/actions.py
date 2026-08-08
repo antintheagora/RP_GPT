@@ -42,7 +42,12 @@ class Verb(str, Enum):
 # read "use_item • INT" -- a Python identifier, in the game.
 VERB_LABEL: Dict[Verb, str] = {
     Verb.ATTACK: "strike",
-    Verb.APPROACH: "act",
+    # Deliberately blank. APPROACH is the catch-all verb, so every option
+    # that is not a strike, an item, a conversation or a look printed "act"
+    # above its stat -- "act - STR / Force it". It never distinguished one
+    # option from another, and the stat beside it already says how you are
+    # going about it.
+    Verb.APPROACH: "",
     Verb.USE_ITEM: "use",
     Verb.PARLEY: "talk",
     Verb.WITHDRAW: "pull back",
