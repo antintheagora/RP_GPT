@@ -79,8 +79,7 @@ def flagstones(material, extent=26, step=1.05, y_from=-6.0):
             depth = step * (0.88 + ((row + column * 3) % 5) / 22.0)
             slab = look.block((x + width / 2, y + depth / 2, wobble * 2.2),
                               (width, depth, 0.09), material,
-                              rotation=(wobble, wobble * 0.7, wobble * 3),
-                              bevel=0.018, name="Slab")
+                              rotation=(wobble, wobble * 0.7, wobble * 3), name="Slab")
             made.append(slab)
             y += depth + 0.028
             column += 1
@@ -99,11 +98,11 @@ def pier(x, y, material, height=3.4, width=0.72):
         made.append(look.block(
             (x, y, course * (index + 0.5)),
             (width - inset * 2, width - inset * 2, course * 0.94),
-            material, bevel=0.022, name=f"Pier{index}"))
+            material, name=f"Pier{index}"))
     made.append(look.block((x, y, -0.02), (width + 0.24, width + 0.24, 0.20),
-                           material, bevel=0.03, name="Plinth"))
+                           material, name="Plinth"))
     made.append(look.block((x, y, height + 0.10), (width + 0.30, width + 0.30, 0.22),
-                           material, bevel=0.03, name="Capital"))
+                           material, name="Capital"))
     return made
 
 
@@ -128,13 +127,11 @@ def arch(x_from, x_to, y, springing, material, stones=13, thickness=0.34,
         if axis == "X":
             made.append(look.block(
                 (px, y, pz), (arc, depth, thickness), material,
-                rotation=(0, -angle + math.pi / 2, 0),
-                bevel=0.016, name=f"Voussoir{index}"))
+                rotation=(0, -angle + math.pi / 2, 0), name=f"Voussoir{index}"))
         else:
             made.append(look.block(
                 (y, px, pz), (depth, arc, thickness), material,
-                rotation=(angle - math.pi / 2, 0, 0),
-                bevel=0.016, name=f"Voussoir{index}"))
+                rotation=(angle - math.pi / 2, 0, 0), name=f"Voussoir{index}"))
     return made
 
 
@@ -211,8 +208,7 @@ def terrain(size=400.0, resolution=340, kind="hetero", height=34.0,
 def monolith(x, y, height, width, material, lean=0.0, twist=0.0, z=0.0):
     """A standing slab. Bryce put these everywhere and so does this game."""
     return look.block((x, y, z + height / 2), (width, width * 0.62, height),
-                      material, rotation=(lean, lean * 0.6, twist),
-                      bevel=0.06, name="Monolith")
+                      material, rotation=(lean, lean * 0.6, twist), name="Monolith")
 
 
 def _finish(path, name, samples=420):
@@ -270,10 +266,8 @@ def undercroft(path):
     look.block((0, 17.6, 2.6), (9.0, 0.7, 5.6), stone, name="EastWall")
     arch(-1.5, 1.5, 17.2, 2.05, stone, stones=13, thickness=0.30, depth=0.55)
     look.block((0, 17.2, 1.0), (3.0, 0.55, 2.1), stone, name="NicheBack")
-    look.block((0, 16.2, 0.62), (3.4, 1.2, 1.15), stone, name="Altar",
-               bevel=0.04)
-    look.block((0, 16.2, 1.26), (3.9, 1.5, 0.16), stone, name="AltarTop",
-               bevel=0.03)
+    look.block((0, 16.2, 0.62), (3.4, 1.2, 1.15), stone, name="Altar")
+    look.block((0, 16.2, 1.26), (3.9, 1.5, 0.16), stone, name="AltarTop")
 
     for x, y, z, energy in ((-0.85, 16.2, 1.34, 60), (0.75, 16.2, 1.34, 55),
                             (1.15, 16.1, 1.34, 40)):
@@ -296,10 +290,14 @@ def undercroft(path):
     # every shadow is the same warm brown as every highlight and the image
     # reads as sepia rather than as candlelight, which only looks like
     # candlelight when there is something cooler for it to be warmer than.
-    look.area_light((-6.0, -2.0, 5.2), (0, 6.0, 1.0), energy=90, size=4.0,
+    look.area_light((-6.0, -2.0, 5.2), (0, 6.0, 1.0), energy=210, size=5.0,
                     color=(0.42, 0.52, 0.72))
     look.camera((0.35, -6.6, 1.62), (0.0, 8.0, 1.35), lens=30)
-    look.view_transform("AgX", look="Medium High Contrast", exposure=1.15)
+    # A dark room still has to be legible. At 1.15 the arcade either side of
+    # the nave was solid black and the vaulting overhead was a guess: the
+    # candles lit their own two feet and nothing else. The point of the scene
+    # is the architecture, and none of it was arriving.
+    look.view_transform("AgX", look="Medium High Contrast", exposure=1.85)
     _finish(path, "undercroft")
 
 
@@ -337,7 +335,7 @@ def drowned_steps(path):
         width = 7.4 - index * 0.32
         look.block((1.6 + index * 0.18, 26 + index * 2.05,
                     -1.5 + index * 0.62),
-                   (width, 1.9, 0.55), stone, bevel=0.05, name="Step")
+                   (width, 1.9, 0.55), stone, name="Step")
 
     # Monoliths in a broken line, each further out and dimmer than the last.
     for index, (x, y, height) in enumerate((
@@ -351,10 +349,15 @@ def drowned_steps(path):
                       strength=2.20, bend=3.4)
     look.sun((math.radians(85.5), 0, math.radians(9)), energy=7.0, angle=0.030,
              color=(1.0, 0.55, 0.26))
-    look.haze(size=1000, density=0.0060, colour=(0.42, 0.33, 0.30),
+    # Cold haze against a warm sun. Everything here was warm -- an orange
+    # sun, an orange horizon and brown fog -- so the whole frame collapsed to
+    # one sepia hue and the stone, the water and the sky were the same
+    # colour. Depth in a hazy shot is the *difference* between the near warm
+    # and the far cool; with both warm there is nothing to read distance by.
+    look.haze(size=1000, density=0.0042, colour=(0.20, 0.27, 0.38),
               origin=(0, 260, 5), height=22)
     look.camera((0.0, -9.0, 2.15), (0.6, 40.0, 5.2), lens=32)
-    look.view_transform("AgX", look="Medium High Contrast", exposure=0.55)
+    look.view_transform("AgX", look="Medium High Contrast", exposure=1.05)
     _finish(path, "drowned_steps")
 
 
@@ -378,9 +381,13 @@ def glass_waste(path):
     bpy.ops.mesh.primitive_plane_add(size=4000, location=(0, 0, 0))
     bpy.context.active_object.data.materials.append(pan)
 
-    terrain(size=900, resolution=380, kind="ridged", height=95.0, seed=7.3,
-            offset=0.86, origin=(-40, 340, -14), material=glass,
-            keep_clear=130.0)
+    # Pushed back and opened up. At 340 units out with a 95-unit rise this
+    # filled the frame edge to edge from a 28mm lens, so the scene named for
+    # its ridged spires was a wall of rock with no sky between anything and
+    # no plain in front of it. A spire is only a spire against something.
+    terrain(size=900, resolution=380, kind="ridged", height=78.0, seed=7.3,
+            offset=0.86, origin=(-40, 620, -14), material=glass,
+            keep_clear=300.0)
     terrain(size=1500, resolution=260, kind="ridged", height=140.0, seed=1.9,
             offset=0.94, origin=(180, 900, -50), material=glass,
             keep_clear=400.0)
@@ -395,8 +402,11 @@ def glass_waste(path):
              angle=0.045, color=(1.0, 0.42, 0.30))
     look.haze(size=1200, density=0.0050, colour=(0.40, 0.30, 0.34),
               origin=(0, 320, 6), height=26)
-    look.camera((0.0, -6.0, 2.6), (-2.0, 60.0, 12.0), lens=28)
-    look.view_transform("AgX", look="Medium High Contrast", exposure=0.60)
+    # Higher, and aimed flatter: from 2.6m looking up at 12m the horizon sat
+    # off the top of the frame and the cracked plain -- the best surface in
+    # the scene -- was a strip along the bottom.
+    look.camera((0.0, -10.0, 6.0), (-2.0, 90.0, 9.0), lens=28)
+    look.view_transform("AgX", look="Medium High Contrast", exposure=1.00)
     _finish(path, "glass_waste")
 
 
@@ -445,17 +455,31 @@ def hollow_king(path):
                                   (3.1, 8.4, 0.26, 1.1, 1.1, 0.55, 1.2),
                                   (-1.2, 13.0, 0.34, 2.4, 0.8, 0.70, 0.2),
                                   (4.4, 17.5, 0.22, 0.9, 0.9, 0.46, 2.1)):
-        look.block((x, y, z), (w, d, h), stone, rotation=(0.06, 0.04, rot),
-                   bevel=0.05, name="Rubble")
+        look.block((x, y, z), (w, d, h), stone, rotation=(0.06, 0.04, rot), name="Rubble")
 
-    look.sky_gradient(top=(0.016, 0.021, 0.048), horizon=(0.145, 0.105, 0.078),
-                      strength=2.10, bend=3.0)
-    look.sun((math.radians(78.0), 0, math.radians(24)), energy=5.5,
-             angle=0.020, color=(1.0, 0.72, 0.44))
-    look.haze(size=600, density=0.0070, colour=(0.44, 0.40, 0.36),
+    look.sky_gradient(top=(0.016, 0.021, 0.048), horizon=(0.120, 0.082, 0.070),
+                      strength=1.60, bend=3.0)
+    # 78 degrees off vertical puts the sun twelve degrees above the horizon,
+    # which rakes past the ruin rather than falling on it -- every column was
+    # a silhouette against its own fog. 52 gets light onto the stone while
+    # keeping the shadows long.
+    look.sun((math.radians(62.0), 0, math.radians(24)), energy=6.5,
+             angle=0.020, color=(1.0, 0.66, 0.38))
+    # And this was the thickest haze of the three at the *smallest* size, so
+    # the camera was looking through six hundred metres of it at a ruin
+    # sixteen metres away.
+    look.haze(size=600, density=0.0032, colour=(0.30, 0.31, 0.38),
               origin=(0, 160, 4), height=18)
+    # A cold fill from the camera side. With one raking key and nothing
+    # opposing it, everything facing the camera was unlit by construction.
+    look.area_light((-7.0, -10.0, 6.0), (0, 12.0, 3.0), energy=150, size=9.0,
+                    color=(0.40, 0.50, 0.74))
     look.camera((0.6, -8.4, 2.0), (0.0, 16.0, 4.4), lens=30)
-    look.view_transform("AgX", look="Medium High Contrast", exposure=0.70)
+    # 1.35 with a 52-degree sun and a 400W fill overshot the other way
+    # entirely: a sunny beige afternoon, which is the opposite of the brief.
+    # The scene wants dusk -- readable, and still clearly a ruin at the end
+    # of the day rather than a monument at noon.
+    look.view_transform("AgX", look="Medium High Contrast", exposure=0.85)
     _finish(path, "hollow_king")
 
 

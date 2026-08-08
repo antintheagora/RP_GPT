@@ -787,13 +787,40 @@ def still_water(name="Still water", colour=(0.004, 0.010, 0.012, 1.0)):
 # ------ SHAPING HELPERS ------
 # =============================
 
-def block(location, size, material, rotation=(0, 0, 0), bevel=0.012,
+#: How much of its arris a worn stone has lost, in metres.
+#:
+#: An absolute number rather than a proportion, because wear is absolute: a
+#: century of shoulders and boots takes about the same edge off a pier as off
+#: a floor slab. The first version passed a flat 0.012 to 0.03 per call site,
+#: which is 1.6% of a 0.72m pier -- a chamfer far too fine to survive being
+#: rendered at 1920 wide and then displayed at a third of that. Every scene
+#: read as stacked boxes.
+WEAR = 0.05
+
+#: ...but never more than a third of the smallest dimension. A bevel wider
+#: than the stone it is cutting eats the face entirely and leaves a lozenge,
+#: and at exactly half it collapses to a knife edge.
+WEAR_LIMIT = 0.34
+
+
+def worn_edge(size, wear=WEAR):
+    """The bevel for a stone of this size."""
+    return min(wear, min(abs(n) for n in size) * WEAR_LIMIT)
+
+
+def block(location, size, material, rotation=(0, 0, 0), bevel=None,
           name="Block"):
     """One dressed stone. Bevelled, because a sharp edge reads as cardboard.
 
     The bevel is the single highest-value detail in the whole set: it is what
     catches the key light along every joint, and it is the difference between
     stone and a grey box.
+
+    `bevel=None` means "as worn as everything else", which is what almost
+    every caller wants -- a scene where the piers, the voussoirs and the floor
+    slabs have each lost the same amount of edge reads as one building. Pass a
+    number only to say that a particular stone is sharper or softer than its
+    neighbours.
     """
     bpy.ops.mesh.primitive_cube_add(size=1, location=location)
     obj = bpy.context.active_object
@@ -806,8 +833,13 @@ def block(location, size, material, rotation=(0, 0, 0), bevel=0.012,
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
 
     modifier = obj.modifiers.new("Bevel", "BEVEL")
-    modifier.width = bevel
-    modifier.segments = 3
+    modifier.width = worn_edge(size) if bevel is None else bevel
+    # Six, not three. Three segments on an edge this wide is visibly a
+    # chamfer -- three flats and two hard creases -- and a chamfer reads as
+    # machined. Six is a round arris at every distance these scenes are
+    # viewed from.
+    modifier.segments = 6
+    modifier.harden_normals = True
     modifier.limit_method = "ANGLE"
     modifier.angle_limit = math.radians(30)
 
@@ -817,8 +849,16 @@ def block(location, size, material, rotation=(0, 0, 0), bevel=0.012,
     subsurf.subdivision_type = "SIMPLE"
 
     obj.data.materials.append(material)
+    # Smooth shading, so the bevel reads as a rolled edge rather than six
+    # facets. `harden_normals` above keeps the flat faces flat, which is the
+    # combination that makes a bevel look like wear instead of like a
+    # low-poly cylinder.
     for polygon in obj.data.polygons:
-        polygon.use_smooth = False
+        polygon.use_smooth = True
+    # No `use_auto_smooth`: Blender removed it in 4.1, and the guard I first
+    # wrote -- `= True if hasattr(...) else None` -- still performs the
+    # assignment and raises on the way. `harden_normals` on the bevel does
+    # the job it used to do.
     return obj
 
 
@@ -994,6 +1034,7 @@ def sky_gradient(top=(0.020, 0.026, 0.045), horizon=(0.115, 0.075, 0.052),
 
 
 __all__ = [
+    "WEAR", "worn_edge",
     "wipe", "use_cycles", "view_transform", "render_to", "camera",
     "area_light", "point_light", "sun", "sock", "out",
     "damp_stone", "rusted_iron", "heavy_cloth", "glowing", "still_water",
