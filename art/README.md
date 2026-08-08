@@ -43,6 +43,22 @@ block and the moss moves.
 | `blender/scenes.py` | The crypt, and four landscapes. → `static/ui/scenes/` |
 | `render.py` | Finds Blender and runs the above. |
 
+## One masonry vocabulary
+
+`stone_band`, `stone_courses` and `stone_corner` build every frame in the
+game. The card frame and the screen border used to be two different sets of
+numbers, and only the border's were right: the card frame had three courses
+standing on a full-size backplate that sat *in front of* the middle one, so
+the shadow groove it was named for could not be seen, and what showed was an
+outer course and an inner lip with a slab wedged between them at no sensible
+depth.
+
+The pieces are: a solid band over the border zone only; two bold courses with
+a recessed channel between them, each a constant cross-section; four
+interlocking quoins and one keystone at each corner. The card frame adds a
+flat dark field behind all of it, because `border-image-slice: ... fill`
+stretches that across the whole panel as its background.
+
 ## The border around the whole screen
 
 `stone_portal.png` replaces the painted `Game_Frame.png`, which is stone plus

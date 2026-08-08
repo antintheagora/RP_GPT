@@ -90,130 +90,153 @@ def _glint(energy=170):
 
 
 # =============================
-# --------- THE FRAME ---------
+# ------ MASONRY, SHARED ------
 # =============================
+#
+# Both frames in the game are built from these three pieces, because they were
+# built from two different sets of numbers before and only the screen border's
+# were right. The card frame had three courses on a full-size backplate that
+# sat *in front of* the middle one -- so the shadow groove it was named for
+# could not be seen at all, and what showed was an outer course and an inner
+# lip with a slab wedged between them at no sensible depth.
 
-#: The cross-section of every straight run, read outward-in as
-#: (thickness, depth toward the camera, centre distance from the middle).
-#: The three add up to exactly the 0.5-unit border, so the runs meet the
-#: backplate with no seam and the slice line falls where the CSS says it does.
-RUN_PROFILE = [
-    (0.200, 0.180, 0.900),   # outer course, proud
-    (0.170, 0.105, 0.715),   # shadow groove, recessed
-    (0.130, 0.205, 0.565),   # inner lip, proudest
+#: Read outward-in as (thickness, depth toward the camera, centre distance).
+#: Two bold courses with a recessed channel between them, and nothing else.
+#: An earlier screen border had five, which at the size these are actually
+#: drawn collapsed into a woven basket. Every line runs the length of its
+#: side, so stretching cannot smear any of it.
+COURSE_PROFILE = [
+    (0.230, 0.200, 0.880),   # outer course
+    (0.200, 0.290, 0.600),   # inner jamb, proudest, frames the opening
+]
+
+#: Interlocking corner blocks, alternating which way they turn. `u` runs
+#: inward along the top, `v` inward down the side, both from the outer corner.
+#: Everything stays inside half a unit: anything crossing the slice line is
+#: torn between a fixed corner and a stretched edge.
+CORNER_QUOINS = [
+    (0.000, 0.000, 0.500, 0.250, 0.330),
+    (0.000, 0.250, 0.250, 0.260, 0.300),
+    (0.250, 0.250, 0.250, 0.190, 0.255),
+    (0.500, 0.000, 0.230, 0.230, 0.290),
 ]
 
 
-def _corner_cluster(x, z, material, seed=0):
-    """The bit that never stretches, so the bit that gets to be interesting.
+def stone_band(stone, y=0.045, depth=0.06, amount=0.010):
+    """The wall the courses stand on, over the border zone only.
 
-    Dressed blocks at slightly wrong angles, a tie stone across the joint, and
-    the whole thing kept inside its own 0.5-unit box -- anything that crosses
-    the slice line gets torn in half between a fixed corner and a stretched
-    edge.
+    Without it the courses are separate bars with transparent film between
+    them -- the recessed channel has nothing behind it and renders as a hole
+    straight through the frame. Four slabs tile the band exactly and leave the
+    middle alone, which is either the opening or the panel's own background
+    depending on which frame is being built.
+    """
+    half = SPAN / 2
+    inner = half - BORDER
+    inset = (half + inner) / 2
+    for index, (position, size) in enumerate((
+        ((0, y, inset), (SPAN, depth, BORDER)),
+        ((0, y, -inset), (SPAN, depth, BORDER)),
+        ((-inset, y, 0), (BORDER, depth, SPAN - 2 * BORDER)),
+        ((inset, y, 0), (BORDER, depth, SPAN - 2 * BORDER)),
+    )):
+        slab = look.block(position, size, stone, name="band", bevel=0.02)
+        look.weather(slab, amount=amount, scale=5.0, cuts=12, seed=index + 40)
 
-    There was an iron strap and two pins here. Everything in the interface is
-    quarried now, so the strap is a tie stone and the pins are bosses cut from
-    the same block as the wall.
+
+def stone_courses(stone, profile=None, amount=0.013, scale=7.0, cuts=14,
+                  seed=0):
+    """The four straight runs, each a constant cross-section.
+
+    `along` is what makes them safe to stretch: a run is scaled along its
+    length by whatever the window happens to be, and across it by a fixed
+    amount, so lengthways noise drops to a seventh frequency and becomes a
+    slow undulation instead of a feature with a recognisable size.
+    """
+    for side, sign in (("top", 1), ("bottom", -1)):
+        for index, (thickness, depth, rise) in enumerate(profile or COURSE_PROFILE):
+            run = look.block((0, -depth / 2, sign * rise),
+                             (SPAN, depth, thickness), stone,
+                             name=f"{side}_course", bevel=0.018)
+            look.weather(run, amount=amount, scale=scale, along=0, cuts=cuts,
+                         seed=seed + index * 3 + (0 if sign > 0 else 7))
+    for side, sign in (("left", -1), ("right", 1)):
+        for index, (thickness, depth, rise) in enumerate(profile or COURSE_PROFILE):
+            # 4mm shallower than the horizontal course it crosses. Coplanar
+            # faces at a corner are Z-fighting, and it prints hard black
+            # staircases into exactly the four places people look.
+            depth -= 0.004
+            run = look.block((sign * rise, -depth / 2, 0),
+                             (thickness, depth, SPAN), stone,
+                             name=f"{side}_course", bevel=0.018)
+            look.weather(run, amount=amount, scale=scale, along=2, cuts=cuts,
+                         seed=seed + index * 3 + (13 if sign > 0 else 19))
+
+
+def stone_corner(x, z, stone, seed=0, amount=0.019, chip=0.075,
+                 keystone=0.330, keystone_depth=0.380):
+    """Heavy quoins and one keystone across the mitre.
+
+    Bold shapes only: these are drawn at a fraction of the size they are
+    modelled at, and fine carving turns to mush. There is no strap, no pin and
+    no bracket -- everything is cut from the same block as the wall.
     """
     sx = 1 if x > 0 else -1
     sz = 1 if z > 0 else -1
-    made = []
 
-    # Interlocking quoins: big blocks alternating which way they turn the
-    # corner, which is how a real corner is built and why it reads as one.
-    # `u` runs inward along the horizontal edge, `v` inward along the
-    # vertical, both measured from the outside corner. Everything stays under
-    # 0.5 so it cannot cross the slice line and get torn between a fixed
-    # corner and a stretched edge.
-    quoins = [
-        # (u, v, width, height, depth)
-        (0.000, 0.000, 0.360, 0.200, 0.262),   # long, running horizontally
-        (0.000, 0.200, 0.200, 0.215, 0.240),   # short, turning down
-        (0.200, 0.200, 0.230, 0.150, 0.222),
-        (0.000, 0.415, 0.200, 0.150, 0.250),   # long, running down
-    ]
-    for index, (u, v, w, h, depth) in enumerate(quoins):
-        wobble = ((index * 37) % 11 - 5) / 700.0
-        obj = look.block(
+    for index, (u, v, w, h, depth) in enumerate(CORNER_QUOINS):
+        wobble = ((index * 41) % 9 - 4) / 1100.0
+        block = look.block(
             (x - sx * (u + w / 2), -depth / 2, z - sz * (v + h / 2)),
-            (w, depth, h), material,
-            rotation=(0, wobble * 3.0, wobble * 1.8),
-            name=f"Quoin{seed}_{index}", bevel=0.013)
-        look.weather(obj, amount=0.012, scale=12.0, cuts=10,
-                     seed=seed * 31 + index, chip=0.050)
-        made.append(obj)
+            (w, depth, h), stone,
+            rotation=(0, wobble * 2.0, wobble * 1.3),
+            name=f"Quoin{seed}_{index}", bevel=0.020)
+        look.weather(block, amount=amount, scale=8.0, cuts=12,
+                     seed=seed * 29 + index, chip=chip)
 
-    # A tie stone laid across the mitre, and a boss at each end of it. Same
-    # block as the wall, so the corner reads as built rather than bolted.
-    tie = look.block((x - sx * 0.235, -0.300, z - sz * 0.235),
-                     (0.44, 0.075, 0.090), material,
-                     rotation=(0, 0, -sx * sz * math.radians(45)),
-                     name=f"Tie{seed}", bevel=0.016)
-    look.weather(tie, amount=0.010, scale=11.0, cuts=10, seed=seed * 5,
-                 chip=0.040)
-    made.append(tie)
-    for index, offset in enumerate((0.120, 0.350)):
-        boss = look.block((x - sx * offset, -0.345, z - sz * offset),
-                          (0.078, 0.060, 0.078), material,
-                          rotation=(0, 0, -sx * sz * math.radians(45)),
-                          name=f"Boss{seed}_{index}", bevel=0.020)
-        look.weather(boss, amount=0.006, scale=16.0, cuts=8,
-                     seed=seed * 17 + index)
-        made.append(boss)
-    return made
+    key = look.block((x - sx * keystone, -keystone_depth / 2, z - sz * keystone),
+                     (keystone, keystone_depth, keystone), stone,
+                     name=f"Keystone{seed}", bevel=0.055)
+    look.weather(key, amount=amount * 1.1, scale=7.0, cuts=14,
+                 seed=seed * 13 + 1, chip=chip * 1.2)
 
 
-def frame(path, mossy=True, tint=None, name="stone_frame"):
-    _setup()
-    stone = look.damp_stone("Frame stone", block_scale=3.4, wetness=0.66,
-                            mossy=mossy, seed=3, tint=tint, mortar=0.22,
-                            cracks=0.85, puddling=1.0)
-
+def stone_frame_body(stone, seed=0, amount=0.013, chip=0.075):
+    """Band, courses and four corners. The whole vocabulary in one call."""
+    stone_band(stone)
+    stone_courses(stone, amount=amount, seed=seed)
     half = SPAN / 2
-
-    # The recessed field the panel's content sits on. Held flat and dark on
-    # purpose: `border-image-slice: ... fill` stretches this across the whole
-    # panel, so anything with a frequency to it turns to mush at large sizes.
-    field = look.damp_stone("Frame field", block_scale=0.7, wetness=0.25,
-                            mossy=False, seed=23, mortar=0.0,
-                            tint=(0.0180, 0.0165, 0.0130, 1.0))
-    # Shallow on purpose. The inner lip stands 0.205 proud, and with the
-    # backplate at +0.055 the cast shadow reached 150px into the centre --
-    # which `border-image-slice: ... fill` then stretches over the whole
-    # panel, so a tall card got a shadow half its height. Pulling the plate
-    # forward keeps the shadow inside the edge slices, where stretching only
-    # moves it along the edge it belongs to.
-    look.block((0, -0.105, 0), (SPAN, 0.06, SPAN), field,
-               name="Backplate", bevel=0.02)
-
-    # --- the four straight runs, constant cross-section ------------------
-    for side, sign in (("top", 1), ("bottom", -1)):
-        for index, (thickness, depth, rise) in enumerate(RUN_PROFILE):
-            run = look.block((0, -depth / 2, sign * rise),
-                             (SPAN, depth, thickness), stone,
-                             name=f"{side}_run")
-            # along=0: X is the length of a horizontal run, so its noise drops
-            # to a seventh frequency there and survives being stretched.
-            look.weather(run, amount=0.009, scale=9.0, along=0, cuts=12,
-                         seed=index + (0 if sign > 0 else 5))
-    for side, sign in (("left", -1), ("right", 1)):
-        for thickness, depth, rise in RUN_PROFILE:
-            # 3mm shallower than its horizontal partner. Where the two cross
-            # at a corner their front faces were exactly coplanar, which is
-            # Z-fighting, and it printed hard black staircases into all four
-            # corners of the button before anyone noticed it in the frame.
-            depth -= 0.003
-            run = look.block((sign * rise, -depth / 2, 0),
-                             (thickness, depth, SPAN), stone,
-                             name=f"{side}_run")
-            look.weather(run, amount=0.009, scale=9.0, along=2, cuts=12,
-                         seed=index + (11 if sign > 0 else 17))
-
-    # --- corners ---------------------------------------------------------
     for index, (cx, cz) in enumerate(((-half, half), (half, half),
                                       (-half, -half), (half, -half))):
-        _corner_cluster(cx, cz, stone, seed=index + 1)
+        stone_corner(cx, cz, stone, seed=index + 1 + seed,
+                     amount=amount * 1.45, chip=chip)
+
+
+# =============================
+# --------- THE FRAME ---------
+# =============================
+
+def frame(path, mossy=True, tint=None, name="stone_frame"):
+    """A card's frame. The same masonry as the screen border, at card size."""
+    _setup()
+    stone = look.damp_stone("Frame stone", block_scale=2.6, wetness=0.66,
+                            mossy=mossy, seed=3, tint=tint, mortar=0.32,
+                            cracks=0.9, puddling=1.0)
+
+    # The panel's own background. `border-image-slice: ... fill` stretches
+    # this across the whole card, so it is held flat and dark -- anything with
+    # a frequency to it turns to mush at large sizes -- and set behind the
+    # band rather than in front of it. It used to sit at -0.135 with the
+    # middle course at -0.105, which put the background nearer the camera than
+    # the masonry and hid a whole course behind it.
+    field = look.damp_stone("Frame field", block_scale=0.7, wetness=0.30,
+                            mossy=False, seed=23, mortar=0.0, cracks=0.5,
+                            puddling=0.6,
+                            tint=(0.0180, 0.0165, 0.0130, 1.0))
+    look.block((0, 0.090, 0), (SPAN, 0.06, SPAN), field, name="Field",
+               bevel=0.02)
+
+    stone_frame_body(stone, amount=0.011, chip=0.055)
 
     _lighting()
     _glint()
@@ -233,77 +256,6 @@ def frame(path, mossy=True, tint=None, name="stone_frame"):
 #: was squeezed differently from the sides at any given thickness.
 BIG_RES = 2048
 BIG_SLICE = 512
-
-#: Read outward-in as (thickness, depth toward the camera, centre distance).
-#: Two bold courses with a recessed channel between them, and nothing else.
-#: The first attempt had five, which at the size this is actually drawn --
-#: `clamp(64px, 12vh, 150px)` against a 512px slice, so about a third scale --
-#: collapsed into a woven basket. Every line runs the length of the side, so
-#: stretching across a whole viewport cannot smear any of it.
-PORTAL_PROFILE = [
-    (0.230, 0.200, 0.880),   # outer course
-    (0.200, 0.290, 0.600),   # inner jamb, proudest, frames the opening
-]
-
-
-def _portal_ring(stone):
-    """The wall the courses stand on.
-
-    Without this the courses are separate bars floating with transparent film
-    between them: the recessed channel had nothing behind it, so it rendered
-    as a hole straight through the border. Four slabs tile the band exactly
-    and leave the middle open, which is the part the game is seen through.
-    """
-    half = SPAN / 2
-    band = half - BORDER          # where the opening begins
-    inset = (half + band) / 2     # centre of the band
-    for position, size in (
-        ((0, 0.045, inset), (SPAN, 0.06, BORDER)),      # top
-        ((0, 0.045, -inset), (SPAN, 0.06, BORDER)),     # bottom
-        ((-inset, 0.045, 0), (BORDER, 0.06, SPAN - 2 * BORDER)),
-        ((inset, 0.045, 0), (BORDER, 0.06, SPAN - 2 * BORDER)),
-    ):
-        slab = look.block(position, size, stone, name="ring", bevel=0.02)
-        look.weather(slab, amount=0.010, scale=5.0, cuts=12, seed=int(size[0]))
-
-
-def _portal_corner(x, z, stone, seed=0):
-    """Where the courses collide. Heavy quoins and a corbel.
-
-    Bold shapes only. This is seen at roughly a third of the size it is
-    modelled at, so fine carving would turn to mush -- and it is stone all the
-    way through: no strap, no pin, nothing that is not quarried.
-    """
-    sx = 1 if x > 0 else -1
-    sz = 1 if z > 0 else -1
-
-    quoins = [
-        # (u inward along the top, v inward down the side, w, h, depth)
-        (0.000, 0.000, 0.500, 0.250, 0.330),
-        (0.000, 0.250, 0.250, 0.260, 0.300),
-        (0.250, 0.250, 0.250, 0.190, 0.255),
-        (0.500, 0.000, 0.230, 0.230, 0.290),
-    ]
-    for index, (u, v, w, h, depth) in enumerate(quoins):
-        wobble = ((index * 41) % 9 - 4) / 1100.0
-        block = look.block(
-            (x - sx * (u + w / 2), -depth / 2, z - sz * (v + h / 2)),
-            (w, depth, h), stone,
-            rotation=(0, wobble * 2.0, wobble * 1.3),
-            name=f"Quoin{seed}_{index}", bevel=0.020)
-        look.weather(block, amount=0.019, scale=8.0, cuts=12,
-                     seed=seed * 29 + index, chip=0.075)
-
-    # One keystone set across the mitre. Three nested steps read as a
-    # ziggurat rather than as anything carved, and being the highest thing in
-    # the frame they collected most of its moss -- four bright green staircases
-    # in the corners of the screen.
-    key = look.block((x - sx * 0.330, -0.190, z - sz * 0.330),
-                     (0.330, 0.380, 0.330), stone,
-                     name=f"Keystone{seed}", bevel=0.055)
-    look.weather(key, amount=0.021, scale=7.0, cuts=14,
-                 seed=seed * 13 + 1, chip=0.090)
-
 
 def game_frame(path, name="stone_portal"):
     """The border around the entire game. Dark stone, and nothing else.
@@ -337,33 +289,7 @@ def game_frame(path, name="stone_portal"):
                             tint=(0.0186, 0.0167, 0.0131, 1.0),
                             cracks=1.0, puddling=1.0)
 
-    half = SPAN / 2
-    _portal_ring(stone)
-    for side, sign in (("top", 1), ("bottom", -1)):
-        for index, (thickness, depth, rise) in enumerate(PORTAL_PROFILE):
-            course = look.block((0, -depth / 2, sign * rise),
-                                (SPAN, depth, thickness), stone,
-                                name=f"{side}_course", bevel=0.018)
-            # along=0: X is the length of a horizontal run, so its noise runs
-            # at a seventh frequency and survives being stretched anywhere
-            # from 0.64x to 3.6x.
-            look.weather(course, amount=0.013, scale=7.0, along=0, cuts=14,
-                         seed=index * 3 + (0 if sign > 0 else 7))
-    for side, sign in (("left", -1), ("right", 1)):
-        for index, (thickness, depth, rise) in enumerate(PORTAL_PROFILE):
-            # 4mm shallower than the horizontal course it crosses. Coplanar
-            # faces at a corner are Z-fighting, and it prints hard black
-            # staircases into exactly the four places people look.
-            depth -= 0.004
-            course = look.block((sign * rise, -depth / 2, 0),
-                                (thickness, depth, SPAN), stone,
-                                name=f"{side}_course", bevel=0.018)
-            look.weather(course, amount=0.013, scale=7.0, along=2, cuts=14,
-                         seed=index * 3 + (13 if sign > 0 else 19))
-
-    for index, (cx, cz) in enumerate(((-half, half), (half, half),
-                                      (-half, -half), (half, -half))):
-        _portal_corner(cx, cz, stone, seed=index + 1)
+    stone_frame_body(stone, amount=0.013, chip=0.075)
 
     # Lit like the panels, from the upper left, so the border belongs to the
     # same room as everything inside it.
