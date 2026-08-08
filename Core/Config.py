@@ -13,6 +13,10 @@ at a different model or a remote Ollama host without editing code.
 from __future__ import annotations
 
 import os
+
+from Core.Logging import get_logger
+
+_log = get_logger("config")
 from dataclasses import dataclass, field
 from typing import Dict, Optional
 
@@ -45,6 +49,40 @@ DEFAULT_TIMEOUT = 180
 # blueprint generation fail outright. Thinking tokens would also be narrated
 # straight to the player on prose calls.
 DEFAULT_THINK = False
+
+# Which picture model to ask for. The request named none at all, so every
+# image in the game's history was whatever the host happened to default to.
+# Measured on one scene at 768x432:
+#
+#   flux      ~29s  darkest and most atmospheric, and the quickest
+#   gptimage  ~45s  best composition, slowest
+#   turbo     ~45s  prettier, but drifts from the prompt
+#
+# flux is the default because it is the best balance; the others are one
+# environment variable away.
+DEFAULT_IMAGE_MODEL = "flux"
+
+# Text-to-image models known to answer anonymously. `kontext` is deliberately
+# absent: it edits an existing image and 500s on a plain prompt.
+IMAGE_MODELS = ("flux", "gptimage", "turbo")
+
+# The look. This was hardcoded as a 1990s Bryce/FMV render -- and it never
+# reached the image host at all, because it sat at the *end* of a prompt that
+# was cut at 360 characters. Every picture the game has ever made was drawn in
+# whatever house style the host felt like. It leads the prompt now, so it
+# survives, and it is a setting because it is a taste decision.
+IMAGE_STYLES = {
+    "cinematic": ("cinematic film still, anamorphic, volumetric light, "
+                  "muted colour grade, shallow depth of field"),
+    "retro3d": ("early CGI, 1990s Bryce 3D render, FMV cutscene aesthetic, "
+                "low-poly textures, eerie lighting, muted palette"),
+    "painted": ("digital matte painting, painterly brushwork, dramatic light, "
+                "concept art"),
+    "grim": ("bleak photographic realism, overcast, desaturated, "
+             "documentary framing, harsh natural light"),
+}
+
+DEFAULT_IMAGE_STYLE = "cinematic"
 
 
 # =============================
@@ -117,6 +155,35 @@ def _env_int(name: str, default: int) -> int:
         return default
 
 
+def _image_model_from_env() -> str:
+    """The picture model, checked against the ones that actually work.
+
+    A typo here would otherwise fail silently: the host returns a 500 with a
+    JSON body, the worker sees a file too small to be an image, and pictures
+    just stop appearing with nothing on screen to say why.
+    """
+    name = _env_str("RP_GPT_IMAGE_MODEL", DEFAULT_IMAGE_MODEL).strip().lower()
+    if name in IMAGE_MODELS:
+        return name
+    _log.warning(
+        "unknown image model %r; using %s. Choices: %s",
+        name, DEFAULT_IMAGE_MODEL, ", ".join(IMAGE_MODELS),
+    )
+    return DEFAULT_IMAGE_MODEL
+
+
+def _image_style_from_env() -> str:
+    """The look, checked against the ones that exist."""
+    name = _env_str("RP_GPT_IMAGE_STYLE", DEFAULT_IMAGE_STYLE).strip().lower()
+    if name in IMAGE_STYLES:
+        return name
+    _log.warning(
+        "unknown image style %r; using %s. Choices: %s",
+        name, DEFAULT_IMAGE_STYLE, ", ".join(IMAGE_STYLES),
+    )
+    return DEFAULT_IMAGE_STYLE
+
+
 @dataclass(frozen=True)
 class Config:
     """Runtime configuration. Immutable; build a new one to change it."""
@@ -128,6 +195,8 @@ class Config:
     keep_alive: str = DEFAULT_KEEP_ALIVE
     timeout: int = DEFAULT_TIMEOUT
     think: bool = DEFAULT_THINK
+    image_model: str = DEFAULT_IMAGE_MODEL
+    image_style: str = DEFAULT_IMAGE_STYLE
 
     @classmethod
     def from_env(cls) -> "Config":
@@ -143,6 +212,8 @@ class Config:
             keep_alive=_env_str("RP_GPT_KEEP_ALIVE", DEFAULT_KEEP_ALIVE),
             think=_env_str("RP_GPT_THINK", "").lower() in {"1", "true", "yes"},
             timeout=_env_int("RP_GPT_TIMEOUT", DEFAULT_TIMEOUT),
+            image_model=_image_model_from_env(),
+            image_style=_image_style_from_env(),
         )
 
 

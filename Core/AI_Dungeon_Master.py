@@ -405,10 +405,9 @@ def default_image_style_prefix() -> str:
 
     Keep this short: style should *augment* content rather than dominate the token budget.
     """
-    return (
-        "early CGI, 1990s bryce 3D render, FMV cutscene aesthetic, low-poly textures, "
-        "eerie lighting, creepy shadows, muted palette, soft volumetrics, no text, no watermark"
-    )
+    from Core.Config import IMAGE_STYLES, get_config
+
+    return IMAGE_STYLES[get_config().image_style]
 
 
 def image_prompt_from_state(
@@ -423,34 +422,94 @@ def image_prompt_from_state(
     detail_level: "minimal" | "moderate" | "rich" (bounded by max_len regardless)
     """
     style = style_prefix or default_image_style_prefix()
-    location = state.location_desc or "a brooding scene"
 
-    # Focus line prefers a discovered, alive last_actor; otherwise establishing.
-    if getattr(state, "last_actor", None) and state.last_actor.alive and state.last_actor.discovered:
-        focus = f"close-up on {state.last_actor.name} in {location}"
+    # Style first, because the prompt is cut to max_len and this used to sit
+    # at the end -- so the look never reached the host on any picture the game
+    # has ever drawn.
+    parts = [style]
+
+    # A shot of a *place*, in a few words. `location_desc` is the opening
+    # sentence of the act's intro, so this read "close-up on Sable in The air
+    # in the refinery smells of copper and rotting kelp".
+    place = _short_place(state)
+    actor = getattr(state, "last_actor", None)
+    if actor is not None and actor.alive and actor.discovered:
+        parts.append(f"{actor.name} in {place}")
     else:
-        focus = f"establishing shot of {location}"
+        parts.append(f"wide establishing shot, {place}")
 
-    situation = (state.act.situation or "scene evolves").strip()
+    # What is actually in front of the player, once -- not the whole paragraph
+    # pasted in twice, which is what "focus" plus "situation:" amounted to.
+    detail = _scene_nouns(state, {"minimal": 1, "moderate": 2}.get(detail_level, 3))
+    if detail:
+        parts.append(detail)
 
-    # Add one or two concrete nouns from recent beats to keep flavor without long lists.
-    recent = ": ".join(filter(None, [
-        summarize_for_prompt("; ".join(state.history[-3:]), 90),
-    ])) if state.history else ""
+    parts.append("no text, no watermark, no signature")
+    return compress_and_sanitize(", ".join(parts), max_len=max_len)
 
-    # Detail tiers: add descriptors in a fixed order for determinism
-    descriptors = {
-        "minimal": "moody, restrained detail",
-        "moderate": "weathered stone, dim candlelight, drifting fog",
-        "rich": "weathered stone, dim candlelight, drifting fog, subtle specular highlights, ancient engravings",
-    }
-    detail = descriptors.get(detail_level, descriptors["moderate"])  # default
 
-    core = f"{focus}. situation: {situation}. {detail}. {style}."
-    if recent:
-        core = f"{core} recent beat: {recent}."
+def _short_place(state: "GameState") -> str:
+    """Where this is, in a handful of words.
 
-    return compress_and_sanitize(core, max_len=max_len)
+    Taken from the act's goal, which is a short authored line -- "infiltrate
+    the submerged refinery to locate the first relay" -- rather than carved
+    out of narrated prose. Parsing prose for a place name produced "Sable in
+    the refinery smells of copper and rotting kelp", because the opening
+    sentence of a scene is a description, not an address.
+    """
+    plan = state.blueprint.acts.get(state.act.index) if state.blueprint else None
+    goal = (getattr(plan, "goal", "") or "").strip().rstrip(".")
+    if goal:
+        # Drop the verb the goal opens with: a picture is of a place, not of
+        # an instruction. "Infiltrate the submerged refinery" -> "the
+        # submerged refinery".
+        words = goal.split()
+        if words and words[0].lower() in _GOAL_VERBS:
+            words = words[1:]
+        trimmed = " ".join(words)
+        for joiner in (" to ", " before ", " and ", " so "):
+            trimmed = trimmed.split(joiner)[0]
+        if 4 <= len(trimmed) <= 70:
+            return trimmed
+    return (state.scenario_label or "a brooding place").strip()
+
+
+# Act goals are written as instructions. The picture wants the noun.
+_GOAL_VERBS = {
+    "infiltrate", "reach", "find", "locate", "navigate", "escape", "recover",
+    "stabilize", "stabilise", "breach", "cross", "survive", "destroy",
+    "disable", "overload", "secure", "steal", "rescue", "confront", "enter",
+    "sabotage", "open", "defend", "track", "hunt",
+}
+
+
+def _scene_nouns(state: "GameState", limit: int = 2) -> str:
+    """A couple of concrete things from the scene as it currently reads.
+
+    Descriptors used to be hardcoded as "weathered stone, dim candlelight,
+    ancient engravings" -- dungeon words, sent verbatim for a flooded
+    industrial refinery, in every campaign whatever the setting.
+    """
+    text = (getattr(state.act, "situation", "") or "").strip()
+    # Seeded with the place so the prompt does not say it twice: the first
+    # sentence of a situation almost always restates where you are.
+    picked, seen = [], {_short_place(state).lower()}
+    for sentence in text.replace("!", ".").replace("?", ".").split("."):
+        clause = sentence.strip()
+        if not clause:
+            continue
+        for opener in ("You ", "Your ", "They ", "It "):
+            if clause.startswith(opener):
+                clause = clause[len(opener):].strip()
+        clause = clause.split(",")[0].strip()
+        key = clause.lower()
+        overlaps = any(key in other or other in key for other in seen)
+        if 8 <= len(clause) <= 60 and not overlaps:
+            seen.add(key)
+            picked.append(clause)
+        if len(picked) >= limit:
+            break
+    return ", ".join(picked)
 
 
 # =============================

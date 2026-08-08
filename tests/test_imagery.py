@@ -209,3 +209,159 @@ def test_no_seed_still_builds_a_url():
     from Core.Image_Gen import pollinations_url
 
     assert pollinations_url("x", 768, 432).startswith("https://")
+
+
+# =============================
+# ------ WHICH MODEL ----------
+# =============================
+
+def _rebuild(monkeypatch, value=None):
+    from Core.Config import Config, set_config
+
+    if value is None:
+        monkeypatch.delenv("RP_GPT_IMAGE_MODEL", raising=False)
+    else:
+        monkeypatch.setenv("RP_GPT_IMAGE_MODEL", value)
+    set_config(Config.from_env())
+
+
+def test_the_request_names_a_model(monkeypatch):
+    """It named none at all, so every picture in this game's history was
+    whatever the host happened to be defaulting to that week."""
+    from Core.Image_Gen import pollinations_url
+
+    _rebuild(monkeypatch)
+    assert "model=flux" in pollinations_url("a coast", 768, 432)
+
+
+@pytest.mark.parametrize("name", ["flux", "gptimage", "turbo"])
+def test_the_model_can_be_switched_without_touching_code(monkeypatch, name):
+    from Core.Image_Gen import pollinations_url
+
+    _rebuild(monkeypatch, name)
+    assert f"model={name}" in pollinations_url("a coast", 768, 432)
+
+
+def test_a_typo_falls_back_instead_of_failing_silently(monkeypatch):
+    """An unknown name makes the host return a 500 with a JSON body. The
+    worker sees a file too small to be an image and pictures simply stop,
+    with nothing on screen to say why."""
+    from Core.Config import DEFAULT_IMAGE_MODEL, get_config
+    from Core.Image_Gen import pollinations_url
+
+    _rebuild(monkeypatch, "fluxx")
+    assert get_config().image_model == DEFAULT_IMAGE_MODEL
+    assert f"model={DEFAULT_IMAGE_MODEL}" in pollinations_url("a coast", 768, 432)
+
+
+def test_case_and_spacing_are_forgiven(monkeypatch):
+    from Core.Config import get_config
+
+    _rebuild(monkeypatch, "  GPTImage  ")
+    assert get_config().image_model == "gptimage"
+
+
+def test_the_fallback_url_uses_the_same_model(monkeypatch):
+    """Both URLs go to the same place; a simplified retry on a different
+    model would change the look of the game mid-campaign."""
+    from Core.Image_Gen import build_urls_with_fallbacks
+
+    _rebuild(monkeypatch, "turbo")
+    primary, simple = build_urls_with_fallbacks("a coast", 768, 432, seed=3)
+    assert "model=turbo" in primary and "model=turbo" in simple
+
+
+def test_kontext_is_not_offered(monkeypatch):
+    """It edits an existing image and 500s on a plain prompt."""
+    from Core.Config import IMAGE_MODELS
+
+    assert "kontext" not in IMAGE_MODELS
+
+
+# =============================
+# ------ WHAT WE ASK FOR ------
+# =============================
+
+def _scene_state():
+    import RP_GPT as core
+
+    blueprint = core.blueprint_from_json({
+        "campaign_goal": "g", "pressure_name": "p",
+        "acts": {"1": {"goal": "Infiltrate the submerged refinery to locate the relay",
+                       "intro_paragraph": "x", "pressure_evolution": "y"}},
+    })
+    state = core.GameState(
+        scenario=core.Scenario.APOCALYPSE, scenario_label="The Ashfall",
+        player=core.Player(name="Wren"), blueprint=blueprint, pressure_name="p",
+    )
+    state.act.situation = (
+        "The air in the refinery smells of copper and rotting kelp. "
+        "You move through the rusted catwalks above the tide."
+    )
+    state.location_desc = "The air in the refinery smells of copper and rotting kelp"
+    return state
+
+
+def test_the_style_survives_the_length_limit(monkeypatch):
+    """It sat at the end of a prompt cut at 360 characters, so the look never
+    reached the host on a single picture the game has ever made."""
+    from Core.Image_Gen import make_image_prompt
+
+    _rebuild(monkeypatch)
+    prompt = make_image_prompt(_scene_state())
+    assert prompt.startswith("cinematic film still")
+
+
+def test_the_prompt_names_a_place_not_a_sentence():
+    """It read "close-up on Sable in The air in the refinery smells of copper
+    and rotting kelp" -- location_desc is the opening line of the scene, which
+    is a description, not an address."""
+    from Core.Image_Gen import make_image_prompt
+
+    prompt = make_image_prompt(_scene_state())
+    assert "the submerged refinery" in prompt
+    assert "smells of copper and rotting kelp," not in prompt.split(",")[5:6]
+
+
+def test_the_scene_is_not_described_twice():
+    """The situation went in once inside the focus line and again after
+    "situation:", so half the prompt was the same paragraph repeated."""
+    from Core.Image_Gen import make_image_prompt
+
+    parts = [p.strip().lower() for p in make_image_prompt(_scene_state()).split(",")]
+    assert len(parts) == len(set(parts)), parts
+
+
+def test_no_dungeon_words_in_a_refinery():
+    """Descriptors were hardcoded as "weathered stone, dim candlelight,
+    ancient engravings" and sent verbatim whatever the setting was."""
+    from Core.Image_Gen import make_image_prompt
+
+    prompt = make_image_prompt(_scene_state()).lower()
+    for word in ("candlelight", "ancient engravings", "weathered stone"):
+        assert word not in prompt
+
+
+@pytest.mark.parametrize("style,marker", [
+    ("cinematic", "cinematic film still"),
+    ("retro3d", "1990s Bryce"),
+    ("painted", "matte painting"),
+    ("grim", "photographic realism"),
+])
+def test_the_look_can_be_switched(monkeypatch, style, marker):
+    from Core.Image_Gen import make_image_prompt
+
+    _rebuild(monkeypatch)
+    monkeypatch.setenv("RP_GPT_IMAGE_STYLE", style)
+    from Core.Config import Config, set_config
+    set_config(Config.from_env())
+
+    assert marker.lower() in make_image_prompt(_scene_state()).lower()
+
+
+def test_an_unknown_look_falls_back(monkeypatch):
+    from Core.Config import Config, DEFAULT_IMAGE_STYLE, get_config, set_config
+
+    monkeypatch.setenv("RP_GPT_IMAGE_STYLE", "vaporwave")
+    set_config(Config.from_env())
+    assert get_config().image_style == DEFAULT_IMAGE_STYLE

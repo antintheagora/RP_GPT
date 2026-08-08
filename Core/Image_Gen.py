@@ -12,6 +12,7 @@ Hardened for higher success rates while preserving detail:
 from __future__ import annotations
 
 from engine import events as _ev
+from Core.Config import get_config
 
 import base64
 import os
@@ -254,7 +255,8 @@ def rate_limit_images(min_interval: float = 1.2) -> None:
 
 
 def pollinations_url(prompt: str, width: int, height: int,
-                     seed: Optional[int] = None) -> str:
+                     seed: Optional[int] = None,
+                     model: Optional[str] = None) -> str:
     """The image URL.
 
     `seed` matters more than it looks: the service is deterministic on the
@@ -267,17 +269,22 @@ def pollinations_url(prompt: str, width: int, height: int,
            f"?width={width}&height={height}&nologo=true")
     if seed is not None:
         url += f"&seed={int(seed) % 1_000_000}"
+    # Named explicitly. Asking for nothing got whatever the host defaulted to
+    # that week, which is not a choice anyone made.
+    url += f"&model={model or get_config().image_model}"
     return url
 
 
 def build_urls_with_fallbacks(prompt: str, width: int, height: int,
-                              seed: Optional[int] = None) -> tuple[str, str]:
-    primary = pollinations_url(prompt, width, height, seed)
+                              seed: Optional[int] = None,
+                              model: Optional[str] = None) -> tuple[str, str]:
+    primary = pollinations_url(prompt, width, height, seed, model)
     simple = pollinations_url(
         compress_and_sanitize(f"moody establishing shot. {image_style_prefix()}.", max_len=220),
         min(width, 640),
         min(height, 360),
         seed,
+        model,
     )
     return primary, simple
 
