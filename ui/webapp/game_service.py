@@ -1232,7 +1232,7 @@ class GameSession:
         working directory as turn_00000.jpg -- the same filename every time,
         in the repository root.
         """
-        def fetch(prompt: str, out_path: str) -> None:
+        def fetch(prompt: str, out_path: str) -> Optional[str]:
             # Seeded on the file itself, so the same turn always redraws to
             # the same picture but the next turn does not.
             seed = abs(hash(out_path))
@@ -1252,9 +1252,13 @@ class GameSession:
             if comfy.available():
                 try:
                     rendered = comfy.render(prompt, IMG_WIDTH, IMG_HEIGHT, seed)
-                    Path(out_path).write_bytes(rendered.data)
+                    # ComfyUI's SaveImage writes PNG. Naming it .jpg made
+                    # Flask serve PNG bytes as image/jpeg, which browsers
+                    # sniff past and nothing else should have to.
+                    local = Path(out_path).with_suffix(".png")
+                    local.write_bytes(rendered.data)
                     _log.debug("rendered locally in %.1fs", rendered.seconds)
-                    return
+                    return str(local)
                 except comfy.ComfyUnavailable:
                     _log.info("local render failed; falling back to the host",
                               exc_info=True)
@@ -1265,6 +1269,7 @@ class GameSession:
             primary, simple = build_urls_with_fallbacks(
                 prompt, IMG_WIDTH, IMG_HEIGHT, seed=seed)
             download_image(primary, out_path, simplified_url=simple)
+            return None
 
         return ImageWorker(
             directory=paths.IMAGES_DIR / self.id,

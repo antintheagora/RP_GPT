@@ -85,7 +85,7 @@ class ImageWorker:
     def __init__(
         self,
         directory: Path,
-        fetch: Callable[[str, str], None],
+        fetch: Callable[[str, str], Optional[str]],
         on_ready: Optional[Callable[[ImageResult], None]] = None,
         enabled: bool = True,
         min_interval: float = MIN_SECONDS_BETWEEN_IMAGES,
@@ -185,7 +185,18 @@ class ImageWorker:
     def _render(self, request: ImageRequest) -> None:
         self.directory.mkdir(parents=True, exist_ok=True)
         out = self.directory / request.filename()
-        self.fetch(request.prompt, str(out))
+
+        # A fetcher may write somewhere other than it was asked to, and if it
+        # does it says so by returning that path. The local renderer produces
+        # PNG and the image host produces JPEG, and the request cannot know
+        # which will answer -- so for a while every locally drawn picture was
+        # PNG bytes in a file named .jpg, which Flask then served as
+        # image/jpeg. Browsers sniff the content and cope; anything that
+        # trusts the extension would not.
+        written = self.fetch(request.prompt, str(out))
+        if written:
+            out = Path(written)
+
         if not out.exists() or out.stat().st_size < 1024:
             self.failed += 1
             _log.debug("image came back empty: %s", out)
