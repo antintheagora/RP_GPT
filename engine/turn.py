@@ -38,6 +38,7 @@ from engine.resolve import (
     Assessment,
     Bearing,
     Consequence,
+    harm_leaves_a_wound,
     Position,
     PositionFacts,
     position_for,
@@ -658,6 +659,36 @@ def _word_gets_out(run: Run, foe, result: TurnResult) -> None:
         ev.chapter(f"{faction.name} will hear about this.")
 
 
+#: What to call a wound when the narrator has not named one. Keyed by the
+#: approach that earned it, because that is what the wound goes on
+#: penalising -- a leg hurt vaulting is what makes the next vault harder.
+DEFAULT_WOUND: Dict[str, str] = {
+    "STR": "A torn shoulder",
+    "PER": "A ringing head",
+    "END": "A cracked rib",
+    "CHA": "A split lip",
+    "INT": "A blow to the head",
+    "AGI": "A bad leg",
+    "LUC": "A deep cut",
+}
+
+
+def _wound_name(resolution: Resolution) -> str:
+    """The narrator names it; the code sizes it.
+
+    MECHANICS 1.2 is explicit about the division of labour: the model
+    proposes `{level, name}` and the engine clamps the level by position. The
+    name arrives on `consequence_target`, which is in the assessment schema
+    and which the prompt has never once explained -- so it is usually empty
+    and occasionally a whole sentence. Anything that does not read like the
+    name of an injury falls back to one keyed off the approach that earned it.
+    """
+    proposed = " ".join((resolution.consequence_target or "").split())
+    if proposed and len(proposed) <= 40:
+        return proposed[:1].upper() + proposed[1:]
+    return DEFAULT_WOUND.get(resolution.stat, "A lasting injury")
+
+
 def _apply_harm(run: Run, resolution: Resolution, intent: Intent,
                 result: TurnResult, rng: random.Random) -> None:
     if resolution.consequence is Consequence.HARM:
@@ -673,7 +704,26 @@ def _apply_harm(run: Run, resolution: Resolution, intent: Intent,
         settled, raw = run.condition.take_damage(amount)
         result.damage = amount
         ev.harm(f"You take {amount}.")
-        if run.condition.hp <= 0:
+
+        # The second of the two triggers MECHANICS 1.2 describes, and the only
+        # one that ever fires: a blow taken from Desperate, or taken when you
+        # are already under a third of your hit points, is the one you carry
+        # afterwards. Below-zero stays a separate, worse thing.
+        if run.condition.hp > 0 and harm_leaves_a_wound(
+                resolution.position, run.condition.hp, run.condition.max_hp):
+            wound = run.condition.wounds.take(
+                _wound_name(resolution), 2,
+                cap=resolution.harm_cap, stat=resolution.stat)
+            result.wound = wound.name
+            ev.harm(f"{wound.name}.")
+            # A full track deepens its worst wound rather than dropping the
+            # new one, so this is how a track that keeps taking hits finally
+            # reaches level 4 -- which MECHANICS says is being out of the
+            # fight. Checked here as well as on worsening, or the only way to
+            # go down would be a natural 1.
+            if run.condition.wounds.is_out:
+                result.game_over = True
+        elif run.condition.hp <= 0:
             # `assessment.stat`, in a function that has no `assessment`. The
             # only line in the game that creates a wound raised NameError, and
             # nothing ever noticed because nothing ever reached it: measured

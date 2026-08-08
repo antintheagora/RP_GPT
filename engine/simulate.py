@@ -32,6 +32,7 @@ from engine.clocks import (
 from engine.dice import Effect, Outcome
 from engine.model import SPECIAL_KEYS
 from engine.resolve import (
+    harm_leaves_a_wound,
     Assessment,
     Bearing,
     Consequence,
@@ -69,6 +70,9 @@ class CampaignResult:
     final_hp: int
     scars: int
     virtues: int
+    # The gate had no field for this, so "no wounds ever happened" and "wounds
+    # are not measured" were the same reading.
+    wounds: int = 0
     # How long each completed act actually took. The gate measured whether a
     # campaign could be *won* and never how long one lasted, so a build where
     # an act was over in two turns passed it without complaint.
@@ -177,6 +181,7 @@ def simulate_campaign(
     acts_completed = 0
     total_turns = 0
     out_count = 0
+    wounds_taken = 0
     died = False
 
     act_turns: List[int] = []
@@ -254,8 +259,26 @@ def simulate_campaign(
             if result.consequence is Consequence.HARM:
                 amount = rng.randint(*config.enemy_damage)
                 condition.take_damage(amount)
-                if condition.hp <= 0:
+                # The same two triggers the real turn loop uses. This branch
+                # had only the below-zero one, which no campaign has ever
+                # reached -- so the gate was measuring a game with no
+                # permanent layer in it at all.
+                if condition.hp > 0 and harm_leaves_a_wound(
+                        result.position, condition.hp, condition.max_hp):
+                    condition.wounds.take("A lasting injury", 2,
+                                          cap=result.harm_cap, stat=stat)
+                    wounds_taken += 1
+                    # A full track deepens its worst wound instead of dropping
+                    # the new one, so enough of them reaches level 4 on their
+                    # own. Without this the gate counted ten wounds on one
+                    # character and still reported nobody had ever gone down.
+                    if condition.wounds.is_out:
+                        out_count += 1
+                        condition.hp = condition.max_hp // 2
+                        danger.tick(1)
+                elif condition.hp <= 0:
                     condition.wounds.take("Grievous", 4, cap=result.harm_cap, stat=stat)
+                    wounds_taken += 1
                     if condition.wounds.is_out:
                         out_count += 1
                         condition.hp = condition.max_hp // 2
@@ -288,31 +311,39 @@ def simulate_campaign(
                     condition.take_scar(rng.choice(unheld))
 
             if condition.retired:
-                return CampaignResult(False, acts_completed, total_turns, False,
-                                      True, out_count, condition.hp,
-                                      len(condition.scars), len(condition.virtues),
-                                      act_turns)
+                return CampaignResult(
+                    won=False, acts_completed=acts_completed, turns=total_turns,
+                    died=False, retired=True, out_count=out_count,
+                    final_hp=condition.hp, scars=len(condition.scars),
+                    virtues=len(condition.virtues), wounds=wounds_taken,
+                    act_turns=act_turns)
 
             if project.full:
                 acts_completed += 1
                 act_turns.append(total_turns - act_started)
                 break
             if danger.full:
-                return CampaignResult(False, acts_completed, total_turns, died,
-                                      False, out_count, condition.hp,
-                                      len(condition.scars), len(condition.virtues),
-                                      act_turns)
+                return CampaignResult(
+                    won=False, acts_completed=acts_completed, turns=total_turns,
+                    died=died, retired=False, out_count=out_count,
+                    final_hp=condition.hp, scars=len(condition.scars),
+                    virtues=len(condition.virtues), wounds=wounds_taken,
+                    act_turns=act_turns)
         else:
             # Ran out of turns without either clock filling.
-            return CampaignResult(False, acts_completed, total_turns, died, False,
-                                  out_count, condition.hp,
-                                  len(condition.scars), len(condition.virtues),
-                                  act_turns)
+            return CampaignResult(
+                won=False, acts_completed=acts_completed, turns=total_turns,
+                died=died, retired=False, out_count=out_count,
+                final_hp=condition.hp, scars=len(condition.scars),
+                virtues=len(condition.virtues), wounds=wounds_taken,
+                act_turns=act_turns)
 
-    return CampaignResult(True, acts_completed, total_turns, died, False,
-                          out_count, condition.hp,
-                          len(condition.scars), len(condition.virtues),
-                          act_turns)
+    return CampaignResult(
+        won=True, acts_completed=acts_completed, turns=total_turns,
+        died=died, retired=False, out_count=out_count,
+        final_hp=condition.hp, scars=len(condition.scars),
+        virtues=len(condition.virtues), wounds=wounds_taken,
+        act_turns=act_turns)
 
 
 def run(

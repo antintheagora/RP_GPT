@@ -155,6 +155,39 @@ POSITION_HARM_CAP: Dict[Position, int] = {
     Position.DESPERATE: 3,
 }
 
+#: How badly hurt you have to already be for a blow to leave a mark.
+#: A third of your hit points -- low enough that it takes a real beating,
+#: high enough that a beating reaches it.
+WOUND_HP_FRACTION = 3
+
+
+def harm_leaves_a_wound(position: Position, hp_after: int, max_hp: int) -> bool:
+    """Whether this harm is the kind you carry afterwards.
+
+    MECHANICS 1.2 gives wounds two triggers: damage that takes you below
+    zero, "or when a consequence specifically calls for it". Only the first
+    was ever built, and it turns out to be unreachable -- over 1,500
+    simulated campaigns hit points never once reached zero, so the entire
+    slow layer of the game was behind a door that does not open. A permanent
+    layer that never engages is not a layer.
+
+    This is the second trigger. Two ways in, and both of them are the
+    fiction saying the same thing:
+
+    **Desperate.** The position already means you are out of good options and
+    something is going to cost you. Harm from there is the cost.
+
+    **Already badly hurt.** A blow that lands when you are under a third of
+    your hit points is the one that does lasting damage, wherever you were
+    standing.
+
+    Everything else is the fast layer doing its job: you take damage, you
+    press forward, you rally it back.
+    """
+    if position is Position.DESPERATE:
+        return True
+    return hp_after < max(1, max_hp // WOUND_HP_FRACTION)
+
 
 @dataclass(frozen=True)
 class PositionFacts:
@@ -541,6 +574,7 @@ def resolve(
 __all__ = [
     "Bearing", "BEARING_MODIFIER", "BEARING_HINT",
     "Position", "PositionFacts", "position_for", "POSITION_HARM_CAP",
+    "harm_leaves_a_wound", "WOUND_HP_FRACTION",
     "Consequence", "CONSEQUENCES_BY_POSITION", "Bargain",
     "Assessment", "ASSESS_SCHEMA", "assessment_from_json",
     "target_for", "chance_for", "Resolution", "resolve",

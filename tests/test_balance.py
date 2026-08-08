@@ -238,7 +238,47 @@ def test_the_simulated_campaign_has_fights_in_it():
         assert knob in source, f"the simulator has no {knob}"
 
 
-def test_how_far_the_wound_system_is_from_ever_engaging():
+def test_the_wound_system_engages_now():
+    """A measurement, held still, because the number is the finding.
+
+    This test used to assert the opposite. It recorded that across thousands
+    of simulated campaigns the player took *zero* wounds, and it said so on
+    purpose: the whole slow layer -- wound levels, worsening on a natural 1,
+    healing that climbs each night, treatment, going Out -- began with damage
+    emptying the HP bar, and damage never did.
+
+        max HP                      65 at END 5, 93 at END 9
+        damage per landed harm      4 to 13, so roughly 8 landings to empty it
+        landed harms per campaign   about 2.4
+
+    A third of what was needed. MECHANICS 1.2 always gave wounds a second
+    trigger -- "or when a consequence specifically calls for it" -- and it had
+    never been built. It is built now: harm taken from Desperate, or taken
+    while already under a third of your hit points, leaves a mark.
+
+    The numbers below are what that produced. They are recorded the same way
+    the old zero was, so that the next person to touch combat frequency,
+    position scoring or max HP finds out here that they moved them.
+    """
+    import random
+
+    from engine.simulate import simulate_campaign
+
+    runs = [simulate_campaign(rng=random.Random(4_000 + index)) for index in range(400)]
+    wounded = sum(1 for r in runs if r.wounds)
+    total = sum(r.wounds for r in runs)
+
+    assert total, "the slow layer is unreachable again"
+    assert 0.9 <= total / len(runs) <= 2.2, (
+        f"{total / len(runs):.2f} wounds per campaign -- the win-rate band and "
+        "clock thresholds in this file were calibrated around 1.4, so re-measure"
+    )
+    assert 0.45 <= wounded / len(runs) <= 0.75, (
+        f"{wounded / len(runs):.1%} of campaigns carry a wound; it was 61%"
+    )
+
+
+def _the_old_reading_kept_for_its_arithmetic():
     """A measurement, held still, because the number is the finding.
 
     MECHANICS builds a whole slow layer -- wound levels, worsening on a
@@ -269,10 +309,4 @@ def test_how_far_the_wound_system_is_from_ever_engaging():
 
     from engine.simulate import simulate_campaign
 
-    wounds = sum(simulate_campaign(rng=random.Random(4_000 + index)).out_count
-                 for index in range(400))
-    assert wounds == 0, (
-        "the simulator now wounds people -- good, and the win-rate band and "
-        "clock thresholds in this file were calibrated when it did not, so "
-        "re-measure them"
-    )
+    return  # kept for the arithmetic in the docstring above, not run

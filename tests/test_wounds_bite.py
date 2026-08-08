@@ -146,23 +146,76 @@ def test_the_simulator_applies_the_same_rule_as_the_turn():
     assert "worsen_applicable" in source
 
 
-def test_the_balance_gate_cannot_see_any_of_this():
-    """The gate runs a game with no wounds in it. Recorded, not asserted away.
+def test_the_balance_gate_can_finally_see_this():
+    """The gate used to run a game with no wounds in it at all.
 
-    Across 1,500 simulated campaigns the player takes zero wounds and never
-    drops below 7 HP, because the simulator has no combat loop -- damage only
-    arrives as an occasional failure consequence, about twice a campaign.
+    This test asserted `wounds == 0` on purpose, and was right to: across
+    1,500 simulated campaigns the player took zero wounds and never dropped
+    below 7 HP, so the 5,000-campaign gate measured the clock race and
+    nothing whatsoever about survival.
 
-    So the 5,000-campaign gate measures the clock race and nothing about
-    survival. This test exists so that the next person to change wound
-    balance and watch the gate stay green knows why it stayed green.
+    Two things changed. Campaigns have fights in them, and harm has the
+    second trigger MECHANICS 1.2 always described. The gate can see the slow
+    layer now, which is the only reason any threshold in it means anything.
     """
     import engine.simulate as simulate
 
-    wounds = 0
-    for index in range(150):
-        result = simulate.simulate_campaign(rng=random.Random(9_000 + index))
-        wounds += result.out_count
-    assert wounds == 0, (
-        "the simulator now produces wounds -- good, but the gate's thresholds "
-        "were calibrated on a run where it never did, so re-measure them")
+    runs = [simulate.simulate_campaign(rng=random.Random(9_000 + index))
+            for index in range(200)]
+    assert sum(r.wounds for r in runs), "the slow layer is invisible again"
+    assert any(r.out_count for r in runs), (
+        "nobody ever goes down, so wound level 4 is decoration")
+
+
+def test_a_wound_track_that_keeps_taking_hits_puts_you_out():
+    """Level 4 is 'Out'. Something has to be able to reach it.
+
+    A full track deepens its worst wound rather than dropping the new one, so
+    enough hits gets there on their own -- but only if somebody checks. The
+    simulator counted ten wounds on one character and still reported that
+    nobody had ever gone down.
+    """
+    track = WoundTrack(slots=2)
+    for _ in range(8):
+        track.take("A lasting injury", 2, cap=3, stat="STR")
+    assert track.is_out, "a track can absorb any number of hits and never fill"
+
+
+# =============================
+# --- THE SECOND TRIGGER ------
+# =============================
+
+def test_harm_from_desperate_leaves_a_mark():
+    """Desperate already means you are out of good options."""
+    from engine.resolve import Position, harm_leaves_a_wound
+
+    assert harm_leaves_a_wound(Position.DESPERATE, 60, 65)
+
+
+def test_harm_taken_while_badly_hurt_leaves_a_mark():
+    """Wherever you were standing. Under a third is under a third."""
+    from engine.resolve import Position, harm_leaves_a_wound
+
+    assert harm_leaves_a_wound(Position.RISKY, 20, 65)
+    assert not harm_leaves_a_wound(Position.RISKY, 22, 65)
+
+
+def test_an_ordinary_scrape_is_still_just_hit_points():
+    """The fast layer has to stay the fast layer.
+
+    If every landed blow left a wound the permanent layer would fill in two
+    acts and the Rally -- press forward, win back the recoverable third --
+    would stop meaning anything.
+    """
+    from engine.resolve import Position, harm_leaves_a_wound
+
+    assert not harm_leaves_a_wound(Position.RISKY, 55, 65)
+    assert not harm_leaves_a_wound(Position.POISED, 65, 65)
+
+
+def test_the_rule_holds_for_a_character_with_almost_no_hit_points():
+    """`max_hp // 3` is zero for a small enough bar, and a threshold of zero
+    can never be crossed -- which is how the first trigger got here."""
+    from engine.resolve import Position, harm_leaves_a_wound
+
+    assert harm_leaves_a_wound(Position.RISKY, 0, 2)
