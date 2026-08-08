@@ -205,18 +205,14 @@ def take_rest(run, *, rng: Optional[random.Random] = None,
     return result
 
 
-def render_rest(result: RestResult) -> List[str]:
-    """Plain lines describing the night."""
-    lines: List[str] = []
-    if result.hp_regained:
-        lines.append(f"You recover {result.hp_regained}.")
-    for name in result.healed:
-        lines.append(f"{name} has closed.")
-    if result.dream_text:
-        lines.append(result.dream_text)
-    for move in result.tide_moves:
-        lines.append(move.text)
-    return [line for line in lines if line]
-
-
-__all__ = ["Dream", "RestResult", "take_rest", "pick_dream", "render_rest"]
+# `render_rest` was here: a list of plain lines describing the night, for a
+# front end to print. Nothing printed them. `take_rest` announces the night
+# through the event bus as it happens, and the web UI imported this function
+# and never called it -- the comment at its one-time call site says why, that
+# re-emitting the lines printed every one of them twice.
+#
+# It had also drifted. It knew about recovery, healing, dreams and Tides, and
+# not about companions you never saw to, or -- as of today -- a wound somebody
+# finally treated. A renderer nothing renders with cannot be noticed going out
+# of date, which is the second reason to delete it rather than fix it.
+__all__ = ["Dream", "RestResult", "take_rest", "pick_dream"]

@@ -19,7 +19,7 @@ import pytest
 from engine.character import Condition, WoundState
 from engine.clocks import Clock, ClockBoard, ClockKind
 from engine.model import SPECIAL_KEYS
-from engine.rest import Dream, pick_dream, render_rest, take_rest
+from engine.rest import Dream, pick_dream, take_rest
 from engine.scene import Obstacle, Scene
 from engine.tides import Tide, TideBoard
 from engine.turn import Run
@@ -220,8 +220,20 @@ def test_resolve_never_leaves_its_bounds():
 # =============================
 
 def test_the_night_is_described_to_the_player():
-    lines = render_rest(take_rest(_run(), rng=random.Random(8)))
-    assert lines, "the player was told nothing about their own night"
+    """Through the event bus, which is how the player actually hears it.
+
+    This used to call `render_rest` -- a function that built a list of lines
+    for a front end to print, which no front end ever printed. So the test
+    passed on a renderer nobody used while saying nothing about whether the
+    player was told anything. `take_rest` announces the night as it happens.
+    """
+    from engine.events import collecting
+
+    with collecting() as bus:
+        take_rest(_run(), rng=random.Random(8))
+
+    said = [event.text for event in bus.events]
+    assert said, "the player was told nothing about their own night"
 
 
 # =============================

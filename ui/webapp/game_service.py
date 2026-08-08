@@ -36,7 +36,7 @@ from engine.events import collecting
 from engine.imagery import ImageRequest, ImageResult, ImageWorker
 from engine.model import IMG_HEIGHT, IMG_WIDTH, MAX_CARRIED_STAT_BONUS
 from engine.keeper import ModelKeeper
-from engine.rest import render_rest, take_rest
+from engine.rest import take_rest
 from engine import talk as talk_engine
 from engine.turn import advance_turn, prepare_turn
 from engine.persistence import list_runs, load_run, save_run

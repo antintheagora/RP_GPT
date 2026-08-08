@@ -58,7 +58,7 @@ KNOWN = {
     "lookup_profile", "set_config", "set_profile_hook",
 
     # -- Constructors and helpers the engine exports for front ends.
-    "render_result", "render_rest", "clock_from_json", "tide_from_json",
+    "render_result", "clock_from_json", "tide_from_json",
     "is_usable", "drain", "wait", "create_app", "resist_cost",
 
     # -- Odds. The game deliberately does not show a player their chance,
