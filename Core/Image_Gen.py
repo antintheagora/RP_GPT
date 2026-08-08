@@ -323,15 +323,6 @@ def supports_kitty() -> bool:
 
 _last_image_ts = 0.0
 
-def rate_limit_images(min_interval: float = 1.2) -> None:
-    global _last_image_ts
-    now = time.time()
-    wait = (_last_image_ts + min_interval) - now
-    if wait > 0:
-        time.sleep(wait)
-    _last_image_ts = time.time()
-
-
 def pollinations_url(prompt: str, width: int, height: int,
                      seed: Optional[int] = None,
                      model: Optional[str] = None) -> str:
@@ -509,52 +500,6 @@ def show_image_in_terminal_or_fallback(
 # --------- MAIN QUEUE --------
 # =============================
 
-def generate_turn_image(
-    state: "GameState",
-    queue_event: Callable[["GameState", str, str, Optional[list[str]], Optional[dict]], None],
-    width: int = 768,
-    height: int = 432,
-    detail: str = "moderate",
-) -> None:
-    """Queue a new turn image if the campaign wants visuals."""
-    if not getattr(state, "images_enabled", False):
-        return
-    try:
-        rate_limit_images()
-        prompt = make_image_prompt(state, detail=detail)
-        primary_url, simple_url = build_urls_with_fallbacks(prompt, width, height)
-
-        # Decide path: prefer an assets_dir on state if present
-        out_dir = getattr(state, "assets_dir", ".")
-        os.makedirs(out_dir, exist_ok=True)
-        out_path = os.path.join(out_dir, f"turn_{getattr(state, 'turn', 0):05d}.jpg")
-
-        download_image(
-            primary_url,
-            out_path,
-            certifi_module=certifi,
-            simplified_url=simple_url,
-        )
-
-        actors: list[str] = []
-        if getattr(state, "last_actor", None) and state.last_actor.discovered and state.last_actor.alive:
-            actors.append(state.last_actor.name)
-
-        queue_event(
-            state,
-            kind="turn",
-            prompt=prompt,
-            actors=actors,
-            extra={
-                "mode": state.mode.name if getattr(state, "mode", None) else "",
-                "location": state.location_desc or "",
-                "goal": state.blueprint.acts[state.act.index].goal if getattr(state, "blueprint", None) else "",
-            },
-        )
-    except Exception as exc:
-        _ev.plate(f"[Image queue error] {exc}")
-
-
 __all__ = [
     # style/safety
     "SAFE_WORDS",
@@ -576,7 +521,6 @@ __all__ = [
     # fetch/display
     "supports_iterm_inline",
     "supports_kitty",
-    "rate_limit_images",
     "pollinations_url",
     "build_urls_with_fallbacks",
     "download_image",
@@ -584,5 +528,4 @@ __all__ = [
     "kitty_inline_stub",
     "show_image_in_terminal_or_fallback",
     # main
-    "generate_turn_image",
 ]

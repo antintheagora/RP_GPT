@@ -37,7 +37,13 @@ _log = get_logger("imagery")
 
 # One in flight and one waiting. Any more and the picture on screen is a
 # scene the player has already left.
-QUEUE_DEPTH = 2
+# Four, not two. A queue that is full drops the stalest request rather than
+# make a turn wait, which is right -- but the worker now waits a beat between
+# requests, so things sit in the queue longer and a depth of two started
+# throwing away pictures that would have arrived fine a second later. An act
+# boundary queues two on its own, and a turn can add another while they are
+# still going out.
+QUEUE_DEPTH = 4
 
 
 @dataclass
@@ -64,6 +70,11 @@ class ImageResult:
     turn: int
 
 
+#: Seconds between requests leaving the worker. The service this talks to
+#: is rate limited, and an act boundary queues several pictures at once.
+MIN_SECONDS_BETWEEN_IMAGES = 1.5
+
+
 class ImageWorker:
     """Fetches pictures on a background thread, or quietly does not.
 
@@ -77,11 +88,14 @@ class ImageWorker:
         fetch: Callable[[str, str], None],
         on_ready: Optional[Callable[[ImageResult], None]] = None,
         enabled: bool = True,
+        min_interval: float = MIN_SECONDS_BETWEEN_IMAGES,
     ) -> None:
         self.directory = Path(directory)
         self.fetch = fetch
         self.on_ready = on_ready
         self.enabled = enabled
+        self.min_interval = max(0.0, float(min_interval))
+        self._next_allowed = 0.0
         self.dropped = 0
         self.completed = 0
         self.failed = 0
@@ -141,6 +155,7 @@ class ImageWorker:
             with self._lock:
                 self._inflight += 1
             try:
+                self._pace()
                 self._render(request)
             except Exception:
                 self.failed += 1
@@ -149,6 +164,23 @@ class ImageWorker:
                 with self._lock:
                     self._inflight -= 1
                 self._queue.task_done()
+
+    def _pace(self) -> None:
+        """Wait, if the last request was too recent.
+
+        The only throttle this project had lived in `rate_limit_images`, which
+        was called from `generate_turn_image` and nowhere else -- and nothing
+        calls `generate_turn_image`. So the live path had no pacing at all,
+        and a new act queues four pictures at once.
+
+        On the worker thread, so a turn never waits for it.
+        """
+        if self.min_interval <= 0:
+            return
+        now = time.monotonic()
+        if now < self._next_allowed:
+            time.sleep(self._next_allowed - now)
+        self._next_allowed = time.monotonic() + self.min_interval
 
     def _render(self, request: ImageRequest) -> None:
         self.directory.mkdir(parents=True, exist_ok=True)
@@ -182,4 +214,5 @@ class ImageWorker:
         return not self.busy
 
 
-__all__ = ["ImageRequest", "ImageResult", "ImageWorker", "QUEUE_DEPTH"]
+__all__ = ["ImageRequest", "ImageResult", "ImageWorker", "QUEUE_DEPTH",
+           "MIN_SECONDS_BETWEEN_IMAGES"]

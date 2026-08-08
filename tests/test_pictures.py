@@ -81,3 +81,55 @@ def test_saying_no_actually_stops_it():
     state.images_enabled = False
     queued = core.queue_image_event(state, "startup", "a drowned hall")
     assert not queued, "a queued request with images off is a request anyway"
+
+
+# ---------------------------------------------------------------------------
+# How fast they are asked for.
+# ---------------------------------------------------------------------------
+
+def test_the_worker_paces_itself():
+    """Nothing throttled the live path at all.
+
+    The one throttle this project had, `rate_limit_images`, was called from
+    `generate_turn_image` and from nowhere else -- and nothing called
+    `generate_turn_image`. So the pacing belonged entirely to dead code while
+    the real worker fetched as fast as the queue could feed it, and an act
+    boundary queues several pictures at once.
+    """
+    import time
+
+    from engine.imagery import ImageRequest, ImageWorker
+
+    stamps = []
+
+    def fetch(prompt, out):
+        stamps.append(time.monotonic())
+        Path(out).write_bytes(b"x" * 2048)
+
+    worker = ImageWorker(directory=Path(__file__).parent / "_paced",
+                         fetch=fetch, min_interval=0.05)
+    for index in range(3):
+        worker.submit(ImageRequest(kind="scene", prompt=f"a hall {index}",
+                                   turn=index))
+    worker.wait(timeout=10)
+
+    assert len(stamps) == 3
+    gaps = [b - a for a, b in zip(stamps, stamps[1:])]
+    assert all(gap >= 0.04 for gap in gaps), (
+        f"requests went out {gaps} apart, so nothing is pacing them"
+    )
+
+
+def test_the_dead_turn_image_path_is_gone():
+    """It wrote to the current working directory and blocked the turn.
+
+    `out_dir = getattr(state, "assets_dir", ".")` -- the same relative-path
+    mistake Core/Paths.py exists to prevent -- and it downloaded inline, so a
+    slow host meant staring at a button already pressed. Nothing called it.
+    """
+    import Core.Image_Gen as image_gen
+
+    assert not hasattr(image_gen, "generate_turn_image")
+    assert not hasattr(image_gen, "rate_limit_images"), (
+        "the pacer moved to the worker, where the requests actually are"
+    )
