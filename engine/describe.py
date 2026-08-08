@@ -127,8 +127,23 @@ def character_block(player, condition=None, *, name_only: bool = False) -> str:
             )
             lines.append(f"Condition: {state}.")
 
+    # The traits are for the narrator, not for the cast.
+    #
+    # "Do not restate these traits as a list" was the whole rule, and it
+    # stopped exactly the thing it named. What it did not stop was a trait
+    # becoming a form of address: a 10-STR character got "Step back, giant"
+    # from a guard who had never met them, and a low-INT one got talked down
+    # to by strangers. The stat sheet was leaking through the fourth wall as
+    # a nickname.
+    #
+    # Nobody in the fiction has read the character sheet. They can see what
+    # anyone could see -- that is what Appearance is for -- and they work the
+    # rest out from what the player actually does.
     lines.append(
-        "Write them as this person. Do not restate these traits as a list."
+        "These are things the narration knows, not things the cast knows. "
+        "No character comments on them, addresses the player by one, or uses "
+        "one as a name or nickname. Write them as this person instead of "
+        "describing them, and never restate the traits as a list."
     )
     return "\n".join(lines)
 

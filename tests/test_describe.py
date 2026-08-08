@@ -153,3 +153,35 @@ def test_a_broken_sheet_cannot_take_a_prompt_down():
 
     assert _character(Hopeless())          # no player attribute at all
     assert "traveller" in _character(Hopeless())
+
+
+# =============================
+# --- NOBODY READ THE SHEET ---
+# =============================
+
+def test_the_cast_is_told_the_traits_are_not_theirs():
+    """A 10-STR character got "Step back, giant" from a guard who had never
+    met them, and a low-INT one got talked down to by strangers.
+
+    The only rule was "do not restate these traits as a list", which stopped
+    exactly the thing it named and nothing else. A trait becoming a form of
+    address is the stat sheet leaking through the fourth wall.
+    """
+    block = character_block(_player(STR=10, INT=3)).lower()
+    assert "nickname" in block or "as a name" in block, (
+        "nothing tells the model the cast has not read the character sheet"
+    )
+    assert "restate the traits as a list" in block, "the original rule still holds"
+
+
+def test_the_traits_themselves_still_reach_the_narrator():
+    """The point of the block is that a brute and a scholar read differently.
+
+    Tightening what the cast may do with the traits must not stop the
+    narrator getting them -- that was the whole reason this file exists.
+    """
+    brute = character_block(_player(STR=10, INT=3)).lower()
+    scholar = character_block(_player(INT=10, STR=3)).lower()
+    assert "powerfully built" in brute
+    assert "quick-witted" in scholar
+    assert brute != scholar
