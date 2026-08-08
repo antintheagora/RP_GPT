@@ -81,18 +81,34 @@ class Wound:
     level: int
     state: WoundState = WoundState.RAW
     rests_carried: int = 0
+    #: Which approach you were using when this landed. MECHANICS says a
+    #: level 1-2 wound costs you "-2 to rolls the wound plausibly touches",
+    #: and this is how the code knows which those are without asking the
+    #: model: a wound taken swinging a door open bears on your next feat of
+    #: strength, not on your next conversation.
+    stat: str = ""
 
     def __post_init__(self) -> None:
         self.level = max(1, min(4, self.level))
 
     @property
     def penalty(self) -> int:
-        """Level 3 applies to everything; 1 and 2 only to what they touch."""
-        return -2 if self.level >= 1 else 0
+        """MECHANICS: -2, at every level that is not Out."""
+        return -2 if 1 <= self.level <= 3 else 0
 
     @property
     def applies_to_everything(self) -> bool:
         return self.level >= 3
+
+    def applies_to(self, stat: str) -> bool:
+        """Does this wound bear on an action taken this way?
+
+        `penalty` used to read `-2 if self.level >= 1`, and __post_init__
+        clamps level to 1..4 -- so the condition was always true and every
+        level was identical, which is the opposite of what its own docstring
+        claimed. It did not matter, because nothing anywhere read it.
+        """
+        return self.applies_to_everything or bool(stat and stat == self.stat)
 
     @property
     def named_in_prompts(self) -> bool:
@@ -149,9 +165,20 @@ class WoundTrack:
         """Level 2 or worse -- feeds the position calculation."""
         return self.worst >= 2
 
-    def take(self, name: str, level: int, *, cap: int = 4) -> Wound:
+    def penalty_for(self, stat: str) -> int:
+        """What your injuries cost this particular action.
+
+        The worst applicable wound, not the sum of them. MECHANICS lists -2
+        against every level rather than -2 per wound, and three wounds at -6
+        is a 30% swing that ends a run on its own.
+        """
+        applicable = [w.penalty for w in self.wounds if w.applies_to(stat)]
+        return min(applicable) if applicable else 0
+
+    def take(self, name: str, level: int, *, cap: int = 4,
+             stat: str = "") -> Wound:
         """Add a wound, capped by the position that caused it."""
-        wound = Wound(name=name, level=min(level, cap))
+        wound = Wound(name=name, level=min(level, cap), stat=stat)
         if self.full:
             # No slot left: the pressure goes somewhere, so it deepens the
             # worst existing wound rather than being silently discarded.
@@ -166,9 +193,16 @@ class WoundTrack:
         wound.state = WoundState.TREATED
         wound.rests_carried = 0
 
-    def worsen_applicable(self, keyword: str = "") -> Optional[Wound]:
-        """A raw wound worsens on a natural 1. Not on a timer -- axiom A3."""
-        raw = [w for w in self.wounds if w.state is WoundState.RAW]
+    def worsen_applicable(self, stat: str = "") -> Optional[Wound]:
+        """A raw wound worsens on a natural 1. Not on a timer -- axiom A3.
+
+        Only a wound that bears on what you were doing, which is the rule as
+        written: "worsens by one level when you roll a natural 1 on an action
+        the wound plausibly touches". Treated wounds never worsen, and that
+        is the entire reason a healer is worth finding.
+        """
+        raw = [w for w in self.wounds
+               if w.state is WoundState.RAW and (not stat or w.applies_to(stat))]
         if not raw:
             return None
         wound = max(raw, key=lambda w: w.level)

@@ -153,10 +153,19 @@ def simulate_campaign(
                 carrying_serious_harm=condition.wounds.carries_serious,
                 danger_clock_over_half=danger.over_half,
             )
+            # The simulator has its own turn loop, so anything added to the
+            # real one has to be added here too or the balance gate measures
+            # a game nobody plays. That is exactly what happened with wounds:
+            # the 5,000-campaign test went green on a build where carrying a
+            # grievous wound cost nothing.
             result = resolve(
                 assessment, stats[stat], facts,
-                luck=stats["LUC"], rng=rng,
+                luck=stats["LUC"],
+                wound_penalty=condition.wounds.penalty_for(stat),
+                rng=rng,
             )
+            if result.roll.roll == 1:
+                condition.wounds.worsen_applicable(stat)
 
             # The player's own progress.
             if result.clock_segments:
@@ -177,7 +186,7 @@ def simulate_campaign(
                 amount = rng.randint(*config.enemy_damage)
                 condition.take_damage(amount)
                 if condition.hp <= 0:
-                    condition.wounds.take("Grievous", 4, cap=result.harm_cap)
+                    condition.wounds.take("Grievous", 4, cap=result.harm_cap, stat=stat)
                     if condition.wounds.is_out:
                         out_count += 1
                         condition.hp = condition.max_hp // 2

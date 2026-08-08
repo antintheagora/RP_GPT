@@ -362,6 +362,7 @@ def resolve(
     take_bargain: bool = False,
     push: bool = False,
     assist: bool = False,
+    wound_penalty: int = 0,
     rng: Optional[random.Random] = None,
 ) -> Resolution:
     """Roll one action. Pure apart from the RNG, which is injectable.
@@ -393,6 +394,11 @@ def resolve(
         target += assessment.bargain.target_bonus
     if push:
         target -= 3
+    # A wound you are carrying, if it bears on this. MECHANICS has said -2
+    # since the beginning; nothing read Wound.penalty, so until now taking a
+    # wound cost you narration and the Director's attention and not one point
+    # of anything. Positive here because `target` is what you must meet.
+    target -= wound_penalty
     if assist:
         # An assist is two separate benefits: better odds here, and a softer
         # worst case through the +1 it already contributes to position.

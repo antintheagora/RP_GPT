@@ -120,6 +120,7 @@ class TurnResult:
     damage: int = 0
     rallied: int = 0
     wound: str = ""
+    wound_worsened: str = ""
     scar: Optional[Scar] = None
     virtue: Optional[Virtue] = None
     observation: str = ""
@@ -323,6 +324,7 @@ def advance_turn(
         facts = replace(facts, companion_assisting=True)
         ev.marginal(f"{helper} moves with you.")
 
+    hurt = run.condition.wounds.penalty_for(assessment.stat)
     resolution = resolve(
         assessment,
         run.stats.get(assessment.stat, 5),
@@ -331,9 +333,24 @@ def advance_turn(
         take_bargain=take_bargain,
         push=push,
         assist=bool(helper),
+        wound_penalty=hurt,
         rng=rng,
     )
     result.resolution = resolution
+    if hurt:
+        ev.marginal("The wound tells.")
+
+    # A raw wound worsens on a natural 1, and only on an action it bears on.
+    # MECHANICS has spelled this out from the start and `worsen_applicable`
+    # was written to do it; nothing ever called it, so no wound in any
+    # campaign has ever got worse.
+    if resolution.roll.roll == 1:
+        worsened = run.condition.wounds.worsen_applicable(assessment.stat)
+        if worsened is not None:
+            result.wound_worsened = worsened.name
+            ev.harm(f"{worsened.name} tears open. It is worse now.")
+            if run.condition.wounds.is_out:
+                result.game_over = True
     result.withdrew = resolution.can_withdraw
 
     ev.roll(
@@ -657,7 +674,9 @@ def _apply_harm(run: Run, resolution: Resolution, intent: Intent,
         result.damage = amount
         ev.harm(f"You take {amount}.")
         if run.condition.hp <= 0:
-            wound = run.condition.wounds.take("A grievous wound", 4, cap=resolution.harm_cap)
+            wound = run.condition.wounds.take("A grievous wound", 4,
+                                              cap=resolution.harm_cap,
+                                              stat=assessment.stat)
             result.wound = wound.name
             run.condition.hp = max(1, run.condition.max_hp // 4)
             ev.harm(f"{wound.name}.")
