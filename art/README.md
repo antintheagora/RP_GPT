@@ -39,9 +39,34 @@ block and the moss moves.
 | | |
 |---|---|
 | `blender/look.py` | The house style. Materials, lighting, cameras, haze. Everything else imports this. |
-| `blender/ui_frames.py` | Nine-slice frames, buttons, inputs, a cloth hanging. → `static/ui/rendered/` |
+| `blender/ui_frames.py` | Nine-slice frames, buttons, inputs, a cloth hanging, and the dark-stone border around the whole screen. → `static/ui/rendered/` |
 | `blender/scenes.py` | The crypt, and four landscapes. → `static/ui/scenes/` |
 | `render.py` | Finds Blender and runs the above. |
+
+## The border around the whole screen
+
+`stone_portal.png` replaces the painted `Game_Frame.png`, which is stone plus
+a carved gargoyle, a wax candle and a live flame. This one is a single
+material end to end: dark stone, no metal, no wood.
+
+It is 2048px with a 512px band, so all four sides slice at exactly a quarter
+and scale identically. The painted one used 680 on top and 600 on the bottom
+to keep the gargoyle and the candle out of the stretching zone, which meant
+the top edge was squeezed differently from the sides at every window height.
+
+Two things it got wrong first, both worth knowing before editing it:
+
+**Courses need a wall behind them.** Five profile steps at different depths,
+with nothing between them, rendered as a woven basket with daylight through
+the gaps -- `border-image` discards the centre slice, so anything not
+explicitly modelled is transparent. `_portal_ring` is the solid band the
+courses stand on.
+
+**It is drawn at about a seventh of the size it is modelled at.** The border
+renders at `clamp(64px, 12vh, 150px)` against a 512px slice. Fine carving
+disappears; only bold shapes survive. A three-step corbel read as a ziggurat
+and, being the highest thing in the frame, collected most of its moss -- four
+bright green staircases in the corners of the screen. One keystone instead.
 
 ## The scenes
 

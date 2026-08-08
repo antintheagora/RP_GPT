@@ -138,9 +138,18 @@ def test_a_backdrop_is_not_a_black_rectangle(path):
 
 @pytest.mark.parametrize("path", _pngs(PLATES), ids=lambda p: p.stem)
 def test_a_ui_plate_is_a_square_nine_slice(path):
-    """The CSS slices at 256 of 1024. A plate of another size tiles wrong."""
+    """Square, and a whole number of quarters.
+
+    Every plate is sliced at a quarter of its width -- 256 of 1024 for the
+    panels, 512 of 2048 for the border around the whole screen -- so all four
+    sides scale by the same factor at any thickness. This used to require
+    exactly 1024, which was true of every plate until the game border arrived
+    at twice that.
+    """
     width, height, channels, _ = _read_png(path)
-    assert width == height == 1024, f"{path.name} is {width}x{height}"
+    assert width == height, f"{path.name} is {width}x{height}, not square"
+    assert width % 4 == 0, f"{path.name} cannot be sliced into whole quarters"
+    assert width >= 1024, f"{path.name} is only {width}px"
     assert channels == 4, f"{path.name} has no alpha to composite against"
     assert _luminance(path) > 0.01, f"{path.name} rendered black"
 
@@ -158,3 +167,87 @@ def test_the_plates_the_stylesheet_points_at_exist():
                  "stone_input"):
         assert f"rendered/{name}.png" in css, f"{name} is not referenced"
         assert (PLATES / f"{name}.png").exists(), f"{name}.png is missing"
+
+
+# ---------------------------------------------------------------------------
+# The border around the whole screen.
+# ---------------------------------------------------------------------------
+
+def _region_opacity(path, x0, x1, y0, y1, step=6):
+    """Fraction of sampled pixels in a box that are not transparent."""
+    width, height, channels, pixels = _read_png(path)
+    if channels < 4:
+        return 1.0
+    opaque = total = 0
+    for y in range(y0, y1, step):
+        base = y * width * channels
+        for x in range(x0, x1, step):
+            total += 1
+            if pixels[base + x * channels + 3] > 24:
+                opaque += 1
+    return opaque / total if total else 0.0
+
+
+def test_the_game_border_slices_into_a_frame_and_not_a_slab():
+    """Eight regions of stone around one empty middle.
+
+    `border-image` with no `fill` discards the centre slice, so the middle of
+    the source has to be the opening the game is seen through -- and the eight
+    around it have to be solid, or the border has holes in it. An early
+    version had five courses at different depths with nothing behind them, so
+    the recessed channels rendered as gaps straight through the frame.
+    """
+    path = PLATES / "stone_portal.png"
+    assert path.exists(), "the game border was not rendered"
+    width, height, channels, _ = _read_png(path)
+    assert width == height == 2048, f"the border is {width}x{height}"
+
+    slice_px = 512
+    assert width // 4 == slice_px, (
+        "app.css slices all four sides at 512 so they scale identically; "
+        "the source has to be four slices wide"
+    )
+
+    bounds = [(0, slice_px), (slice_px, width - slice_px), (width - slice_px, width)]
+    for row, (y0, y1) in enumerate(bounds):
+        for col, (x0, x1) in enumerate(bounds):
+            covered = _region_opacity(path, x0, x1, y0, y1)
+            if row == 1 and col == 1:
+                assert covered < 0.05, (
+                    "the middle must be the opening -- it is what the whole "
+                    f"game is seen through, and it is {covered:.0%} covered"
+                )
+            else:
+                assert covered > 0.95, (
+                    f"region ({row},{col}) is only {covered:.0%} stone, so the "
+                    f"border will have a hole in it"
+                )
+
+
+def test_the_game_border_is_darker_than_what_it_surrounds():
+    """It frames everything, so it is the one thing meant to be looked past.
+
+    Stated against the panels rather than against a number. The first version
+    of this asserted `< 0.10` and the border came out at 0.1003 -- which says
+    nothing about whether it is too bright, only that I picked the constant
+    before measuring. What actually matters is the relationship: the frame
+    around the game has to sit behind the cards inside it.
+    """
+    border = _luminance(PLATES / "stone_portal.png")
+    panels = [_luminance(PLATES / f"{name}.png")
+              for name in ("stone_frame", "stone_button", "stone_input")
+              if (PLATES / f"{name}.png").exists()]
+    assert panels, "nothing to compare the border against"
+    assert border < min(panels) * 0.75, (
+        f"the border is {border:.3f} against panels at "
+        f"{min(panels):.3f} -- it competes with the game instead of framing it"
+    )
+    assert border > 0.01, "and it still has to be visible"
+
+
+def test_the_stylesheet_points_at_the_rendered_border():
+    css = (STATIC.parent / "app.css").read_text(encoding="utf-8")
+    assert "rendered/stone_portal.png" in css
+    for name in ("--game-frame-top: 512", "--game-frame-side: 512",
+                 "--game-frame-bottom: 512"):
+        assert name in css, f"{name} -- all four sides must slice the same"

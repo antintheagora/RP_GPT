@@ -137,14 +137,20 @@
      - Higher slice = larger corners (prevents stretching of decorations)
      - The candle and gargoyle decorations need large slices to avoid distortion
   */
-  --game-frame-image: url('/static/ui/Game_Frame.png');
-  /* The main frame texture */
-  --game-frame-side: 490;
-  /* Pixels for left/right edges */
-  --game-frame-top: 680;
-  /* Pixels for top edge (larger for gargoyle) */
-  --game-frame-bottom: 600;
-  /* Pixels for bottom edge (larger for candle) */
+  --game-frame-image: url('/static/ui/rendered/stone_portal.png');
+  /* The border around the whole screen: a modelled dark-stone portal, one
+     material end to end. The painted Game_Frame.png it replaces is stone
+     plus a carved gargoyle, a wax candle and a live flame.
+
+     All four slices are equal because the source is a 2048px square with a
+     512px band -- so every side is exactly a quarter and all four scale by
+     the same factor at any thickness. The painted one needed 680 on top and
+     600 on the bottom to keep the gargoyle and the candle out of the
+     stretching zone, which meant the top edge was squeezed differently from
+     the sides on every screen. */
+  --game-frame-side: 512;
+  --game-frame-top: 512;
+  --game-frame-bottom: 512;
   --game-frame-thickness: clamp(64px, 12vh, 150px);
   /* How thick the frame appears on screen.
      This was clamp(150px, 6vw, 150px) -- a clamp whose floor and ceiling are

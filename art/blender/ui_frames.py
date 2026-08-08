@@ -196,6 +196,140 @@ def frame(path, mossy=True, tint=None, name="stone_frame"):
 
 
 # =============================
+# ----- THE GAME'S BORDER -----
+# =============================
+
+#: The border around the whole screen is rendered bigger than the panels --
+#: it is the largest thing on the page and the only one a player looks past
+#: rather than at. 2048px with a 512px slice means every side is a quarter of
+#: the source, so all four scale identically; the painted one used 680/490/
+#: 600/490 to make room for a gargoyle and a candle, which meant the top edge
+#: was squeezed differently from the sides at any given thickness.
+BIG_RES = 2048
+BIG_SLICE = 512
+
+#: Read outward-in as (thickness, depth toward the camera, centre distance).
+#: Two bold courses with a recessed channel between them, and nothing else.
+#: The first attempt had five, which at the size this is actually drawn --
+#: `clamp(64px, 12vh, 150px)` against a 512px slice, so about a third scale --
+#: collapsed into a woven basket. Every line runs the length of the side, so
+#: stretching across a whole viewport cannot smear any of it.
+PORTAL_PROFILE = [
+    (0.230, 0.200, 0.880),   # outer course
+    (0.200, 0.290, 0.600),   # inner jamb, proudest, frames the opening
+]
+
+
+def _portal_ring(stone):
+    """The wall the courses stand on.
+
+    Without this the courses are separate bars floating with transparent film
+    between them: the recessed channel had nothing behind it, so it rendered
+    as a hole straight through the border. Four slabs tile the band exactly
+    and leave the middle open, which is the part the game is seen through.
+    """
+    half = SPAN / 2
+    band = half - BORDER          # where the opening begins
+    inset = (half + band) / 2     # centre of the band
+    for position, size in (
+        ((0, 0.045, inset), (SPAN, 0.06, BORDER)),      # top
+        ((0, 0.045, -inset), (SPAN, 0.06, BORDER)),     # bottom
+        ((-inset, 0.045, 0), (BORDER, 0.06, SPAN - 2 * BORDER)),
+        ((inset, 0.045, 0), (BORDER, 0.06, SPAN - 2 * BORDER)),
+    ):
+        look.block(position, size, stone, name="ring", bevel=0.02)
+
+
+def _portal_corner(x, z, stone, seed=0):
+    """Where the courses collide. Heavy quoins and a corbel.
+
+    Bold shapes only. This is seen at roughly a third of the size it is
+    modelled at, so fine carving would turn to mush -- and it is stone all the
+    way through: no strap, no pin, nothing that is not quarried.
+    """
+    sx = 1 if x > 0 else -1
+    sz = 1 if z > 0 else -1
+
+    quoins = [
+        # (u inward along the top, v inward down the side, w, h, depth)
+        (0.000, 0.000, 0.500, 0.250, 0.330),
+        (0.000, 0.250, 0.250, 0.260, 0.300),
+        (0.250, 0.250, 0.250, 0.190, 0.255),
+        (0.500, 0.000, 0.230, 0.230, 0.290),
+    ]
+    for index, (u, v, w, h, depth) in enumerate(quoins):
+        wobble = ((index * 41) % 9 - 4) / 1100.0
+        block = look.block(
+            (x - sx * (u + w / 2), -depth / 2, z - sz * (v + h / 2)),
+            (w, depth, h), stone,
+            rotation=(0, wobble * 2.0, wobble * 1.3),
+            name=f"Quoin{seed}_{index}", bevel=0.020)
+        look.roughen(block, 0.006, seed=seed * 29 + index)
+
+    # One keystone set across the mitre. Three nested steps read as a
+    # ziggurat rather than as anything carved, and being the highest thing in
+    # the frame they collected most of its moss -- four bright green staircases
+    # in the corners of the screen.
+    key = look.block((x - sx * 0.330, -0.190, z - sz * 0.330),
+                     (0.330, 0.380, 0.330), stone,
+                     name=f"Keystone{seed}", bevel=0.055)
+    look.roughen(key, 0.005, seed=seed * 13 + 1)
+
+
+def game_frame(path, name="stone_portal"):
+    """The border around the entire game. Dark stone, and nothing else.
+
+    The painted one it replaces carries a gargoyle and a lit candle -- so
+    stone, plus a flame and wax. This is one material end to end.
+    """
+    look.wipe()
+    look.use_cycles(samples=420, transparent=True)
+    look.view_transform("Standard")
+    world = bpy.data.worlds.new("Empty")
+    world.use_nodes = True
+    background = world.node_tree.nodes.get("Background")
+    if background:
+        look.sock(background, "Color", (0, 0, 0, 1))
+        look.sock(background, "Strength", 0.0)
+    bpy.context.scene.world = world
+    look.camera((0, -6.0, 0), (0, 0, 0), ortho_scale=SPAN)
+
+    # Darker than the panels. This is the largest thing on the screen and the
+    # one thing the player is meant to look *past*; at the panels' value it
+    # came out mid-grey and pulled the eye off the game.
+    stone = look.damp_stone("Portal stone", block_scale=1.3, wetness=0.55,
+                            mossy=True, seed=41, mortar=0.35,
+                            tint=(0.0305, 0.0275, 0.0215, 1.0))
+
+    half = SPAN / 2
+    _portal_ring(stone)
+    for side, sign in (("top", 1), ("bottom", -1)):
+        for thickness, depth, rise in PORTAL_PROFILE:
+            look.block((0, -depth / 2, sign * rise),
+                       (SPAN, depth, thickness), stone, name=f"{side}_course",
+                       bevel=0.018)
+    for side, sign in (("left", -1), ("right", 1)):
+        for thickness, depth, rise in PORTAL_PROFILE:
+            # 4mm shallower than the horizontal course it crosses. Coplanar
+            # faces at a corner are Z-fighting, and it prints hard black
+            # staircases into exactly the four places people look.
+            depth -= 0.004
+            look.block((sign * rise, -depth / 2, 0),
+                       (thickness, depth, SPAN), stone, name=f"{side}_course",
+                       bevel=0.018)
+
+    for index, (cx, cz) in enumerate(((-half, half), (half, half),
+                                      (-half, -half), (half, -half))):
+        _portal_corner(cx, cz, stone, seed=index + 1)
+
+    # Lit like the panels, from the upper left, so the border belongs to the
+    # same room as everything inside it.
+    _lighting(key=300, warmth=(1.0, 0.91, 0.78))
+    look.render_to(os.path.join(path, f"{name}.png"), BIG_RES, BIG_RES,
+                   samples=420, transparent=True)
+
+
+# =============================
 # -------- THE BUTTON ---------
 # =============================
 
@@ -362,6 +496,7 @@ def main():
 
     jobs = {
         "frame": lambda: frame(out),
+        "portal": lambda: game_frame(out),
         "button": lambda: button(out, "stone_button"),
         "button_lit": lambda: button(out, "stone_button_lit", lit=True),
         "button_pressed": lambda: button(out, "stone_button_pressed",
