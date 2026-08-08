@@ -21,7 +21,10 @@ const FOG_CONFIG = {
     // every word of text on the play screen. It read as a permanent haze over
     // the game rather than as atmosphere in it. The background layer is
     // untouched: behind the content it is doing exactly what it should.
-    foregroundOpacity: 0.26,
+    // 0.26 was still enough that a card's contrast changed as a puff drifted
+    // across it, which is worse than a constant haze: the play screen is
+    // where the reading happens.
+    foregroundOpacity: 0.14,
 
     // Movement
     speed: 0.5,               // Reduced base speed for wispiness
