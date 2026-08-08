@@ -502,3 +502,59 @@ def test_what_it_teaches_is_the_bearing_that_was_rolled():
         if result.resolution.roll.outcome is not Outcome.FAIL_FORWARD:
             continue
         assert BEARING_HINT[result.resolution.bearing] in result.learned
+
+
+# =============================
+# ---- HOW EXPOSED YOU WERE ---
+# =============================
+
+def test_the_player_is_told_how_exposed_the_attempt_left_them():
+    """Position is the most consequential hidden number in the game.
+
+    It never touches your odds. It bounds how bad the consequence may be --
+    Poised caps a wound at level 1, Desperate allows level 3 -- and it decides
+    whether harm is on the list at all. `position_for` builds the reasons as
+    it goes, in plain sentences, and hands them back on `position_why`.
+
+    Nothing read them. The position itself went out as metadata on the roll
+    event, which the log does not print, so a player could not tell a turn
+    that risked a scratch from one that risked a crippling.
+    """
+    run = _run(hostiles=["a ghoul"])
+    result = advance_turn(run, _intent(),
+                          StubKeeper(bearing=Bearing.FUTILE, cornered=True),
+                          rng=random.Random(5))
+
+    assert result.exposure, "the player was told nothing about their exposure"
+    assert "outnumbered or cornered" in result.exposure
+    assert result.resolution.position.value in ("risky", "desperate")
+
+
+def test_it_says_nothing_when_there_is_nothing_to_say():
+    """Risky with no reasons either way is the default state of the world.
+
+    "That was an even footing." on every turn of a campaign is noise, and
+    noise teaches a player to stop reading the line -- which costs the times
+    it matters.
+    """
+    run = _run()
+    result = advance_turn(run, _intent(stat="STR"), StubKeeper(bearing=Bearing.SOUND),
+                          rng=random.Random(1))
+    if result.resolution.position_why:
+        pytest.skip("this roll had reasons, so the quiet case is untested here")
+    assert not result.exposure
+
+
+def test_the_reasons_match_the_position_that_was_computed():
+    """A reason list that disagrees with the position is worse than none."""
+    for seed in range(40):
+        run = _run(hostiles=["a ghoul"])
+        result = advance_turn(
+            run, _intent(),
+            StubKeeper(bearing=random.Random(seed).choice(list(Bearing)),
+                       cornered=seed % 2 == 0),
+            rng=random.Random(seed))
+        if not result.exposure:
+            continue
+        for reason in result.resolution.position_why:
+            assert reason in result.exposure, "a reason went missing"

@@ -80,6 +80,15 @@ STAT_AS_APPROACH = {
 }
 
 
+#: What a position means for the player, said as a risk rather than a label.
+#: "Desperate" is a word; "this could cost you badly" is a decision.
+POSITION_MEANS = {
+    Position.POISED: "You had the better of that:",
+    Position.RISKY: "That was an even footing:",
+    Position.DESPERATE: "You were exposed there:",
+}
+
+
 class Keeper(Protocol):
     """Rates an approach against an obstacle. A model, or a stub in tests."""
 
@@ -144,6 +153,9 @@ class TurnResult:
     scar: Optional[Scar] = None
     virtue: Optional[Virtue] = None
     observation: str = ""
+    # How exposed the attempt left you, and why. Position bounds how bad a
+    # consequence may be and never touched the screen.
+    exposure: str = ""
     # What a fail forward taught. MECHANICS requires one to reveal the true
     # Bearing of the approach; the outcome existed and revealed nothing.
     learned: str = ""
@@ -384,6 +396,27 @@ def advance_turn(
         bearing=resolution.bearing.value,
         improbability=resolution.roll.improbability,
     )
+
+    # How exposed that left you, and what made it so.
+    #
+    # Position is the most consequential hidden number in the game: it never
+    # touches your odds, it bounds how bad the consequence may be -- Poised
+    # caps a wound at level 1, Desperate allows level 3 -- and it decides
+    # whether harm is even on the list. `position_for` builds the reasons as
+    # it goes, in plain sentences ("+1 they do not know you are there",
+    # "-1 you are badly hurt"), and hands them back on `position_why`.
+    #
+    # Nothing read them. The position itself went out as metadata on the roll
+    # event, which the log does not print, so a player could not tell a turn
+    # that risked a scratch from one that risked a crippling.
+    # Only when there is something to say. Risky with no reasons on either
+    # side is the default state of the world, and "That was an even footing."
+    # on every turn of the campaign is noise that teaches the player to stop
+    # reading the line -- which would cost the times it matters.
+    if resolution.position_why:
+        result.exposure = (POSITION_MEANS[resolution.position] + " "
+                           + ", ".join(resolution.position_why) + ".")
+        ev.marginal(result.exposure)
 
     # --- code applies ----------------------------------------------------
     # Poised means you saw it coming and pulled back before committing.
