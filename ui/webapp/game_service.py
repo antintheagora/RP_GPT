@@ -553,6 +553,25 @@ class GameSession:
                 history = ("Earlier in this conversation:\n"
                            + "\n".join(recent) + "\n\n")
 
+        # What this person actually remembers of the player, from the ledger.
+        # A conversation is where a callback belongs: the Keeper is handed the
+        # same material for rating an approach, but nobody *says* anything
+        # there. This is the prompt the memory design points at.
+        recall = ""
+        store = getattr(self, "ledger_store", None)
+        if store is not None:
+            try:
+                from ledger import callbacks
+
+                found = callbacks.for_person(
+                    store, getattr(actor, "entity_id", None), speaker,
+                    searching_for=said or "")
+                if found:
+                    recall = ("What you remember of them: "
+                              + " ".join(c.summary for c in found))
+            except Exception:
+                _log.exception("could not recall for %s", speaker)
+
         prompt = talk_reply_prompt(
             self.state, actor,
             history
@@ -560,6 +579,7 @@ class GameSession:
             + f"(How it landed: {went}.)\n"
             + f"Write only {speaker}'s next line. Do not write {player}'s "
             + "words, and do not repeat anything already said above.",
+            recall=recall,
         )
         # 220 was too tight for a spoken line: the trim fell through to a
         # word boundary and left "...every scavenger in these". A sentence of
@@ -1019,10 +1039,28 @@ class GameSession:
         """
         from engine.describe import recall_block
 
-        present = [getattr(a, "name", "") for a in
-                   (getattr(self.state.act, "actors", []) or [])]
+        actors = list(getattr(self.state.act, "actors", []) or [])
+        present = [getattr(a, "name", "") for a in actors]
         present += list(getattr(scene, "hostiles", []) or [])
-        return recall_block(getattr(self.state, "ledger", None), present)
+        block = recall_block(getattr(self.state, "ledger", None), present)
+
+        # And the specific things, looked up rather than remembered. The
+        # affinity ledger above says how somebody feels about you in one word;
+        # this says what actually passed between you, which is the half that
+        # makes a callback possible.
+        store = getattr(self, "ledger_store", None)
+        if store is not None:
+            try:
+                from ledger import callbacks
+
+                recalled = callbacks.block(
+                    store, actors,
+                    searching_for=getattr(self.state.act, "situation", "") or "")
+                if recalled:
+                    block = (block + "\n\n" + recalled) if block else recalled
+            except Exception:
+                _log.exception("could not assemble callbacks")
+        return block
 
     def _act_lost(self) -> None:
         """A doom clock filled.

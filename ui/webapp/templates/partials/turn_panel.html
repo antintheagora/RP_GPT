@@ -200,7 +200,18 @@
   {# A standing Bargain takes over the panel: it has to be answered before the
      dice, so leaving the ordinary menu clickable underneath would let the
      player walk past a decision the engine is waiting on. #}
-  {% if payload.bargain %}
+  {% if payload.game_over %}
+    {# Nothing left to decide. The banner used to appear *under* a full menu,
+       so a won campaign printed "The line holds. Choices converge; the world
+       loosens its grip." and then asked what you do next, with both clocks
+       full and act 3 of 3 in the header. #}
+    <div class="rounded-sm border border-rust/70 bg-rust/10 p-5 space-y-2">
+      <p class="overline text-flare">The end of it</p>
+      <p class="text-lg text-bone">{{ payload.game_over_text }}</p>
+      <a href="{{ url_for('landing') }}" class="u-button mt-2 inline-flex">Back to the worlds</a>
+    </div>
+
+  {% elif payload.bargain %}
     <div class="rounded-sm border border-brass/70 bg-brass/10 p-5 space-y-3">
       <p class="overline text-brass">A bargain</p>
       <p class="text-lg text-bone">{{ payload.bargain.text }}</p>
@@ -361,10 +372,5 @@
      it: the same six entries, twice, on one screen. It has one home now, and
      it is the panel you read rather than the panel you act in. #}
 
-  {% if payload.game_over %}
-    <div class="rounded-sm border border-rust/70 bg-rust/10 p-4">
-      <p class="text-lg font-semibold text-flare">{{ payload.game_over_text }}</p>
-    </div>
-  {% endif %}
   </div>
 </div>

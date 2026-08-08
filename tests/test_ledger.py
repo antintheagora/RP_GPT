@@ -406,3 +406,197 @@ def test_the_ledger_works_across_threads(tmp_path):
         assert not failures, failures
         assert len(store.history(mercy)) == 4
         assert len(store.everyone()) == 2, "four threads made four Thornes"
+
+
+# =============================
+# -------- CALLBACKS ----------
+# =============================
+#
+# The moment the whole design is for, from MECHANICS 8.2: an NPC referring to
+# something from forty scenes ago, correctly, because it was looked up rather
+# than remembered.
+
+def _met(store, name, *lines, kind="talk", act=1):
+    entity_id = resolve_or_create(store, name).entity_id
+    store.record("met", f"You ran into {name}.", entity_id=entity_id, act=act)
+    for line in lines:
+        store.record(kind, line, entity_id=entity_id, act=act)
+    return entity_id
+
+
+class _Body:
+    """The little of an Actor that a callback needs."""
+
+    def __init__(self, name, entity_id=None):
+        self.name = name
+        self.entity_id = entity_id
+
+
+def test_someone_brings_up_what_passed_between_you(store):
+    from ledger import callbacks
+
+    mercy = _met(store, "Sister Mercy", "You cut the rope bridge at Ashfall.")
+    found = callbacks.for_person(store, mercy, "Sister Mercy")
+    assert [c.summary for c in found] == ["You cut the rope bridge at Ashfall."]
+    assert found[0].theirs
+
+
+def test_meeting_someone_is_not_a_memory(store):
+    """A `met` row is the bookkeeping that says an encounter happened. A
+    character whose one recollection is "we have met" is not remembering."""
+    from ledger import callbacks
+
+    stranger = resolve_or_create(store, "A Guard").entity_id
+    store.record("met", "You ran into A Guard.", entity_id=stranger)
+    assert callbacks.for_person(store, stranger, "A Guard") == []
+
+
+def test_a_person_does_not_recite_a_list(store):
+    """One remembered thing sounds like a person; six sounds like a database."""
+    from ledger import callbacks
+
+    mercy = _met(store, "Sister Mercy", *[f"Thing {i} happened." for i in range(9)])
+    assert len(callbacks.for_person(store, mercy, "Sister Mercy")) == callbacks.PER_PERSON
+
+
+def test_the_most_recent_thing_is_not_always_the_most_telling(store):
+    """Meeting somebody is what happens immediately before talking to them,
+    so ordering by recency alone surfaces the least interesting row."""
+    from ledger import callbacks
+
+    mercy = resolve_or_create(store, "Sister Mercy").entity_id
+    store.record("betrayal", "You left her at the mill.", entity_id=mercy, act=1)
+    store.record("met", "You ran into Sister Mercy.", entity_id=mercy, act=3)
+
+    found = callbacks.for_person(store, mercy, "Sister Mercy")
+    assert found and found[0].summary == "You left her at the mill."
+
+
+def test_their_own_history_beats_the_world_s(store):
+    from ledger import callbacks
+
+    mercy = _met(store, "Sister Mercy", "She warned you off the vault.")
+    store.record("scene", "The vault doors were sealed.", act=1)
+
+    found = callbacks.for_person(store, mercy, "Sister Mercy",
+                                 searching_for="vault")
+    assert found[0].theirs, "a stranger's business came first"
+
+
+def test_someone_with_nothing_between_you_says_nothing(store):
+    from ledger import callbacks
+
+    quiet = resolve_or_create(store, "A Passer-by").entity_id
+    assert callbacks.block(store, [_Body("A Passer-by", quiet)]) == ""
+
+
+def test_the_block_names_who_would_say_it(store):
+    from ledger import callbacks
+
+    mercy = _met(store, "Sister Mercy", "You cut the rope bridge at Ashfall.")
+    text = callbacks.block(store, [_Body("Sister Mercy", mercy)])
+    assert "Sister Mercy" in text
+    assert "rope bridge" in text
+    assert "because they happened" in text
+
+
+def test_forty_scenes_later(store):
+    """Stated as the design states it."""
+    from ledger import callbacks
+
+    mercy = _met(store, "Sister Mercy", "You cut the rope bridge at Ashfall.", act=1)
+    for i in range(40):
+        store.record("scene", f"Something unrelated, {i}.", act=2)
+
+    text = callbacks.block(store, [_Body("Sister Mercy", mercy)])
+    assert "rope bridge" in text
+
+
+def test_a_body_with_no_identity_is_skipped_not_crashed_on(store):
+    from ledger import callbacks
+
+    assert callbacks.block(store, [_Body("Nobody", None)]) == ""
+    assert callbacks.block(None, [_Body("Nobody", 1)]) == ""
+
+
+# =============================
+# --- CREATED, NOT FOLDED -----
+# =============================
+
+def test_a_name_from_an_earlier_act_is_not_a_new_person(store):
+    """The scene-level checks only see who is on stage, so somebody met in
+    act one and named again in act three passed every one of them and was
+    created afresh -- a second row with its own separate feelings about you."""
+    import RP_GPT as core
+    from Core.Scene_Evolution import _resolve_through_ledger
+
+    acts = {str(i): {"goal": "g", "intro_paragraph": "x",
+                     "pressure_evolution": "y"} for i in (1, 2, 3)}
+    blueprint = core.blueprint_from_json(
+        {"campaign_goal": "g", "pressure_name": "p", "acts": acts})
+    state = core.GameState(
+        scenario=core.Scenario.APOCALYPSE, scenario_label="T",
+        player=core.Player(name="Ant"), blueprint=blueprint, pressure_name="p")
+    state.ledger_store = store
+    state.ledger_ask = None
+
+    # Act one: met, and remembered.
+    first = resolve_or_create(store, "Sister Mercy").entity_id
+    store.record("talk", "She warned you off.", entity_id=first, act=1)
+
+    # Act three: the cast has been rebuilt and she is nowhere on stage.
+    actor, entity_id = _resolve_through_ledger(state, "Sister Mercy")
+    assert entity_id == first, "she was made again from scratch"
+
+
+def test_a_genuinely_new_name_still_gets_made(store):
+    import RP_GPT as core
+    from Core.Scene_Evolution import _resolve_through_ledger
+
+    acts = {"1": {"goal": "g", "intro_paragraph": "x", "pressure_evolution": "y"}}
+    blueprint = core.blueprint_from_json(
+        {"campaign_goal": "g", "pressure_name": "p", "acts": acts})
+    state = core.GameState(
+        scenario=core.Scenario.APOCALYPSE, scenario_label="T",
+        player=core.Player(name="Ant"), blueprint=blueprint, pressure_name="p")
+    state.ledger_store = store
+    state.ledger_ask = None
+
+    actor, entity_id = _resolve_through_ledger(state, "Someone Entirely New")
+    assert actor is None, "it reused a body for a stranger"
+    assert entity_id, "and it did not give them an identity either"
+
+
+def test_a_campaign_with_no_ledger_scans_exactly_as_before(store):
+    from Core.Scene_Evolution import _resolve_through_ledger
+
+    class Bare:
+        ledger_store = None
+
+    assert _resolve_through_ledger(Bare(), "Anyone") == (None, None)
+
+
+def test_an_npc_is_told_what_they_remember():
+    """The prompt the whole design points at. Without this an NPC writes every
+    line knowing only a disposition number and an archetype, which is how the
+    game came to have characters who liked you a great deal and could not say
+    why."""
+    import RP_GPT as core
+    from Core.AI_Dungeon_Master import talk_reply_prompt
+
+    acts = {"1": {"goal": "g", "intro_paragraph": "x", "pressure_evolution": "y"}}
+    blueprint = core.blueprint_from_json(
+        {"campaign_goal": "g", "pressure_name": "p", "acts": acts})
+    state = core.GameState(
+        scenario=core.Scenario.APOCALYPSE, scenario_label="T",
+        player=core.Player(name="Ant"), blueprint=blueprint, pressure_name="p")
+    actor = core.Actor(name="Sister Mercy", kind="scout", role="npc")
+
+    bare = talk_reply_prompt(state, actor, "Hello.")
+    assert "rope bridge" not in bare
+
+    carried = talk_reply_prompt(
+        state, actor, "Hello.",
+        recall="What you remember of them: You cut the rope bridge at Ashfall.")
+    assert "rope bridge" in carried
+    assert "Never list them" in carried, "or it recites the whole ledger"

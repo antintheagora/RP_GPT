@@ -904,16 +904,28 @@ Rules: Do NOT include numeric meter lines. Complete sentences; no mid-word hyphe
 """
 
 
-def talk_reply_prompt(state: "GameState", actor: "Actor", user_line: str) -> str:
-    """Guide Gemma when responding as an NPC."""
+def talk_reply_prompt(state: "GameState", actor: "Actor", user_line: str,
+                      recall: str = "") -> str:
+    """Guide Gemma when responding as an NPC.
+
+    `recall` is what this person actually remembers of the player, looked up
+    from the ledger rather than summarised. Without it an NPC writes every
+    line knowing only a disposition number and an archetype -- which is why
+    the game had characters who liked you a great deal and could not say why.
+
+    This is the prompt the whole memory design points at (MECHANICS 8.2):
+    someone referring to something forty scenes old, correctly, because it
+    was retrieved and not remembered.
+    """
     blueprint = state.blueprint
     relationship = "friendly" if actor.disposition >= 30 else "neutral" if actor.disposition >= 0 else "hostile"
+    memory = f"\n{recall}\nBring one of these up only if it fits what was just said. Never list them.\n" if recall else ""
     return f"""{_character(state)}
 
-NPC reply <=180 chars (no quotes). 
+NPC reply <=180 chars (no quotes).
 NPC: {actor.name} ({actor.kind}), role {actor.role}, disp {actor.disposition} ({relationship}), archetype "{actor.personality_archetype or actor.personality}", comm "{actor.comm_style}".
 Style hint: {role_style_hint(actor)}
-{world_journal_prompt(state)}
+{memory}{world_journal_prompt(state)}
 World: {state.scenario_label}. Clocks: {_clocks(state)}. Player said: {user_line}
 Respond in character; be specific; reference stakes if natural. If comm is not 'speech', communicate via the style. No numeric meters.
 """

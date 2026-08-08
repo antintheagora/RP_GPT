@@ -361,3 +361,18 @@ def test_a_problem_is_never_named_after_the_progress_bar():
     body = source[source.index("def _next_problem_name"):]
     body = body[:body.index("\ndef ", 10)]
     assert "return project.name" not in body
+
+
+def test_a_finished_campaign_stops_asking_what_you_do_next():
+    """Setting `state.ending` made the banner appear. It appeared *under* a
+    full menu: "The line holds. Choices converge; the world loosens its grip."
+    and then "What do you do?", with both clocks full and act 3 of 3 in the
+    header."""
+    from pathlib import Path
+
+    turn = (Path(__file__).resolve().parent.parent / "ui" / "webapp"
+            / "templates" / "partials" / "turn_panel.html").read_text(encoding="utf-8")
+    over = turn.index("{% if payload.game_over %}")
+    menu = turn.index("What do you do?")
+    assert over < menu, "the menu is not inside the game-over branch"
+    assert "{% elif payload.bargain %}" in turn, "the ending has to win the branch"

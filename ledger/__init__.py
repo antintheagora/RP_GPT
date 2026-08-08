@@ -21,10 +21,11 @@ memory in one step means neither can be verified on its own. The ledger sits
 beside the save and owns identity and history; the rest migrates after.
 """
 
+from ledger import callbacks
 from ledger.identity import Resolution, resolve_or_create
 from ledger.store import Entity, LedgerStore, Recorded
 
 __all__ = [
     "LedgerStore", "Entity", "Recorded",
-    "resolve_or_create", "Resolution",
+    "resolve_or_create", "Resolution", "callbacks",
 ]

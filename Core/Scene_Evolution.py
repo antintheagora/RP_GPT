@@ -148,6 +148,51 @@ def _people_in_scene(state) -> list:
     return out
 
 
+def _resolve_through_ledger(state, name: str):
+    """Whoever this name refers to, if the campaign has met them before.
+
+    Returns `(actor, entity_id)`. The actor is None when this is genuinely
+    somebody new -- but the id is not, because the resolver has already
+    created the row by then, and the Actor about to be built should carry it
+    from birth rather than being given one later.
+
+    The scene-level checks above only see who is present. This is the one that
+    covers the whole campaign, which is where the duplicates actually came
+    from: acts move everyone you have met back to `undiscovered` and then
+    rebuild the cast, so a name from act one looked brand new in act three.
+    """
+    store = getattr(state, "ledger_store", None)
+    if store is None:
+        return None, None
+    try:
+        from ledger.identity import resolve_or_create
+
+        found = resolve_or_create(store, name,
+                                  ask=getattr(state, "ledger_ask", None))
+        if found.created:
+            return None, found.entity_id    # new; the caller builds the body
+
+        # We know them. Find the body that goes with the id.
+        for actor in _people_in_scene(state):
+            if getattr(actor, "entity_id", None) == found.entity_id:
+                return actor, found.entity_id
+
+        # Known to the ledger and not on stage: someone from an earlier act,
+        # walking back in. Put them back rather than minting a twin.
+        for pool in (getattr(state.act, "undiscovered", None) or [],):
+            for actor in list(pool):
+                if _name_key(getattr(actor, "name", "")) == _name_key(name):
+                    pool.remove(actor)
+                    actor.discovered = True
+                    actor.entity_id = found.entity_id
+                    state.act.actors.append(actor)
+                    return actor, found.entity_id
+        return None, found.entity_id
+    except Exception:
+        _log.exception("ledger lookup failed for %r", name)
+        return None, None
+
+
 def scan_for_new_actor(state, g: GemmaClient, situation_txt: str):
     """Ask the model if the new paragraph introduced a new character.
 
@@ -216,6 +261,26 @@ Paragraph: {situation_txt}
                 state.last_actor = other
                 return
 
+        # And then the campaign's own ledger, which is the only check that
+        # covers people who are not on stage.
+        #
+        # Everything above compares against `_people_in_scene`, so someone met
+        # in act one and named again in act three passed every test and was
+        # created afresh -- a second row, a second folder, a second set of
+        # feelings about you. `same_person` is also a third name matcher
+        # alongside `normalise` and the resolver, and the loosest of them:
+        # `wa <= wb or wb <= wa` folds Marius into Marius Thorne with nobody
+        # asked, which is the chain that nearly destroyed the cast.
+        #
+        # The scanner itself goes when the four-phase turn lands and entities
+        # are created by a validated op instead of by reading prose. Until
+        # then this is where the duplicate is actually prevented, rather than
+        # folded afterwards.
+        returning, entity_id = _resolve_through_ledger(state, name)
+        if returning is not None:
+            state.last_actor = returning
+            return
+
         # Set species/communication style and a loose personality archetype
         species, comm = infer_species_and_comm_style(kind)
 
@@ -235,6 +300,8 @@ Paragraph: {situation_txt}
             personality_archetype=personality_roll(),
             aware=True,
         )
+        if entity_id is not None:
+            new.entity_id = entity_id
 
         try:
             core.ensure_character_profile(new)
