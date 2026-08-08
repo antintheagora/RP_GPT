@@ -233,7 +233,7 @@ def _finish(path, name, samples=420):
 # --------- THE CRYPT ---------
 # =============================
 
-def undercroft(path):
+def undercroft(path, floor=True, render=True):
     """A vaulted undercroft. The room the game already opens in.
 
     Nothing above the capitals is lit, which is deliberate and is what the
@@ -254,7 +254,8 @@ def undercroft(path):
                           tint=(0.62, 0.55, 0.40, 1.0))
     flame = look.glowing("Flame", colour=(1.0, 0.55, 0.20, 1.0), strength=95.0)
 
-    flagstones(floor_stone, extent=30, step=1.15, y_from=-7.0)
+    if floor:
+        flagstones(floor_stone, extent=30, step=1.15, y_from=-7.0)
 
     # Two arcades running away from the camera. The far bays are swallowed by
     # fog rather than by a wall, which is what makes the room feel long.
@@ -311,7 +312,8 @@ def undercroft(path):
     # candles lit their own two feet and nothing else. The point of the scene
     # is the architecture, and none of it was arriving.
     look.view_transform("AgX", look="Medium High Contrast", exposure=1.85)
-    _finish(path, "undercroft")
+    if render:
+        _finish(path, "undercroft")
 
 
 # =============================
@@ -516,6 +518,74 @@ def hollow_king(path):
     _finish(path, "hollow_king")
 
 
+# =============================
+# -------- LEAVING HERE -------
+# =============================
+
+def export_obj(path, name="undercroft", segments=None):
+    """Write the architecture as OBJ, for something that is not Blender.
+
+    Deliberately not the whole scene. Nothing in a Blender scene except the
+    meshes survives an OBJ: no lights, no camera, no volumetrics, and
+    materials only as a diffuse colour in the MTL. Everything this render
+    actually looks like stays behind.
+
+    So this exports the part worth carrying -- the piers, the arches, the
+    vaulting -- and leaves the floor out. Eight hundred and fifty separate
+    bevelled, subdivided slabs is half a million faces for a surface that any
+    landscape package will do better with one plane and its own material.
+
+    Modifiers are applied on the way out, or the bevels that took all the
+    work stay behind as unevaluated modifier stacks.
+
+    Y up and -Z forward: the OBJ convention, and what most packages expect.
+    Blender is Z-up and almost nothing else is.
+    """
+    # `render=False`: building the scene and rendering it are two things,
+    # and they were one -- so the first run of this export quietly wrote a
+    # floorless undercroft over the finished PNG.
+    if segments is not None:
+        look.BEVEL_SEGMENTS = segments
+    undercroft(path, floor=False, render=False)
+
+    # Drop the subdivision before applying anything. It is SIMPLE subdivision
+    # on an already-bevelled cube, which adds faces and moves no vertex: it
+    # costs nothing in Cycles and it multiplied the export sixteenfold. The
+    # first attempt was 874,000 faces and 85MB, which no 32-bit application
+    # from 2010 is going to enjoy.
+    for obj in bpy.data.objects:
+        obj.select_set(obj.type == "MESH")
+        if obj.type != "MESH":
+            continue
+        for modifier in list(obj.modifiers):
+            if modifier.type == "SUBSURF":
+                obj.modifiers.remove(modifier)
+
+    # Not into the web static directory the PNGs go to. A 20MB mesh is not a
+    # web asset, Flask would happily serve it, and it has no business in the
+    # folder the game loads its backdrops from.
+    where = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         "..", "export")
+    where = os.path.abspath(where)
+    os.makedirs(where, exist_ok=True)
+    out = os.path.join(where, f"{name}.obj")
+    bpy.ops.wm.obj_export(
+        filepath=out,
+        export_selected_objects=True,
+        apply_modifiers=True,
+        export_materials=True,
+        export_triangulated_mesh=True,
+        forward_axis="NEGATIVE_Z",
+        up_axis="Y",
+    )
+    faces = sum(len(o.data.polygons) for o in bpy.data.objects
+                if o.type == "MESH" and o.select_get())
+    print(f"[export] {out}")
+    print(f"[export] {len([o for o in bpy.data.objects if o.type == 'MESH'])} "
+          f"objects, about {faces:,} faces before triangulation")
+    return out
+
+
 def main():
     out = os.path.abspath(OUT)
     os.makedirs(out, exist_ok=True)
@@ -532,6 +602,16 @@ def main():
         "hollow_king": hollow_king,
     }
     wanted = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
+
+    # `export` writes an OBJ instead of a PNG. Its own word rather than a
+    # flag, so it cannot be confused with a scene name.
+    if "export" in wanted:
+        # Two, because one of them has to fit. Six segments is right in a
+        # render and is most of the face count when the mesh has to travel.
+        export_obj(out, "undercroft")
+        look.wipe()
+        export_obj(out, "undercroft_light", segments=2)
+        return
     for key, job in jobs.items():
         if wanted and key not in wanted:
             continue

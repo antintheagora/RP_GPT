@@ -802,6 +802,9 @@ WEAR = 0.05
 #: and at exactly half it collapses to a knife edge.
 WEAR_LIMIT = 0.34
 
+#: Segments across a bevel. See `block`.
+BEVEL_SEGMENTS = 6
+
 
 def worn_edge(size, wear=WEAR):
     """The bevel for a stone of this size."""
@@ -838,7 +841,11 @@ def block(location, size, material, rotation=(0, 0, 0), bevel=None,
     # chamfer -- three flats and two hard creases -- and a chamfer reads as
     # machined. Six is a round arris at every distance these scenes are
     # viewed from.
-    modifier.segments = 6
+    #
+    # Module level so an exporter can lower it. Six is right for a render and
+    # expensive for anything that has to carry the mesh somewhere else: the
+    # bevels are most of the face count in these scenes.
+    modifier.segments = BEVEL_SEGMENTS
     modifier.harden_normals = True
     modifier.limit_method = "ANGLE"
     modifier.angle_limit = math.radians(30)
