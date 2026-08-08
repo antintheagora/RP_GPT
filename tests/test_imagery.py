@@ -348,7 +348,7 @@ def test_no_dungeon_words_in_a_refinery():
     # The three the setup screen offers.
     ("keeper", "dark fantasy game key art"),
     ("bryce", "bryce 3d landscape render"),
-    ("wasteland", "painted illustration"),
+    ("wasteland", "ega graphics"),
     # And the ones kept from before the local model.
     ("cinematic", "cinematic film still"),
     ("painted", "matte painting"),
@@ -455,3 +455,42 @@ def test_a_campaign_keeps_the_look_it_was_started_in():
     set_image_style("not-a-style")
     assert get_image_style() != "not-a-style", "an unknown name must not stick"
     set_image_style("")
+
+
+def test_the_ega_look_is_imposed_and_not_merely_asked_for():
+    """A prompt asking for "16 colour EGA pixel art" gets tidy modern indie
+    pixel art -- that is what the words mean to a model trained on the last
+    decade of them. 1988 is a constraint, not a style, so the graph shrinks
+    the render to 320 across, quantises to sixteen colours with an ordered
+    dither, and scales back with nearest-neighbour."""
+    from Core.Config import IMAGE_STYLES, STYLE_DOWNGRADE
+    from engine.comfy import Downgrade, workflow
+
+    assert "wasteland" in STYLE_DOWNGRADE
+    for name in STYLE_DOWNGRADE:
+        assert name in IMAGE_STYLES, f"{name} downgrades a style that is not there"
+
+    graph = workflow("x", 768, 432, 1, Downgrade(**STYLE_DOWNGRADE["wasteland"]))
+    assert graph["palette"]["inputs"]["colors"] == 16
+    assert graph["palette"]["inputs"]["dither"].startswith("bayer")
+    assert graph["shrink"]["inputs"]["width"] == 320
+    # Hard square pixels on the way back up, or it is just a blurry render.
+    assert graph["enlarge"]["inputs"]["upscale_method"] == "nearest-exact"
+    assert graph["save"]["inputs"]["images"] == ["enlarge", 0]
+
+
+def test_a_style_with_no_downgrade_renders_straight_through():
+    from engine.comfy import workflow
+
+    graph = workflow("x", 768, 432, 1)
+    assert graph["save"]["inputs"]["images"] == ["decode", 0]
+    assert "palette" not in graph
+
+
+def test_the_downgrade_keeps_the_shape_of_a_portrait():
+    """320 across a landscape and 320 down a portrait give the same size of
+    pixel, which is what actually reads as one machine."""
+    from engine.comfy import Downgrade
+
+    assert Downgrade(long_edge=320).small(768, 432) == (320, 180)
+    assert Downgrade(long_edge=320).small(576, 768) == (240, 320)

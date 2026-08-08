@@ -98,15 +98,23 @@ IMAGE_STYLES = {
         "plastic materials, ray-traced, CD-ROM era adventure game background "
         "plate, no user interface, no text, no HUD"),
 
-    # Wasteland, 1988. Asked for "box art" it rendered a photograph of a
-    # boxed game sitting on a table, complete with garbled title lettering:
-    # the illustration was right and the object was not. This asks for the
-    # painting rather than the product.
+    # Wasteland, 1988. The machine, not a painting of it.
+    #
+    # Two wrong answers before this one. Asked for "box art" it rendered a
+    # photograph of a boxed game on a table with garbled title lettering --
+    # the illustration was right and the object was not. Asked for "16 colour
+    # EGA pixel art" it produced tidy modern indie pixel art, because that is
+    # what those words mean to a model trained on the last decade of them.
+    #
+    # The 1988 machine is not a style, it is a constraint, and a constraint is
+    # imposed rather than requested: see STYLE_DOWNGRADE below, which puts the
+    # render through 320 pixels and a 16-colour ordered dither on the way out.
+    # This half only has to get the subject and the flatness right.
     "wasteland": (
-        "1980s post-apocalyptic desert, painted illustration, ochre and rust "
-        "and bone palette, blinding white sun in a bleached sky, cracked "
-        "hardpan, ruined concrete, rusted iron, heat shimmer, airbrush "
-        "gradients, visible paper grain, no text"),
+        "1988 MS-DOS post-apocalyptic CRPG scene, EGA graphics, desert "
+        "wasteland, simple flat shapes, bold black outlines, limited colour, "
+        "full-bleed illustration, no user interface, no HUD, no status bar, "
+        "no portrait box, no text, no border, no frame"),
 
     # The three above are the offered ones. These predate the local model and
     # are kept because they are one setting away and cost nothing.
@@ -127,10 +135,19 @@ OFFERED_IMAGE_STYLES = (
     ("bryce", "Pre-rendered 1995",
      "Early CGI. Banded skies, mirror water, faintly plastic stone: a "
      "CD-ROM adventure backdrop."),
-    ("wasteland", "Sun-bleached",
-     "Airbrushed post-apocalyptic illustration. Ochre, rust and bone under "
-     "a white desert sun."),
+    ("wasteland", "EGA 1988",
+     "Sixteen colours at 320 across, ordered dither, hard square pixels. "
+     "A post-apocalyptic CRPG the year Wasteland shipped."),
 )
+
+#: Styles that need the picture put through a poorer machine on the way out,
+#: because they are constraints rather than looks. Only the local renderer can
+#: do this -- the image host returns a finished JPEG and there is nothing to
+#: hang a quantiser off -- so a campaign in this style with ComfyUI shut gets
+#: the prompt's half of it and not the format's.
+STYLE_DOWNGRADE = {
+    "wasteland": {"long_edge": 320, "colors": 16, "dither": "bayer-4"},
+}
 
 DEFAULT_IMAGE_STYLE = "keeper"
 

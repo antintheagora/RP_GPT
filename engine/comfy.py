@@ -85,14 +85,15 @@ def available(host: str = DEFAULT_HOST) -> bool:
     return True
 
 
-def workflow(prompt: str, width: int, height: int, seed: int) -> Dict:
+def workflow(prompt: str, width: int, height: int, seed: int,
+             downgrade: Optional["Downgrade"] = None) -> Dict:
     """The graph, in the flat form the /prompt endpoint takes.
 
     ComfyUI's saved templates are the editor's format -- nodes, links and
     subgraph definitions. The API takes something simpler: node id to
     {class_type, inputs}, with a link written as [node_id, output_slot].
     """
-    return {
+    graph = {
         "loader_unet": {
             "class_type": "UNETLoader",
             "inputs": {"unet_name": UNET, "weight_dtype": "default"},
@@ -158,11 +159,66 @@ def workflow(prompt: str, width: int, height: int, seed: int) -> Dict:
             "class_type": "VAEDecode",
             "inputs": {"samples": ["render", 0], "vae": ["loader_vae", 0]},
         },
-        "save": {
-            "class_type": "SaveImage",
-            "inputs": {"filename_prefix": "rpgpt", "images": ["decode", 0]},
-        },
     }
+
+    source = "decode"
+    if downgrade is not None:
+        small_w, small_h = downgrade.small(width, height)
+        graph["shrink"] = {
+            "class_type": "ImageScale",
+            # `area` averages on the way down, which is what a real
+            # downsample does. `nearest-exact` here would alias badly and
+            # look like a broken screenshot rather than a small one.
+            "inputs": {"image": ["decode", 0], "upscale_method": "area",
+                       "width": small_w, "height": small_h, "crop": "disabled"},
+        }
+        graph["palette"] = {
+            "class_type": "ImageQuantize",
+            "inputs": {"image": ["shrink", 0], "colors": downgrade.colors,
+                       "dither": downgrade.dither},
+        }
+        graph["enlarge"] = {
+            "class_type": "ImageScale",
+            # And `nearest-exact` on the way back, so a pixel stays a square
+            # with hard edges instead of being blurred into a smudge.
+            "inputs": {"image": ["palette", 0], "upscale_method": "nearest-exact",
+                       "width": width, "height": height, "crop": "disabled"},
+        }
+        source = "enlarge"
+
+    graph["save"] = {
+        "class_type": "SaveImage",
+        "inputs": {"filename_prefix": "rpgpt", "images": [source, 0]},
+    }
+    return graph
+
+
+@dataclass(frozen=True)
+class Downgrade:
+    """Put a picture through a smaller, poorer machine on the way out.
+
+    Some looks cannot be asked for. A prompt saying "16 colour EGA" gets tidy
+    modern pixel art, because that is what the words mean to a model trained
+    on the last decade of them -- the 1988 machine is not a style, it is a
+    constraint, and the honest way to reproduce a constraint is to impose it.
+
+    Render, shrink to the real resolution, quantise to the real palette with
+    an ordered dither, and scale back with nearest-neighbour so the pixels
+    stay square and hard. A graph that does that cannot produce anything else.
+
+    `long_edge` rather than a fixed 320x200 because portraits are taller than
+    they are wide; 320 across a landscape scene and 320 down a portrait give
+    the same size of pixel, which is what actually reads as one machine.
+    """
+
+    long_edge: int = 320
+    colors: int = 16
+    dither: str = "bayer-4"
+
+    def small(self, width: int, height: int) -> tuple:
+        if width >= height:
+            return self.long_edge, max(1, round(height * self.long_edge / width))
+        return max(1, round(width * self.long_edge / height)), self.long_edge
 
 
 @dataclass
@@ -172,7 +228,8 @@ class Rendered:
 
 
 def render(prompt: str, width: int = 1024, height: int = 1024,
-           seed: Optional[int] = None, host: str = DEFAULT_HOST) -> Rendered:
+           seed: Optional[int] = None, host: str = DEFAULT_HOST,
+           downgrade: Optional[Downgrade] = None) -> Rendered:
     """Queue one picture and wait for it. Raises ComfyUnavailable on failure.
 
     Deliberately synchronous: the caller is `ImageWorker`, which is already a
@@ -180,7 +237,8 @@ def render(prompt: str, width: int = 1024, height: int = 1024,
     not have to.
     """
     seed = random.randrange(2 ** 32) if seed is None else int(seed) % (2 ** 32)
-    body = json.dumps({"prompt": workflow(prompt, width, height, seed)}).encode()
+    body = json.dumps(
+        {"prompt": workflow(prompt, width, height, seed, downgrade)}).encode()
     request = urllib.request.Request(
         f"{host}/prompt", data=body,
         headers={"Content-Type": "application/json"})
@@ -237,5 +295,6 @@ def _first_error(status: Dict) -> str:
     return str(status)[:400]
 
 
-__all__ = ["available", "render", "workflow", "Rendered", "ComfyUnavailable",
+__all__ = ["available", "render", "workflow", "Rendered", "Downgrade",
+           "ComfyUnavailable",
            "DEFAULT_HOST", "UNET", "CLIP", "VAE", "STEPS", "CFG"]

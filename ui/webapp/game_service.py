@@ -319,6 +319,22 @@ def clean_output(raw: str) -> str:
     return "\n".join(lines).strip()
 
 
+
+def _downgrade():
+    """The format constraint this campaign's style asks for, if any.
+
+    A look like EGA is not something a prompt can reliably ask for -- the
+    words produce modern pixel art -- so the graph imposes it instead. Only
+    the local renderer can: the image host hands back a finished JPEG with
+    nothing to hang a quantiser off.
+    """
+    from Core.AI_Dungeon_Master import get_image_style
+    from Core.Config import STYLE_DOWNGRADE
+
+    spec = STYLE_DOWNGRADE.get(get_image_style())
+    return comfy.Downgrade(**spec) if spec else None
+
+
 class GameSession:
     def __init__(
         self,
@@ -1251,7 +1267,8 @@ class GameSession:
             # the moment of use costs one cheap request.
             if comfy.available():
                 try:
-                    rendered = comfy.render(prompt, IMG_WIDTH, IMG_HEIGHT, seed)
+                    rendered = comfy.render(prompt, IMG_WIDTH, IMG_HEIGHT,
+                                            seed, downgrade=_downgrade())
                     # ComfyUI's SaveImage writes PNG. Naming it .jpg made
                     # Flask serve PNG bytes as image/jpeg, which browsers
                     # sniff past and nothing else should have to.
