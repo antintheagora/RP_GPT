@@ -572,3 +572,23 @@ def test_no_stylesheet_hardcodes_a_palette_colour():
             assert stale not in css.lower(), (
                 f"app.css still carries the old {name} literal {stale}"
             )
+
+
+def test_the_log_dividers_do_not_count_backwards():
+    """Turn numbers restart at 1 with every act and the log runs newest first.
+
+    Seen in a live game right after an act boundary: the column read
+    "Turn 1" above "Turn 6", which looks like the panel is counting the wrong
+    way. The divider is keyed on the act as well as the turn now, and names
+    the act when it changes.
+    """
+    log = _text("templates", "partials", "log_panel.html")
+    assert "event.act" in log, "the divider cannot tell two acts apart"
+    assert "(event.act, event.turn)" in log, (
+        "keying on the turn alone merges the last turn of one act with the "
+        "first of the next"
+    )
+
+    service = (WEBAPP / "game_service.py").read_text(encoding="utf-8")
+    block = service[service.index("class Event:"):]
+    assert "act:" in block[:400], "an event that does not know its act"

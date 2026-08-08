@@ -14,11 +14,20 @@
        number is now a divider between turns, which is what it was for. #}
     {% if events %}
       <div class="space-y-3 max-h-[32rem] overflow-y-auto pr-2 scroll-fade">
-        {% set ns = namespace(last=None) %}
+        {# Keyed on the act as well as the turn. Turn numbers restart at 1 with
+           every act and this column runs newest first, so an act boundary
+           produced "Turn 1" sitting above "Turn 6" and the whole panel read
+           as though it were counting backwards. The act is named only when it
+           changes -- printing it on every divider would be six words of
+           chrome per entry. #}
+        {% set ns = namespace(last=None, act=None) %}
         {% for event in events|reverse %}
-          {% if event.turn != ns.last %}
-            <p class="overline text-ash pt-2 {{ 'border-t border-edge' if not loop.first }}">Turn {{ event.turn }}</p>
-            {% set ns.last = event.turn %}
+          {% if (event.act, event.turn) != ns.last %}
+            <p class="overline text-ash pt-2 {{ 'border-t border-edge' if not loop.first }}">
+              {% if event.act != ns.act %}Act {{ event.act }} &middot; {% endif %}Turn {{ event.turn }}
+            </p>
+            {% set ns.last = (event.act, event.turn) %}
+            {% set ns.act = event.act %}
           {% endif %}
           <article class="rounded-sm border border-edge bg-soot/80 px-4 py-3 shadow-lg">
             <p class="whitespace-pre-line leading-relaxed">{{ event.text }}</p>

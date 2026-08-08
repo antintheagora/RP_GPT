@@ -337,8 +337,12 @@ def test_a_free_turn_does_not_stamp_its_number_on_every_line():
 
     log = (Path(__file__).resolve().parent.parent / "ui" / "webapp"
            / "templates" / "partials" / "log_panel.html").read_text(encoding="utf-8")
-    assert "namespace(last=None)" in log, "no grouping by turn"
-    assert log.count("Turn {{ event.turn }}") == 1
+    # The grouping, not the exact spelling of it. This asserted on the
+    # literal `namespace(last=None)` and broke when the divider learned to
+    # tell two acts apart -- a test that fails on a correct change is a test
+    # measuring the wrong thing.
+    assert "namespace(last=" in log, "no grouping at all"
+    assert log.count("Turn {{ event.turn }}") == 1, "one divider, not one per entry"
 
 
 def test_camping_at_full_health_says_it_is_a_waste():

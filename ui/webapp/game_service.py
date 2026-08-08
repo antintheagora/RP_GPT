@@ -221,6 +221,10 @@ class Event:
     text: str
     turn: int
     created_at: float
+    # Turn numbers restart at 1 with every act, and the log is newest first,
+    # so without this the dividers read "Turn 1 / Turn 6 / Turn 5" down the
+    # column and the whole panel looks like it is counting backwards.
+    act: int = 1
 
 
 class TerminalInputRequired(RuntimeError):
@@ -412,7 +416,10 @@ class GameSession:
         cleaned = clean_output(text)
         if not cleaned:
             return
-        evt = Event(id=uuid.uuid4().hex, text=cleaned, turn=self.state.act.turns_taken, created_at=time.time())
+        evt = Event(id=uuid.uuid4().hex, text=cleaned,
+                    turn=self.state.act.turns_taken,
+                    act=getattr(self.state.act, 'index', 1),
+                    created_at=time.time())
         self._events.append(evt)
         if len(self._events) > 40:
             self._events = self._events[-40:]
