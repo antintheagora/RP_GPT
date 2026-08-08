@@ -343,8 +343,13 @@ def pollinations_url(prompt: str, width: int, height: int,
     same file again.
     """
     query = parse.quote_plus(prompt)
+    # `private=true` is not decoration. Without it this service publishes
+    # every prompt and every image it makes to a public feed, and these
+    # prompts are not abstract: they carry the player's own description of
+    # their character and whole paragraphs of their campaign's situation.
+    # Nothing in the game said so and there was no way to decline.
     url = (f"https://image.pollinations.ai/prompt/{query}"
-           f"?width={width}&height={height}&nologo=true")
+           f"?width={width}&height={height}&nologo=true&private=true")
     if seed is not None:
         url += f"&seed={int(seed) % 1_000_000}"
     # Named explicitly. Asking for nothing got whatever the host defaulted to

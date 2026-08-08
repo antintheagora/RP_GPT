@@ -94,6 +94,30 @@
               <input type="text" name="player_appearance" value="{{ previous.get('player_appearance') if previous else '' }}" class="u-input" />
             </div>
           </div>
+          {# The only thing in the game that leaves this machine.
+
+             The model is local. The stylesheet, the fonts and htmx are
+             vendored. Pictures are not: the prompt goes to an image service,
+             and the prompt is the player's own description of their character
+             and whole paragraphs of their campaign. There was no switch for
+             it anywhere and nothing said it was happening. #}
+          <div class="rounded-sm border border-edge bg-soot/60 p-4">
+            <label class="flex items-start gap-3 cursor-pointer">
+              <input type="checkbox" name="images" value="1"
+                     class="mt-1 h-4 w-4 accent-ember"
+                     {% if not previous or previous.get('images') %}checked{% endif %} />
+              <span>
+                <span class="block text-parchment">Generate pictures</span>
+                <span class="block text-sm text-dust mt-1">
+                  Scenes and portraits are drawn by an outside service, so the
+                  description of your character and the situation you are in
+                  are sent to it. Everything else in the game runs on this
+                  machine. Turn this off and nothing leaves it.
+                </span>
+              </span>
+            </label>
+          </div>
+
           <div>
             <label class="block text-sm">World bible / notes</label>
             <div class="mt-1 u-input-shell">

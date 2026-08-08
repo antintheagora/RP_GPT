@@ -872,6 +872,11 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
             "model": form.get("model") or DEFAULT_MODEL,
             "ollama_host": form.get("ollama_host") or None,
             "world_notes": form.get("world_notes") or "",
+            # An unchecked box posts nothing at all, which is exactly what
+            # makes a checkbox the right control here: the absence of consent
+            # reads as "no". Nothing posted `images` before, so the default
+            # was taken every time and the answer was always yes.
+            "images": bool(form.get("images")),
             "player": {
                 "name": form.get("player_name") or "Explorer",
                 "age": form.get("player_age") or None,
