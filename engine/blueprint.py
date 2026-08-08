@@ -157,7 +157,9 @@ def actors_from_seed(seed, act_index:int, *, store=None)->List[Actor]:
             # asked to be drawn. Left empty for describe_actor_physical to
             # fill with something a picture can use.
             desc="",
-            species=species, comm_style=comm, personality_archetype=personality_roll()
+            species=species, comm_style=comm,
+            personality_archetype=personality_roll(
+                a.get("personality", ""), a.get("kind", ""), raw_name)
         )
         _persist_profile(actor)
         out.append(actor)

@@ -1,0 +1,16 @@
+{
+  "name": "Captain Vane",
+  "role": "enemy",
+  "kind": "Human",
+  "hp": 18,
+  "attack": 4,
+  "updated_at": 1786176494.6436098,
+  "last_seen": 1786176494.6436105,
+  "encounters": 8,
+  "personality_archetype": "serene",
+  "species": "human",
+  "comm_style": "speech",
+  "aliases": [
+    "Commander Vane"
+  ]
+}

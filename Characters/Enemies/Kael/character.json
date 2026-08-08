@@ -1,0 +1,13 @@
+{
+  "name": "Kael",
+  "role": "enemy",
+  "kind": "Scavenger",
+  "hp": 12,
+  "attack": 4,
+  "updated_at": 1786168194.319089,
+  "last_seen": 1786168194.3190894,
+  "encounters": 3,
+  "personality_archetype": "inquisitive",
+  "species": "human",
+  "comm_style": "speech"
+}

@@ -1,0 +1,13 @@
+{
+  "name": "Unit 734",
+  "role": "enemy",
+  "kind": "Security Drone",
+  "hp": 18,
+  "attack": 4,
+  "updated_at": 1786164257.7576287,
+  "last_seen": 1786164257.7576292,
+  "encounters": 1,
+  "personality_archetype": "anxious",
+  "species": "human",
+  "comm_style": "speech"
+}

@@ -9,7 +9,7 @@
   "encounters": 1,
   "desc": "A cultist who believes the sea is a god.",
   "personality": "A cultist who believes the sea is a god.",
-  "personality_archetype": "joyful",
+  "personality_archetype": "zealous",
   "species": "human",
   "comm_style": "speech"
 }

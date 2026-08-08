@@ -1,0 +1,13 @@
+{
+  "name": "Sister Mercy",
+  "role": "enemy",
+  "kind": "Cultist",
+  "hp": 24,
+  "attack": 5,
+  "updated_at": 1786164368.5771835,
+  "last_seen": 1786164368.5771837,
+  "encounters": 3,
+  "personality_archetype": "zealous",
+  "species": "human",
+  "comm_style": "speech"
+}

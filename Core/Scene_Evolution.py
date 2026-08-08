@@ -315,7 +315,8 @@ Paragraph: {situation_txt}
 
         if not getattr(new, "portrait_path", None):
             try:
-                prompt = core.make_actor_portrait_prompt(new)
+                prompt = core.make_actor_portrait_prompt(
+                    new, describer=core.describer_for(g, state))
                 core.queue_image_event(
                     state,
                     "portrait",

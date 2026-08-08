@@ -1,0 +1,13 @@
+{
+  "name": "Sgt. Miller",
+  "role": "enemy",
+  "kind": "Soldier",
+  "hp": 18,
+  "attack": 4,
+  "updated_at": 1786157662.279975,
+  "last_seen": 1786157662.2799754,
+  "encounters": 1,
+  "personality_archetype": "stoic",
+  "species": "human",
+  "comm_style": "speech"
+}

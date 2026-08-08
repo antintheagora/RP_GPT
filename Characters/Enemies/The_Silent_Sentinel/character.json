@@ -1,0 +1,13 @@
+{
+  "name": "The Silent Sentinel",
+  "role": "enemy",
+  "kind": "Guardian",
+  "hp": 18,
+  "attack": 4,
+  "updated_at": 1786174974.4895015,
+  "last_seen": 1786174974.4895022,
+  "encounters": 1,
+  "personality_archetype": "cautious",
+  "species": "human",
+  "comm_style": "speech"
+}

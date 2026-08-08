@@ -9,7 +9,7 @@
   "encounters": 5,
   "desc": "Reserved, enigmatic, seeks forbidden knowledge.",
   "personality": "Reserved, curious, seeking forbidden knowledge.",
-  "personality_archetype": "cautious",
+  "personality_archetype": "inquisitive",
   "species": "human",
   "comm_style": "speech",
   "sex": "other",

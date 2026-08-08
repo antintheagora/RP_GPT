@@ -799,3 +799,19 @@ def test_open_ledger_uses_the_sanitised_directory():
     assert "SAVES_DIR) / self.world_slug" not in source, (
         "building the path by hand is exactly how the two drifted apart"
     )
+
+
+def test_the_client_on_the_state_never_reaches_the_save():
+    """Same contract the ledger store has: live objects stay out of JSON."""
+    import RP_GPT as core
+    from engine.persistence import encode
+
+    state = core.GameState(
+        scenario=core.Scenario.APOCALYPSE, scenario_label="T",
+        player=core.Player(name="Ant"),
+        blueprint=core.blueprint_from_json(
+            {"campaign_goal": "g", "pressure_name": "p",
+             "acts": {"1": {"goal": "g", "intro_paragraph": "x"}}}),
+        pressure_name="p")
+    state.gemma = object()
+    assert "gemma" not in encode(state)

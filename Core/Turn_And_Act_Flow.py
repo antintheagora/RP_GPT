@@ -277,7 +277,9 @@ def begin_act(state, idx: int):
                     core.queue_image_event(
                         state,
                         "portrait",
-                        core.make_actor_portrait_prompt(c),
+                        core.make_actor_portrait_prompt(
+                            c, describer=core.describer_for(
+                                getattr(state, "gemma", None), state)),
                         actors=[c.name],
                         extra={"note": "companion", "role": c.role},
                     )

@@ -13,6 +13,9 @@ from __future__ import annotations
 
 from engine import events as _ev
 from Core.Config import get_config
+from Core.Logging import get_logger
+
+_log = get_logger("image_gen")
 
 import base64
 import os
@@ -122,6 +125,44 @@ def make_player_portrait_prompt(player: "Player", detail: str = "moderate") -> s
     return compress_and_sanitize(p, max_len=360)
 
 
+
+#: Words that describe a person's character rather than their appearance.
+#: Not exhaustive and does not need to be -- this only has to be right often
+#: enough to notice that a `desc` field is holding the wrong kind of thing.
+_TRAIT_WORDS = frozenset("""
+greedy opportunistic ruthless loyal brutish cunning pragmatic wary bitter
+zealous stoic anxious amiable cautious inquisitive aggressive joyful serene
+proud cruel kind gentle patient reckless honest treacherous devoted grim
+suspicious arrogant humble curious desperate stubborn single-minded driven
+corrupted duty-bound protective keen wry twitchy
+""".split())
+
+
+def reads_as_personality(text: str) -> bool:
+    """Is this a description of who somebody is, rather than what they look like?
+
+    `desc` is the field the portrait prompt draws from, and for 68 of the
+    game's 148 profiles it holds a copy of `personality` -- so the image
+    generator was being asked for a close-up portrait of "Greedy,
+    opportunistic". Anything that is mostly character adjectives and short
+    enough to be a trait list is treated as unusable, and replaced.
+    """
+    words = [w.strip(" .,;:-").lower() for w in (text or "").split()]
+    words = [w for w in words if w]
+    if not words:
+        return True
+    if len(words) > 14:
+        return False          # long enough to be a real description
+    hits = sum(1 for w in words if w in _TRAIT_WORDS)
+
+    # A proportion, not a count. One trait word among five is how people
+    # actually describe faces -- "scarred scout with keen eyes" is an
+    # appearance that happens to contain "keen", and counting hits threw it
+    # away. A trait list is *mostly* trait words: "greedy, opportunistic" is
+    # all of them, "brutish, single-minded, focused on destruction" is two in
+    # five.
+    return hits / len(words) >= 0.34
+
 def describe_actor_physical(g: "GemmaClient", state: "GameState", actor: "Actor") -> str:
     """Ask Gemma for a short physical description so players can picture an NPC."""
     try:
@@ -142,9 +183,46 @@ def describe_actor_physical(g: "GemmaClient", state: "GameState", actor: "Actor"
         return actor.desc
 
 
-def make_actor_portrait_prompt(actor: "Actor", detail: str = "moderate") -> str:
-    """Compose the portrait prompt for NPCs and companions."""
-    focus = actor.desc.strip() if getattr(actor, "desc", None) else f"{actor.name}, a {actor.kind} ({actor.role})"
+
+def describer_for(client, state):
+    """A one-argument describer for `make_actor_portrait_prompt`.
+
+    Handed the live client and state so the portrait path can ask what
+    somebody looks like without knowing how to reach a model. Returns None if
+    there is no client, and the prompt then falls back as it always did --
+    composing a portrait must never depend on a model call succeeding.
+    """
+    if client is None:
+        return None
+
+    def describe(actor):
+        return describe_actor_physical(client, state, actor)
+
+    return describe
+
+def make_actor_portrait_prompt(actor: "Actor", detail: str = "moderate",
+                               describer=None) -> str:
+    """Compose the portrait prompt for NPCs and companions.
+
+    `describer` is called when the actor has nothing usable to draw -- either
+    no desc at all, which is every character the blueprint seeds, or a desc
+    holding their personality, which is 68 of the game's profiles. Optional
+    so that composing a prompt never *requires* a model call; without one the
+    prompt falls back to the name and kind, as it always did.
+    """
+    desc = (getattr(actor, "desc", "") or "").strip()
+    if describer is not None and reads_as_personality(desc):
+        try:
+            fresh = (describer(actor) or "").strip()
+        except Exception:
+            _log.debug("could not describe %s", getattr(actor, "name", "?"),
+                       exc_info=True)
+            fresh = ""
+        if fresh and not reads_as_personality(fresh):
+            actor.desc = fresh
+            desc = fresh
+    focus = desc if desc and not reads_as_personality(desc) else (
+        f"{actor.name}, a {actor.kind} ({actor.role})")
     tiers = {
         "minimal": "plain backdrop, soft rim light",
         "moderate": "plain backdrop, soft rim light, subtle film grain",
@@ -480,6 +558,8 @@ __all__ = [
     # portrait helpers
     "make_player_portrait_prompt",
     "describe_actor_physical",
+    "reads_as_personality",
+    "describer_for",
     "make_actor_portrait_prompt",
     # scene helpers
     "make_combat_image_prompt",

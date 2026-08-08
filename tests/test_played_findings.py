@@ -540,3 +540,84 @@ def test_the_journal_does_not_write_bio_with_nothing_after_it():
     source = inspect.getsource(Turn_And_Act_Flow.begin_act)
     assert "Bio: {c.bio}" not in source
     assert 'joined (companion).' in source
+
+
+# ---------------------------------------------------------------------------
+# What a portrait is drawn from, and what a character sounds like.
+# ---------------------------------------------------------------------------
+
+def test_a_trait_list_is_not_an_appearance():
+    from Core.Image_Gen import reads_as_personality
+
+    for traits in ("Greedy, opportunistic", "Ruthless, duty-bound", "",
+                   "Brutish, single-minded, focused on destruction."):
+        assert reads_as_personality(traits), f"{traits!r} is not a face"
+    for looks in ("scarred scout with keen eyes", "shaggy dog with alert ears",
+                  "lean thief with a sharp grin",
+                  "A tall woman in a salt-stained coat, hair cropped close."):
+        assert not reads_as_personality(looks), f"{looks!r} describes a person"
+
+
+def test_the_portrait_asks_for_a_description_when_it_has_none():
+    """describe_actor_physical was imported into RP_GPT.py and called nowhere.
+
+    So `actors_from_seed` left desc empty "for describe_actor_physical to
+    fill", nothing ever filled it, and every generated character's portrait
+    was composed from "Name, a kind (role)".
+    """
+    import RP_GPT as core
+
+    asked = []
+
+    def describer(actor):
+        asked.append(actor.name)
+        return "a gaunt man in a tar-stained coat, one sleeve pinned up"
+
+    actor = core.Actor("Osric", "ferryman", role="npc", desc="")
+    prompt = core.make_actor_portrait_prompt(actor, describer=describer)
+    assert asked == ["Osric"], "nothing asked what he looks like"
+    assert "tar-stained" in prompt
+    assert actor.desc.startswith("a gaunt man"), "and it was not kept"
+
+
+def test_a_real_description_is_left_alone():
+    import RP_GPT as core
+
+    def describer(actor):  # pragma: no cover - must not be reached
+        raise AssertionError("asked about someone already described")
+
+    actor = core.Actor("Sable", "rogue", role="companion",
+                       desc="lean thief with a sharp grin")
+    prompt = core.make_actor_portrait_prompt(actor, describer=describer)
+    assert "lean thief" in prompt
+
+
+def test_a_portrait_still_composes_when_the_describer_fails():
+    """Composing a prompt must never depend on a model call succeeding."""
+    import RP_GPT as core
+
+    def broken(actor):
+        raise RuntimeError("ollama is not running")
+
+    actor = core.Actor("Vane", "captain", role="enemy", desc="")
+    prompt = core.make_actor_portrait_prompt(actor, describer=broken)
+    assert "Vane" in prompt
+
+
+def test_a_characters_voice_follows_the_character():
+    """It was random.choice, so a tenth of every cast was cheerful."""
+    from engine.traits import personality_roll
+
+    assert personality_roll("driven by hunger and corrupted instinct",
+                            "blighted hound", "Blighted Hound") == "aggressive"
+    assert personality_roll("", "sister of the pale flame",
+                            "Sister Mercy") == "zealous"
+    assert personality_roll("curious, hedging", "tinkerer", "Edda") == "inquisitive"
+
+
+def test_a_character_nobody_described_still_gets_a_voice():
+    """The fallback stays random, or a cast of blank NPCs all sound alike."""
+    from engine.traits import PERSONALITY_ARCHETYPES, personality_roll
+
+    assert personality_roll("", "", "") in PERSONALITY_ARCHETYPES
+    assert personality_roll() in PERSONALITY_ARCHETYPES

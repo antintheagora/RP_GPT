@@ -1,0 +1,13 @@
+{
+  "name": "Unit 7",
+  "role": "enemy",
+  "kind": "Security Bot",
+  "hp": 24,
+  "attack": 5,
+  "updated_at": 1786159058.2502553,
+  "last_seen": 1786159058.2502563,
+  "encounters": 1,
+  "personality_archetype": "cautious",
+  "species": "human",
+  "comm_style": "speech"
+}
