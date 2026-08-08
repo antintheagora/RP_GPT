@@ -13,6 +13,7 @@ import uuid
 from contextlib import contextmanager, redirect_stdout
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
+from urllib.parse import quote
 
 import RP_GPT as core
 from engine import events as ev
@@ -34,7 +35,7 @@ from engine.bridge import (
 )
 from engine.events import collecting
 from engine.imagery import ImageRequest, ImageResult, ImageWorker
-from engine.model import IMG_HEIGHT, IMG_WIDTH
+from engine.model import IMG_HEIGHT, IMG_WIDTH, MAX_CARRIED_STAT_BONUS
 from engine.keeper import ModelKeeper
 from engine.rest import render_rest, take_rest
 from engine import talk as talk_engine
@@ -981,6 +982,183 @@ class GameSession:
                 "game_over_text": self.state.is_game_over(),
             }
             return data
+
+    #: What a tag on an item means in words, for the one screen that lists
+    #: everything you carry rather than only what you can use this turn.
+    _TAG_NOTES = {
+        "weapon": "a weapon",
+        "armor": "worn",
+        "armour": "worn",
+        "food": "food",
+        "drink": "something to drink",
+        "medicine": "medicine",
+        "tool": "a tool",
+        "light": "gives light",
+        "key": "opens something",
+        "book": "something to read",
+        "map": "a map",
+    }
+
+    def _item_payload(self, item: Any) -> Dict[str, Any]:
+        """One thing you are carrying, and what carrying it is worth.
+
+        The stat bonuses matter most. Items advertised `special_mods` for the
+        whole life of this project and granted nothing until #37, and the only
+        place the working version is visible on screen is a hover tooltip over
+        a stat box. A player who picks up a lens should be able to find out
+        that it is why their Perception went up.
+        """
+        tags = [str(t).lower() for t in (getattr(item, "tags", None) or [])]
+        name = str(getattr(item, "name", "") or "Something")
+
+        # Bonuses the dice actually see. `carried_stat_bonus` caps the total
+        # per stat across the whole pack, so an item can read "+2 PER" here
+        # and contribute less than that -- the cap is shown beside the stats
+        # rather than silently applied to each line, because a number that
+        # quietly disagrees with the sheet is worse than an explained one.
+        mods = getattr(item, "special_mods", None) or {}
+        grants = [f"{code} {value:+d}"
+                  for code, value in mods.items()
+                  if code in core.SPECIAL_KEYS and value]
+
+        effects: List[str] = []
+        for attribute, label in (("hp_delta", "health"), ("attack_delta", "damage"),
+                                 ("goal_delta", "progress"), ("pressure_delta", "danger")):
+            try:
+                amount = int(getattr(item, attribute, 0) or 0)
+            except (TypeError, ValueError):
+                amount = 0
+            if amount:
+                effects.append(f"{label} {amount:+d}")
+
+        kinds = [self._TAG_NOTES[t] for t in tags if t in self._TAG_NOTES]
+        consumable = bool(getattr(item, "consumable", True))
+
+        return {
+            "name": name,
+            "tags": tags,
+            "kind": kinds[0] if kinds else "",
+            "grants": grants,
+            "effects": effects,
+            "consumable": consumable,
+            # Whether it does anything at all, which decides how it reads on
+            # the sheet. Plenty of items are scenery the blueprint seeded --
+            # a keepsake, a letter -- and saying so is more honest than
+            # leaving a blank row that looks like missing data.
+            "inert": not (grants or effects),
+            "notes": str(getattr(item, "notes", "") or ""),
+        }
+
+    def _companion_payload(self) -> List[Dict[str, Any]]:
+        """The party, with the detail the old character sheet used to show.
+
+        `_party_payload` gives a name and a word for how they feel, which is
+        what the live panel needs mid-turn. This is the browsing version: who
+        they are, what they look like, and whether they are hurt. The Actors
+        carry all of it and nothing has ever drawn any of it.
+        """
+        from engine.affinity import band
+
+        affinities = dict(self.run.companions)
+        out: List[Dict[str, Any]] = []
+        for actor in (self.state.companions or []):
+            if not getattr(actor, "alive", True):
+                continue
+            affinity = affinities.get(actor.name)
+            out.append({
+                "name": actor.name,
+                "regard": band(affinity).value if affinity is not None else "",
+                "affinity": affinity,
+                "bio": (getattr(actor, "bio", "") or getattr(actor, "desc", "") or ""),
+                "archetype": getattr(actor, "personality_archetype", "") or "",
+                "species": getattr(actor, "species", "") or "",
+                "hp": getattr(actor, "hp", None),
+                # Routed through the session rather than built from the path,
+                # so a filename out of a character profile never reaches the
+                # filesystem as a URL segment.
+                "portrait_url": (f"/run-portrait/{self.id}/companion/{quote(actor.name)}"
+                                 if getattr(actor, "portrait_path", None) else ""),
+            })
+        return out
+
+    def companion_portrait(self, name: str) -> Optional[str]:
+        """The portrait file for a companion travelling with you, or None.
+
+        The lookup is by name against the party this session actually has, so
+        the URL cannot name a file -- only a character, and only one already
+        standing next to the player.
+        """
+        with self._lock:
+            for actor in (self.state.companions or []):
+                if actor.name == name and getattr(actor, "portrait_path", None):
+                    path = Path(actor.portrait_path)
+                    return str(path) if path.is_file() else None
+        return None
+
+    def get_sheet_payload(self) -> Dict[str, Any]:
+        """Everything the character sheet draws.
+
+        A separate payload from the turn: this is read when the player stops
+        to look, and it holds things the live panel deliberately leaves out
+        because they do not change from turn to turn.
+
+        Two of them were being written and shown to nobody. `player_bio_entries`
+        gets an entry from three separate call sites, once per act, and no
+        template has ever rendered it. The inventory is worse -- there is no
+        screen anywhere in the web UI that lists what you carry, so gear has
+        only ever been visible as a button on the turn it happened to be
+        usable, and weapons never appeared at all because the item menu
+        filters them out.
+        """
+        with self._lock:
+            player = self.state.player
+            condition = self.run.condition
+            inventory = [self._item_payload(item)
+                         for item in (getattr(player, "inventory", None) or [])]
+
+            # The newest portrait this run produced, if the player let the
+            # game make pictures at all.
+            portrait = next((entry for entry in reversed(self._images)
+                             if entry.get("kind") == "player_portrait"), None)
+
+            return {
+                "player": {
+                    "name": getattr(player, "name", "Explorer"),
+                    "hp": getattr(condition, "hp", getattr(player, "hp", 0)),
+                    "max_hp": getattr(condition, "max_hp", None),
+                    "resolve": getattr(condition, "resolve", None),
+                    "max_resolve": getattr(condition, "max_resolve", None),
+                    "attack": getattr(player, "attack", None),
+                    "portrait_url": (
+                        f"/run-image/{self.id}/{Path(portrait['path']).name}"
+                        if portrait else ""
+                    ),
+                    # Whatever the character actually has. These are optional
+                    # on Player and a blank line is worse than no line.
+                    "details": [
+                        (label, str(value))
+                        for label, value in (
+                            ("Age", getattr(player, "age", None)),
+                            ("Sex", getattr(player, "sex", None)),
+                            ("Hair", getattr(player, "hair_color", None)),
+                            ("Clothing", getattr(player, "clothing", None)),
+                        )
+                        if value
+                    ],
+                    "appearance": getattr(player, "appearance", "") or "",
+                },
+                "special": self._special_payload(),
+                "stat_cap": MAX_CARRIED_STAT_BONUS,
+                "inventory": inventory,
+                "companions": self._companion_payload(),
+                "condition": condition,
+                # Written once per act by three different call sites, and
+                # rendered here for the first time.
+                "chronicle": list(getattr(self.state, "player_bio_entries", []) or []),
+                "campaign_goal": self.state.blueprint.campaign_goal,
+                "act_index": self.state.act.index,
+                "act_count": self.state.act_count,
+            }
 
     def get_events(self, limit: int = 8) -> List[Event]:
         with self._lock:

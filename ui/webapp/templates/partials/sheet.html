@@ -1,0 +1,187 @@
+{% set p = payload.player %}
+{% set cond = payload.condition %}
+{# The character sheet, as an overlay you open over the game.
+
+   The pygame build had one of these and the web build never got it. Most of
+   what it showed now lives in the turn panel, which is better -- you read it
+   without opening anything. This is for the rest: the things you browse
+   rather than glance at, and the two that were being written and shown to
+   nobody at all.
+
+   The inventory is the reason this exists. There has never been a screen in
+   the web UI that lists what you carry. Items only appeared as buttons on the
+   turn they happened to be usable, and weapons never appeared there at all
+   because the item menu filters them out. Gear has granted real stat bonuses
+   since #37 and the only place that was visible was a hover tooltip. #}
+<div class="sheet-scroll">
+
+  <header class="sheet-head">
+    <div>
+      <p class="overline text-dust">Act {{ payload.act_index }} of {{ payload.act_count }}</p>
+      <h2 class="text-3xl font-semibold text-bone">{{ p.name }}</h2>
+      {% if payload.campaign_goal %}
+        <p class="text-sm text-tan mt-1">{{ payload.campaign_goal }}</p>
+      {% endif %}
+    </div>
+    <button type="button" class="sheet-close" data-sheet="close" title="Close (Esc)"
+            aria-label="Close the character sheet">&times;</button>
+  </header>
+
+  <div class="sheet-columns">
+
+    {# ---- who you are ------------------------------------------------- #}
+    <section class="sheet-col space-y-4">
+      {% if p.portrait_url %}
+        <figure class="sheet-portrait">
+          <img src="{{ p.portrait_url }}" alt="{{ p.name }}" loading="lazy" />
+        </figure>
+      {% endif %}
+
+      <div class="rounded-sm bg-soot/80 border border-edge p-4 space-y-2">
+        <p class="overline text-dust">Condition</p>
+        {% if p.max_hp %}
+          <p class="text-lg font-semibold {{ 'text-flare' if p.hp <= p.max_hp // 3 else '' }}">
+            HP {{ p.hp }} / {{ p.max_hp }}
+          </p>
+        {% else %}
+          <p class="text-lg font-semibold">HP {{ p.hp }}</p>
+        {% endif %}
+        {% if p.max_resolve %}
+          <p class="text-sm text-dust">Resolve {{ p.resolve }} / {{ p.max_resolve }}</p>
+        {% endif %}
+
+        {% if cond and (cond.wounds.wounds or cond.scars or cond.virtues) %}
+          <ul class="text-sm space-y-1 pt-2 border-t border-edge">
+            {% for wound in cond.wounds.wounds %}<li class="text-flare">{{ wound.name }}</li>{% endfor %}
+            {% for scar in cond.scars %}<li class="text-brass">{{ scar.value }}</li>{% endfor %}
+            {% for virtue in cond.virtues %}<li class="text-verdigris">{{ virtue.value }}</li>{% endfor %}
+          </ul>
+        {% else %}
+          <p class="text-sm text-ash pt-2 border-t border-edge">Unmarked, so far.</p>
+        {% endif %}
+      </div>
+
+      {% if p.details or p.appearance %}
+        <div class="rounded-sm bg-soot/80 border border-edge p-4 space-y-2">
+          <p class="overline text-dust">Description</p>
+          {% for label, value in p.details %}
+            <p class="text-sm"><span class="text-dust">{{ label }}</span> &middot; {{ value }}</p>
+          {% endfor %}
+          {% if p.appearance %}
+            <p class="text-sm text-parchment leading-relaxed pt-1">{{ p.appearance }}</p>
+          {% endif %}
+        </div>
+      {% endif %}
+    </section>
+
+    {# ---- what the dice see, and what you carry ------------------------ #}
+    <section class="sheet-col space-y-4">
+      <div>
+        <p class="overline text-dust mb-2">SPECIAL</p>
+        {# The same numbers the turn panel shows, from the same payload, so the
+           two screens cannot disagree about a stat. #}
+        <div class="grid grid-cols-7 gap-2 text-center text-sm">
+          {% for stat in payload.special %}
+            <div class="rounded-sm bg-pitch border py-2 {{ 'border-brass/60' if stat.bonus > 0 else ('border-rust/60' if stat.bonus < 0 else 'border-edge') }}"
+                 {% if stat.sources %}title="{{ stat.sources }}"{% endif %}>
+              <p class="text-xs text-dust">{{ stat.code }}</p>
+              <p class="text-lg font-semibold {{ 'text-brass' if stat.bonus > 0 else ('text-flare' if stat.bonus < 0 else '') }}">{{ stat.value }}</p>
+              {% if stat.bonus %}<p class="text-[10px] text-dust leading-none">{{ '%+d' % stat.bonus }}</p>{% endif %}
+            </div>
+          {% endfor %}
+        </div>
+        <p class="text-xs text-ash mt-2">
+          A point of a stat is 5% on the die. What you carry can be worth up to
+          {{ payload.stat_cap }} to any one of them &mdash; past that, a fuller pack is just a heavier one.
+        </p>
+      </div>
+
+      <div class="rounded-sm bg-soot/80 border border-edge p-4">
+        <p class="overline text-dust mb-2">Carried</p>
+        {% if payload.inventory %}
+          <ul class="divide-y divide-edge/70">
+            {% for item in payload.inventory %}
+              <li class="py-2 first:pt-0 last:pb-0">
+                <div class="flex items-baseline justify-between gap-3">
+                  <span class="{{ 'text-parchment' if not item.inert else 'text-tan' }}">{{ item.name }}</span>
+                  {% if item.grants %}
+                    <span class="text-xs text-brass tabular-nums shrink-0">{{ item.grants | join(' · ') }}</span>
+                  {% endif %}
+                </div>
+                {# What it is and what it does, on one quiet line. An item that
+                   does nothing says so: plenty are scenery the blueprint
+                   seeded, and a blank row reads as missing data. #}
+                {% set notes = [] %}
+                {% if item.kind %}{% set _ = notes.append(item.kind) %}{% endif %}
+                {% if item.effects %}{% set _ = notes.append(item.effects | join(', ')) %}{% endif %}
+                {% if item.consumable and not item.inert %}{% set _ = notes.append('used up') %}{% endif %}
+                {% if item.inert %}{% set _ = notes.append('nothing the dice can use') %}{% endif %}
+                {% if notes %}
+                  <p class="text-xs text-ash mt-0.5">{{ notes | join(' &middot; ' | safe) }}</p>
+                {% endif %}
+                {% if item.notes %}
+                  <p class="text-xs text-dust mt-0.5">{{ item.notes }}</p>
+                {% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="text-sm text-ash">You are carrying nothing.</p>
+        {% endif %}
+      </div>
+    </section>
+
+    {# ---- who is with you, and what has happened ----------------------- #}
+    <section class="sheet-col space-y-4">
+      <div>
+        <p class="overline text-dust mb-2">Company</p>
+        {% if payload.companions %}
+          <ul class="space-y-3">
+            {% for mate in payload.companions %}
+              <li class="rounded-sm bg-soot/80 border border-edge p-3 flex gap-3">
+                {% if mate.portrait_url %}
+                  <img src="{{ mate.portrait_url }}" alt="{{ mate.name }}" loading="lazy"
+                       class="sheet-mate-portrait" />
+                {% endif %}
+                <div class="min-w-0">
+                  <div class="flex items-baseline justify-between gap-2">
+                    <span class="text-parchment">{{ mate.name }}</span>
+                    {% if mate.regard %}
+                      <span class="text-xs capitalize text-dust shrink-0">{{ mate.regard }}</span>
+                    {% endif %}
+                  </div>
+                  {% if mate.archetype or mate.species %}
+                    <p class="text-xs text-ash capitalize">
+                      {{ [mate.species, mate.archetype] | select | join(' · ') }}
+                    </p>
+                  {% endif %}
+                  {% if mate.bio %}
+                    <p class="text-xs text-tan mt-1 leading-relaxed">{{ mate.bio }}</p>
+                  {% endif %}
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="text-sm text-ash">Alone, for now.</p>
+        {% endif %}
+      </div>
+
+      {# Written once per act by three separate call sites since the pygame
+         build, and rendered here for the first time. #}
+      <div class="rounded-sm bg-soot/80 border border-edge p-4">
+        <p class="overline text-dust mb-2">Your own account</p>
+        {% if payload.chronicle %}
+          <ol class="space-y-2 text-sm text-parchment leading-relaxed">
+            {% for entry in payload.chronicle | reverse %}
+              <li>{{ entry }}</li>
+            {% endfor %}
+          </ol>
+        {% else %}
+          <p class="text-sm text-ash">Nothing worth writing down yet.</p>
+        {% endif %}
+      </div>
+    </section>
+
+  </div>
+</div>

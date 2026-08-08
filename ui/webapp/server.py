@@ -929,6 +929,35 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
         session = _require_session()
         return render_template("partials/log_panel.html", events=session.get_events(), payload=session.get_turn_payload())
 
+    @app.get("/ui/sheet")
+    def character_sheet():
+        """The character sheet, fetched when the player opens it.
+
+        Its own route rather than part of the turn panel: it is a good deal
+        of markup for something read now and then, and the turn panel is
+        re-fetched after every single action.
+        """
+        session = _require_session()
+        return render_template("partials/sheet.html", payload=session.get_sheet_payload())
+
+    @app.get("/run-portrait/<run_id>/companion/<path:name>")
+    def companion_portrait(run_id: str, name: str):
+        """A travelling companion's portrait.
+
+        The session resolves the name against the party it actually has and
+        hands back a path, so the URL never names a file. A companion who is
+        not with you has no portrait here, whatever the character registry
+        happens to hold.
+        """
+        session = _current_session()
+        if session is None or session.id != run_id:
+            abort(404)
+        portrait = session.companion_portrait(name)
+        if not portrait:
+            abort(404)
+        path = Path(portrait)
+        return send_from_directory(str(path.parent), path.name)
+
     def _action_response(html, status: int = 200):
         resp = make_response(html, status)
         resp.headers["HX-Trigger"] = "refresh-turn"

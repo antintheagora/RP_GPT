@@ -69,6 +69,17 @@
   <div class="app-content">
     {% block content %}{% endblock %}
   </div>
+
+  {# Overlays go out here, beside .app-content and never inside it.
+
+     Two reasons, both learned the hard way. `.app-content` picks up a
+     `filter` while the world is thinking, and an element with a filter
+     becomes the containing block for every `position: fixed` descendant --
+     so `inset: 0` stopped meaning "the window" and started meaning "this
+     div", which is taller than the window. And `body.is-thinking` sets
+     `pointer-events: none` on buttons inside .app-content, which would take
+     an overlay's own close button with it. #}
+  {% block overlays %}{% endblock %}
 </body>
 
 </html>

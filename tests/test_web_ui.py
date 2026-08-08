@@ -127,6 +127,63 @@ def test_something_on_screen_says_the_model_is_working():
     assert "is-thinking" in _text("static", "shell.js")
 
 
+def test_the_thinking_counter_does_not_count_a_boosted_form_twice():
+    """The one that froze the game.
+
+    `hx-boost` is declared once on <body> and inherited, so a boosted form
+    carries no htmx attribute of its own and is indistinguishable from a
+    plain one by attribute alone. Every ordinary form in this app is inside
+    that scope. The submit handler skipped forms with `hx-post`/`hx-get` and
+    counted the rest -- so for a boosted form htmx counted it *and* the
+    handler counted it, two up against one down, and the in-flight counter
+    never came back to zero.
+
+    `body.is-thinking` then stayed on for the rest of the session, and it
+    sets `pointer-events: none` on every button in `.app-content`. Measured
+    in a browser after resuming a saved campaign: thirty buttons on the play
+    screen, thirty of them unclickable. Resuming a save is how nearly every
+    session starts.
+    """
+    shell = _text("static", "shell.js")
+    assert "hx-boost" in shell, (
+        "the submit handler has to know htmx will send boosted forms itself, "
+        "or every one of them is counted twice and the game freezes"
+    )
+
+
+def test_being_busy_can_never_take_the_buttons_with_it_permanently():
+    """The rule that turns a stuck counter into an unplayable game."""
+    css = _text("static", "app.css")
+    block = css[css.index("body.is-thinking"):]
+    assert "pointer-events: none" in block[:400], (
+        "this test exists to remember that the dimming rule also disables "
+        "input -- if that stops being true, so does the severity of a stuck "
+        "counter"
+    )
+
+
+def test_overlays_are_not_inside_the_element_that_gets_a_filter():
+    """`.app-content` picks up a `filter` while the world is thinking.
+
+    An element with a filter becomes the containing block for every
+    `position: fixed` descendant, so an overlay inside it stops sizing to the
+    window and starts sizing to that div -- which is taller than the window.
+    The character sheet ran off the bottom of the screen. The same rule also
+    disables buttons inside `.app-content`, which would take an overlay's own
+    close button with it.
+    """
+    base = _text("templates", "base.html")
+    app_open = base.index('<div class="app-content">')
+    app_close = base.index("</div>", base.index("{% block content %}"))
+    inside = base[app_open:app_close]
+    assert "block overlays" not in inside, "overlays must live beside .app-content"
+    assert "{% block overlays %}" in base[app_close:], "and there must be somewhere to put them"
+
+    play = _text("templates", "play.html")
+    assert "{% block overlays %}" in play
+    assert "sheet-overlay" in play[play.index("{% block overlays %}"):]
+
+
 # =============================
 # ---- THE LIVE CHRONICLE -----
 # =============================

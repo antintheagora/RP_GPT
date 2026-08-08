@@ -27,13 +27,58 @@
     if (panel) setMenu(panel.classList.contains("hidden"));
   }
 
+  /* ---- the character sheet ----------------------------------------------
+   *
+   * Contents are fetched on open rather than with the page, so a screen the
+   * player looks at now and then costs nothing on the turns they do not.
+   */
+  function sheet() {
+    return document.getElementById("sheet-overlay");
+  }
+
+  function sheetIsOpen() {
+    var panel = sheet();
+    return !!panel && !panel.classList.contains("hidden");
+  }
+
+  function setSheet(open) {
+    var panel = sheet();
+    if (!panel) return;
+    panel.classList.toggle("hidden", !open);
+    // Ask for the contents every time it opens. The sheet holds HP, wounds
+    // and what you are carrying, all of which change while it is closed, and
+    // a stale sheet is worse than a slow one.
+    if (open) document.body.dispatchEvent(new CustomEvent("open-sheet"));
+  }
+
+  function typingInto(el) {
+    return !!(el && el.matches && el.matches("input, textarea, select"));
+  }
+
   document.addEventListener("keydown", function (e) {
+    var el = document.activeElement;
+
+    // C for the character sheet, but not while the player is writing a
+    // custom action -- there are Cs in that.
+    if ((e.key === "c" || e.key === "C") && !typingInto(el) &&
+        !e.ctrlKey && !e.metaKey && !e.altKey && sheet()) {
+      e.preventDefault();
+      setSheet(!sheetIsOpen());
+      return;
+    }
+
     if (e.key !== "Escape") return;
     // Escape in a text box means "I have finished typing", not "open the
     // menu" -- the custom-action textarea is the main thing on screen.
-    var el = document.activeElement;
-    if (el && el.matches && el.matches("input, textarea, select")) {
+    if (typingInto(el)) {
       el.blur();
+      return;
+    }
+    // Innermost thing first. With the sheet open, Escape means close the
+    // sheet; opening the menu on top of it would leave two overlays stacked
+    // and the game invisible under both.
+    if (sheetIsOpen()) {
+      setSheet(false);
       return;
     }
     toggleMenu();
@@ -41,7 +86,20 @@
 
   // Delegated, so the buttons can come and go with the page.
   document.addEventListener("click", function (e) {
-    var target = e.target.closest ? e.target.closest("[data-menu]") : null;
+    if (!e.target.closest) return;
+
+    var card = e.target.closest("[data-sheet]");
+    if (card) {
+      var how = card.getAttribute("data-sheet");
+      // The backdrop closes; the panel sitting on it must not, or every
+      // click inside the sheet shuts it.
+      if (how === "backdrop" && e.target !== card) return;
+      e.preventDefault();
+      setSheet(how === "toggle" ? !sheetIsOpen() : false);
+      return;
+    }
+
+    var target = e.target.closest("[data-menu]");
     if (!target) return;
     e.preventDefault();
     if (target.getAttribute("data-menu") === "close") setMenu(false);
@@ -113,6 +171,19 @@
    *
    * `data-quiet` opts a form out, for anything genuinely instant.
    */
+  /* Whether htmx is going to send this form itself.
+   *
+   * `hx-post`/`hx-get` on the form is the obvious case. The one that was
+   * missed is hx-boost: it is declared once, on <body>, and inherited, so a
+   * boosted form carries no htmx attribute of its own and looks exactly like
+   * a plain one. Every ordinary form in this app is inside that scope.
+   */
+  function htmxSends(form) {
+    if (form.hasAttribute("hx-post") || form.hasAttribute("hx-get")) return true;
+    var scope = form.closest("[hx-boost]");
+    return !!scope && scope.getAttribute("hx-boost") !== "false";
+  }
+
   document.addEventListener("submit", function (event) {
     var form = event.target;
     if (!form || form.tagName !== "FORM") return;
@@ -123,7 +194,20 @@
     var button = form.querySelector("button[type=submit], input[type=submit]");
     if (button && button.getAttribute("data-waiting") !== null) return;
 
-    busy(true);
+    /* Count it only if htmx is not going to.
+     *
+     * This is what froze the game. Every plain-looking form here is boosted,
+     * so htmx fires beforeRequest/afterRequest for it *and* this handler ran
+     * -- two calls up, one call down, and `inFlight` never returned to zero.
+     * The body kept `is-thinking` for the rest of the session, which dims the
+     * screen, blurs it, runs the progress bar forever, and sets
+     * `pointer-events: none` on every button inside .app-content.
+     *
+     * So: resume a saved campaign, and all thirty buttons on the play screen
+     * are dead. The comment above this handler says the point is that the
+     * screen must not look dead. It was making the screen *be* dead.
+     */
+    if (!htmxSends(form)) busy(true);
     if (!button) return;
     button.setAttribute("data-waiting", "");
     var said = button.getAttribute("data-waiting-text") ||

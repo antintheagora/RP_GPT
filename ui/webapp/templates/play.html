@@ -10,3 +10,23 @@
     <div id="log-panel" class="play-panel" hx-get="{{ url_for('log_panel') }}" hx-trigger="load, refresh-turn from:body" hx-target="this"></div>
   </div>
 {% endblock %}
+
+{% block overlays %}
+  {# Same reasoning as the Menu tab: a screen you can only reach by guessing a
+     keystroke is a screen nobody opens. #}
+  <button type="button" class="sheet-tab" data-sheet="toggle" title="Character sheet (C)">Character</button>
+
+  {# Fetched when it is opened, not on page load and not with every turn. The
+     turn panel is re-fetched after every action; this is not. #}
+  <div id="sheet-overlay" class="sheet-overlay hidden" data-sheet="backdrop">
+    <div class="sheet-panel ninebox" style="--img: var(--frame-image); --slice: 56px; --gap: 12px;">
+      <div class="nf tl"></div><div class="nf t"></div><div class="nf tr"></div>
+      <div class="nf l"></div><div class="nf c"></div><div class="nf r"></div>
+      <div class="nf bl"></div><div class="nf b"></div><div class="nf br"></div>
+      <div class="nine-content">
+        <div id="sheet-body" hx-get="{{ url_for('character_sheet') }}"
+             hx-trigger="open-sheet from:body" hx-target="this"></div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

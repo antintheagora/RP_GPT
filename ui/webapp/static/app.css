@@ -288,12 +288,198 @@ body.is-thinking .thinking-bar {
   border-color: rgba(255, 189, 107, 0.8);
 }
 
+/* Beside the Menu tab, in the same clothes. Width is fixed rather than
+   content-derived so the two tabs line up whatever they say. */
+.sheet-tab {
+  position: fixed;
+  top: 8px;
+  right: 84px;
+  z-index: 70;
+  padding: 4px 14px;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #c3c08d;
+  background: rgba(14, 11, 9, 0.78);
+  border: 1px solid rgba(195, 192, 141, 0.35);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.sheet-tab:hover {
+  color: #fdf5e4;
+  border-color: rgba(255, 189, 107, 0.8);
+}
+
 .settings-actions {
   display: flex;
   gap: 0.75rem;
   justify-content: center;
   align-items: stretch;
   margin-bottom: 1.5rem;
+}
+
+
+/* ==========================================================================
+   THE CHARACTER SHEET
+   ==========================================================================
+   An overlay you open over the game with C, or the Character tab.
+
+   The old pygame build drew this full-screen in three columns and the web
+   build never got it. What the live turn panel shows -- clocks, HP, the
+   stats -- stays where it is; this is for what you browse rather than
+   glance at, and for the two things that were being written and rendered
+   nowhere: the inventory and the player's own account of the campaign.
+   ========================================================================== */
+
+.sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  /* Under the settings overlay's 100, so Esc closing the innermost thing
+     first matches what is drawn on top. */
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 1.5rem;
+}
+
+.sheet-overlay.hidden {
+  display: none;
+}
+
+.sheet-panel {
+  width: min(1180px, 100%);
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* The ninebox draws its frame with absolutely positioned children, so the
+   content well needs to be told it may shrink or the scroll never engages
+   and the sheet grows off the bottom of the window. */
+.sheet-panel .nine-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 2rem 2.25rem;
+}
+
+/* The htmx target sits between the panel and the scroller, and a plain div
+   is a flex item with `min-height: auto` -- so it refused to shrink, the
+   scroller inherited a height taller than the panel, and the sheet ran off
+   the bottom of a short window with nothing to scroll. Every box in the
+   chain from the panel to the scroller has to agree to shrink. */
+.sheet-panel #sheet-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.sheet-scroll {
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-right: 0.5rem;
+}
+
+.sheet-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sheet-scroll::-webkit-scrollbar-thumb {
+  background: rgba(195, 192, 141, 0.25);
+  border-radius: 4px;
+}
+
+.sheet-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sheet-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding-bottom: 1.25rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid #332a24;
+}
+
+.sheet-close {
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: rgba(230, 220, 203, 0.5);
+  background: transparent;
+  border: 1px solid rgba(230, 220, 203, 0.18);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.sheet-close:hover {
+  color: #fdf5e4;
+  border-color: rgba(255, 189, 107, 0.8);
+}
+
+/* Three columns on a desktop, and honest about it on anything narrower --
+   the middle column holds a seven-across stat grid and an inventory, and
+   squeezing that into a third of a laptop window makes both unreadable. */
+.sheet-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 1.75rem;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .sheet-columns {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .sheet-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.sheet-col {
+  min-width: 0;
+}
+
+.sheet-portrait {
+  border: 1px solid #332a24;
+  border-radius: 2px;
+  overflow: hidden;
+  background: #0b0908;
+}
+
+.sheet-portrait img {
+  display: block;
+  width: 100%;
+  /* Portraits come back square from the image service. Cover rather than
+     contain so a stray aspect ratio crops instead of letterboxing. */
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+}
+
+.sheet-mate-portrait {
+  flex: none;
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border: 1px solid #332a24;
+  border-radius: 2px;
+  background: #0b0908;
 }
 
 
