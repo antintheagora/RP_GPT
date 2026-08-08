@@ -307,9 +307,11 @@ def test_the_style_survives_the_length_limit(monkeypatch):
     reached the host on a single picture the game has ever made."""
     from Core.Image_Gen import make_image_prompt
 
+    from Core.Config import IMAGE_STYLES, get_config
+
     _rebuild(monkeypatch)
     prompt = make_image_prompt(_scene_state())
-    assert prompt.startswith("cinematic film still")
+    assert prompt.startswith(IMAGE_STYLES[get_config().image_style].split(",")[0])
 
 
 def test_the_prompt_names_a_place_not_a_sentence():
@@ -365,3 +367,57 @@ def test_an_unknown_look_falls_back(monkeypatch):
     monkeypatch.setenv("RP_GPT_IMAGE_STYLE", "vaporwave")
     set_config(Config.from_env())
     assert get_config().image_style == DEFAULT_IMAGE_STYLE
+
+
+def test_a_picture_is_never_asked_for_by_name():
+    """A name carries no visual information and several carry the wrong kind:
+    "Sable" is a colour and an animal, "Brutus" pulls Roman, "Scout" pulls
+    binoculars and hillsides. The host has no idea who these people are and
+    will draw the word."""
+    import RP_GPT as core
+    from Core.Image_Gen import make_image_prompt
+
+    state = _scene_state()
+    state.last_actor = core.Actor(
+        name="Sable", kind="rogue", role="npc", discovered=True,
+        desc="lean thief with a sharp grin",
+    )
+    prompt = make_image_prompt(state)
+    assert "Sable" not in prompt
+    assert "lean thief with a sharp grin" in prompt
+
+
+def test_someone_with_no_written_look_falls_back_to_what_they_are():
+    import RP_GPT as core
+    from Core.Image_Gen import make_image_prompt
+
+    state = _scene_state()
+    state.last_actor = core.Actor(name="Kaelen", kind="scavenger", role="npc",
+                                  discovered=True, desc="")
+    prompt = make_image_prompt(state)
+    assert "Kaelen" not in prompt
+    assert "a scavenger" in prompt
+
+
+def test_nobody_undiscovered_appears_in_the_frame():
+    import RP_GPT as core
+    from Core.Image_Gen import make_image_prompt
+
+    state = _scene_state()
+    state.last_actor = core.Actor(name="Vane", kind="warden", role="enemy",
+                                  discovered=False, desc="a masked warden")
+    assert "wide establishing shot" in make_image_prompt(state)
+
+
+def test_the_visual_field_is_not_filled_with_personality():
+    """`desc` is documented as the visual field, and seeding put the character
+    traits in it -- so every generated character's "appearance" was a list
+    like "Ruthless, duty-bound", which is what the picture then asked for."""
+    from engine.blueprint import actors_from_seed
+
+    seeded = actors_from_seed([{
+        "name": "Vane", "kind": "warden", "hostile": True,
+        "personality": "Ruthless, duty-bound, unquestioningly loyal",
+    }], 1)
+    assert seeded[0].personality.startswith("Ruthless")
+    assert seeded[0].desc == ""

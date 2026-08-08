@@ -208,15 +208,26 @@ def test_the_schema_makes_the_clocks_impossible_to_omit():
 
 
 def test_an_act_clock_is_never_short_enough_to_end_in_two_turns():
-    """A standard success is worth two segments, so a 4-segment act is over
-    in two good turns. Four is the size for a single obstacle."""
+    """The enum used to offer [6, 8] and models overwhelmingly picked 6.
+    Six was already known to be too short -- measured at ending in three
+    turns or fewer a fifth of the time -- and offering it anyway is how a
+    real campaign came to have a two-turn second act."""
     schema = campaign_blueprint_schema(1)
     act = schema["properties"]["acts"]["properties"]["1"]
     for key in ("project_clock", "danger_clock"):
         allowed = act["properties"][key]["properties"]["segments"]["enum"]
-        assert 4 not in allowed
         assert set(allowed) <= set(LEGAL_SEGMENTS)
-        assert set(allowed) == {6, 8}
+        assert min(allowed) >= 8, f"{key} may still be short enough to skip"
+
+
+def test_the_two_clocks_are_not_offered_the_same_sizes():
+    """They are racing each other. Lengthening both together quietly hands
+    the race to whoever has the better rate, and that is the player: at 10/10
+    the win rate is 71%, at 10/8 it is 51%."""
+    act = campaign_blueprint_schema(1)["properties"]["acts"]["properties"]["1"]
+    project = act["properties"]["project_clock"]["properties"]["segments"]["enum"]
+    danger = act["properties"]["danger_clock"]["properties"]["segments"]["enum"]
+    assert min(project) > min(danger), "the danger clock must stay a size behind"
 
 
 @pytest.mark.parametrize("acts", [1, 3, 5])

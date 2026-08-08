@@ -352,7 +352,9 @@ def parley_options(present: Optional[List[str]] = None) -> List[MenuOption]:
     names = [n for n in (present or []) if n][:PARLEY_TARGETS]
     if not names:
         return [MenuOption(Verb.PARLEY, "Call out", key="parley", stat="CHA")]
-    return [MenuOption(Verb.PARLEY, f"Talk to {name}",
+    # The label is capitalised, the key and the target are not: the menu read
+    # "Talk to iguana", and the raw string is what the engine matches on.
+    return [MenuOption(Verb.PARLEY, f"Talk to {name[:1].upper()}{name[1:]}",
                        key=f"parley:{name}", stat="CHA", detail=name)
             for name in names]
 

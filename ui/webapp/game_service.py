@@ -343,6 +343,15 @@ class GameSession:
         # blueprint here, so a 2- or 5-act campaign walked off the end of the
         # acts dict partway through and lost the run.
         state.act_count = len(blueprint.acts)
+        # How long the world wants its acts to run. `turns_per_act` was read
+        # out of world.json, carried into this config, and then dropped on the
+        # floor -- the field existed on GameState and nothing ever set it.
+        try:
+            wanted = int(config.get("turns_per_act") or 0)
+        except (TypeError, ValueError):
+            wanted = 0
+        if wanted > 0:
+            state.turns_per_act_override = wanted
         # Images were switched off here, unconditionally and without comment.
         # That was the right call while the fetch ran inline: it retried four
         # times with a two-second backoff *inside the turn*, so a slow host
@@ -589,6 +598,40 @@ class GameSession:
             f"({talk_engine.band(talk_engine.affinity_of(actor)).value})"
         )
 
+    @staticmethod
+    def _talk_log(conversation, actor) -> List[Dict[str, str]]:
+        """The conversation, as a conversation.
+
+        This was `[x.text for x in exchanges]`, and `x.text` is the
+        mechanical summary -- so the panel that takes over the whole screen
+        while you are talking to somebody read:
+
+            Jasper is unmoved.
+            Jasper is unmoved.
+
+        The actual dialogue was being written the whole time, and written
+        well, and going to the event feed in the *other* panel. Every
+        exchange already carried `said` and `reply`; nothing read them.
+        """
+        who = getattr(actor, "name", "") or "They"
+        lines: List[Dict[str, str]] = []
+        for exchange in conversation.exchanges:
+            if exchange.said:
+                lines.append({"who": "You", "text": exchange.said, "kind": "said"})
+            if exchange.reply:
+                lines.append({"who": who, "text": exchange.reply, "kind": "reply"})
+            elif not exchange.said:
+                # A quick pick with no reply: say what was attempted, so a
+                # silent NPC does not leave the beat with nothing in it.
+                lines.append({
+                    "who": "You", "kind": "said",
+                    "text": TALK_PHRASE.get(exchange.stat, "You try another tack")
+                            .replace("them", who) + ".",
+                })
+            if exchange.text:
+                lines.append({"who": "", "text": exchange.text, "kind": "note"})
+        return lines
+
     def _talk_payload(self) -> Optional[Dict[str, Any]]:
         """The open conversation, if there is one."""
         if self._talk is None:
@@ -608,7 +651,7 @@ class GameSession:
             "exchanges": len(self._talk.exchanges),
             "max_exchanges": self._talk.max_exchanges,
             "spent": self._talk.spent,
-            "log": [x.text for x in self._talk.exchanges if x.text],
+            "log": self._talk_log(self._talk, actor),
             "options": [{"code": TALK_PREFIX + "CHA",
                          "label": TALK_PHRASE["CHA"], "stat": "CHA"}]
                        + [{"code": TALK_PREFIX + k,
@@ -803,7 +846,7 @@ class GameSession:
             _log.debug("could not render the character block", exc_info=True)
             return ""
 
-    def _post_turn(self) -> None:
+    def _post_turn(self, act_ending: bool = False) -> None:
         """What used to be end_of_turn, minus the passive ticks.
 
         end_of_turn raised `pressure` by 2+act every single turn and nudged
@@ -811,6 +854,14 @@ class GameSession:
         on fiction events now, never on time alone. What is kept is the part
         that was never about pacing -- buffs expiring, the turn's image, the
         chronicle, the occasional encounter.
+
+        `act_ending` turns all of that off. An act ending calls begin_act,
+        which rebuilds the cast and the scene from the next act's plan -- so
+        on the turn an act completes, this used to introduce someone, write
+        them a paragraph, give them a line of dialogue, and then delete them.
+        In a real playthrough a Ghoul arrived, said "you smell like a fresh
+        one, little meat-sack", and was gone before the screen redrew: the
+        only enemy in twelve turns of play, and the fight never happened.
         """
         for buff in list(self.state.player.buffs):
             buff.duration_turns -= 1
@@ -819,6 +870,12 @@ class GameSession:
                 ev.prose(f"[Buff fades] {buff.name}")
         self.state.turn_narrative_cache = None
         self.state.rested_this_turn = False
+
+        if act_ending:
+            # Nothing below survives the act boundary, and every one of them
+            # is a model call.
+            self._options = None
+            return
 
         # Flavour, not rules. None of it may take a turn down with it.
         for label, step in (
@@ -949,7 +1006,29 @@ class GameSession:
         begin_act(state, state.act.index + 1)
         self.run = build_run(state)
         self.keeper = ModelKeeper(self.client, self._character_block(), self._recall)
+        self._announce_act()
         ev.chapter(sanitize_prose(state.act.situation or f"Act {state.act.index}."))
+
+    #: Acts are numbered on screen; in the story they are named.
+    ACT_NAMES = ("One", "Two", "Three", "Four", "Five", "Six", "Seven")
+
+    def _announce_act(self) -> None:
+        """Say out loud that a chapter turned.
+
+        The single biggest beat a campaign has, and nothing marked it: the
+        header quietly changed from "Act 1 of 3" to "Act 2 of 3" and the feed
+        ran on from the old act's recap straight into the new act's scene,
+        with no line between them.
+        """
+        index = self.state.act.index
+        name = (self.ACT_NAMES[index - 1] if index <= len(self.ACT_NAMES)
+                else str(index))
+        goal = ""
+        plan = (self.state.blueprint.acts.get(index)
+                if getattr(self.state, "blueprint", None) else None)
+        if plan is not None:
+            goal = (getattr(plan, "goal", "") or "").strip().rstrip(".")
+        ev.chapter(f"Act {name}" + (f". {goal}." if goal else "."))
 
     def _advance_act(self) -> None:
         """The act's project clock filled. Recap it, then move on or end."""
@@ -981,6 +1060,7 @@ class GameSession:
         begin_act(state, state.act.index + 1)
         self.run = build_run(state)
         self.keeper = ModelKeeper(self.client, self._character_block(), self._recall)
+        self._announce_act()
         ev.chapter(sanitize_prose(state.act.situation or f"Act {state.act.index}."))
 
     # ------------------------------------------------------------ streaming
@@ -1171,7 +1251,13 @@ class GameSession:
                         sync_back(self.run, self.state, result)
 
                         if consumed:
-                            self._post_turn()
+                            # Whether this turn was also the last one. An act
+                            # ending rebuilds the cast, so anything the
+                            # flavour pass walks into the scene here is thrown
+                            # away moments later -- see _post_turn.
+                            self._post_turn(
+                                act_ending=bool(result.act_complete or result.act_failed)
+                            )
                         if result.act_complete:
                             self._advance_act()
                         elif result.act_failed:

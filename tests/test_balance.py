@@ -138,3 +138,80 @@ def test_campaigns_do_not_drag():
     stats = run(trials=TRIALS, stats=AVERAGE)
     assert stats["avg_turns"] < 60, "campaigns are running far too long"
     assert stats["avg_turns"] > 4, "campaigns are resolving in almost no turns"
+
+
+# =============================
+# ------- HOW LONG AN ACT -----
+# =============================
+#
+# The gate measured whether a campaign could be *won* and never how long one
+# lasted, so it passed a build in which Act 2 of a real playthrough was over
+# in two turns. It could not have caught that: `avg_turns > 4` is the floor
+# for three whole acts.
+#
+# An act is the unit a player experiences. If an act is four turns, then the
+# Tides never take a second move, reputation never travels, wounds never
+# accumulate, and the Director -- which holds a stance for two to three turns
+# by design -- gets to express roughly one mood per act. Every slow system in
+# the game is downstream of this number.
+
+ACT_FLOOR = 5        # below this the act is a formality
+ACT_CEILING = 14     # above it the act is a slog
+
+
+def test_an_act_is_not_over_before_it_starts():
+    stats = run(trials=TRIALS, stats=AVERAGE)
+    assert stats["acts_measured"], "no acts completed; nothing to measure"
+    assert stats["median_act_turns"] >= ACT_FLOOR, (
+        f"acts last {stats['median_act_turns']} turns"
+    )
+    assert stats["median_act_turns"] <= ACT_CEILING
+
+
+def test_a_capable_character_playing_well_still_has_to_play():
+    """The case that broke. The old numbers let a strong character finish one
+    act in three turns or fewer one time in six -- and the shipped clock size
+    was the short one, so this was not an edge case, it was Tuesday."""
+    from engine.simulate import SimConfig
+
+    sharp = run(trials=TRIALS, stats=STRONG,
+                config=SimConfig(picks_best_approach=0.95))
+    assert sharp["median_act_turns"] >= 4, (
+        f"a good character clears an act in {sharp['median_act_turns']} turns"
+    )
+    assert sharp["short_act_rate"] < 0.02, (
+        f"{sharp['short_act_rate']:.0%} of acts end in three turns or fewer"
+    )
+
+
+def test_a_short_clock_is_what_made_acts_short():
+    """The measurement, kept as a test so the reasoning is checkable rather
+    than a comment somebody has to trust."""
+    from engine.simulate import SimConfig
+
+    short = run(trials=1500, stats=STRONG,
+                config=SimConfig(project_segments=6, danger_segments=6,
+                                 picks_best_approach=0.95))
+    shipped = run(trials=1500, stats=STRONG,
+                  config=SimConfig(picks_best_approach=0.95))
+    assert short["short_act_rate"] > shipped["short_act_rate"] * 4, (
+        "the six-segment clock is supposed to be the bad one"
+    )
+    assert short["median_act_turns"] < shipped["median_act_turns"]
+
+
+def test_the_danger_clock_stays_a_size_behind_the_project_clock():
+    """They are racing. Making both longer together quietly hands the race to
+    whoever has the better rate, and that is the player -- at 10/10 the win
+    rate is 71%, well outside the band this file exists to hold."""
+    from engine.clocks import ACT_DANGER_SEGMENTS, ACT_SEGMENTS
+    from engine.simulate import SimConfig
+
+    assert ACT_DANGER_SEGMENTS < ACT_SEGMENTS
+
+    even = run(trials=1500, stats=AVERAGE,
+               config=SimConfig(project_segments=ACT_SEGMENTS,
+                                danger_segments=ACT_SEGMENTS))
+    assert even["win_rate"] > WIN_CEILING, (
+        "equal clocks are supposed to be the too-easy case"
+    )

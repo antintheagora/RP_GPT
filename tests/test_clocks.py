@@ -74,7 +74,7 @@ def test_filling_is_reported_once_not_every_tick():
     assert not clock.tick(1).filled_now, "already full; not a new completion"
 
 
-@pytest.mark.parametrize("requested,expected", [(5, 4), (7, 6), (3, 4), (100, 8), (0, 4)])
+@pytest.mark.parametrize("requested,expected", [(5, 4), (7, 6), (3, 4), (100, 12), (0, 4)])
 def test_odd_segment_counts_snap_to_a_legal_size(requested, expected):
     """A model will propose 5. Snap rather than reject."""
     assert Clock(id="c", name="C", segments=requested).segments == expected
@@ -233,10 +233,28 @@ def test_a_tide_survives_junk_from_the_model():
 
 
 def test_named_sizes_carry_the_pacing_decision():
-    """Measured over 600 acts: a 6-segment act ends in <=3 turns a fifth of
-    the time. Acts take eight; a single obstacle takes four."""
-    from engine.clocks import ACT_SEGMENTS, SCENE_SEGMENTS
+    """Re-measured over 2,500 acts after a real campaign produced a two-turn
+    act: ten for what the player fills, eight for what is coming, four for a
+    single obstacle."""
+    from engine.clocks import ACT_DANGER_SEGMENTS, ACT_SEGMENTS, SCENE_SEGMENTS
 
-    assert Clock.for_act("a", "Act").segments == ACT_SEGMENTS == 8
+    assert Clock.for_act("a", "Act").segments == ACT_SEGMENTS == 10
     assert Clock.for_scene("s", "Scene").segments == SCENE_SEGMENTS == 4
-    assert Clock.for_act("d", "Danger", ClockKind.DANGER).kind is ClockKind.DANGER
+    danger = Clock.for_act("d", "Danger", ClockKind.DANGER)
+    assert danger.kind is ClockKind.DANGER
+    assert danger.segments == ACT_DANGER_SEGMENTS == 8, (
+        "the two clocks are racing and must not be the same length"
+    )
+
+
+def test_a_world_that_states_its_act_length_gets_it():
+    """`turns_per_act` sat in world.json, travelled all the way into the
+    session config, and was dropped on the floor."""
+    from engine.clocks import segments_for_turns
+
+    assert segments_for_turns(10) == 10
+    assert segments_for_turns(12) == 12
+    assert segments_for_turns(4) == 4
+    assert segments_for_turns(11) in (10, 12)
+    assert segments_for_turns(0) == 10, "no answer means the default"
+    assert segments_for_turns(None) == 10

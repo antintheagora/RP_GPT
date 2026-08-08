@@ -86,12 +86,21 @@ def actors_from_seed(seed, act_index:int)->List[Actor]:
         hp=base_hp + (act_index-1)*6 + (4 if role=="enemy" else 0)
         atk=base_atk + (act_index-1)*1 + (1 if role=="enemy" else 0)
         species,comm=infer_species_and_comm_style(a.get("kind","npc"))
+        # Capitalised at birth rather than at every place that prints it: the
+        # model types "iguana" and the game then said "iguana crests a ridge
+        # of jagged rubble" and offered "Talk to iguana".
+        raw_name = str(a.get("name") or "Stranger").strip() or "Stranger"
         actor = Actor(
-            name=a.get("name","Stranger"), kind=a.get("kind","npc"),
+            name=raw_name[:1].upper() + raw_name[1:], kind=a.get("kind","npc"),
             hp=hp, attack=atk, disposition=int(a.get("disposition",0)),
             personality=a.get("personality",""), role=role, discovered=False, alive=True,
             faction_id=(str(a.get("faction") or "").strip() or None),
-            desc=a.get("personality",""),
+            # NOT personality. `desc` is the visual field, and filling it
+            # with traits gave every generated character an appearance of
+            # "Ruthless, duty-bound" -- which is what the image prompt then
+            # asked to be drawn. Left empty for describe_actor_physical to
+            # fill with something a picture can use.
+            desc="",
             species=species, comm_style=comm, personality_archetype=personality_roll()
         )
         _persist_profile(actor)
@@ -110,6 +119,43 @@ def _clock_spec(raw: Any, fallback: str) -> Dict[str, Any]:
     return {"name": name, "segments": segments}
 
 
+# A model writing a *plan* slips into describing the person it is planning
+# against. Tide moves are printed to the screen verbatim, so one real
+# campaign narrated "A cultist scout spots the player's tracks." -- the word
+# "player" said out loud, to the player.
+#
+# The possessive and object forms are the common ones and they substitute
+# cleanly. Subject position needs the verb fixing too, which is why the
+# auxiliaries are listed rather than left to produce "you is spotted".
+_THIRD_PERSON = re.compile(
+    r"\bthe (?:player|PC|protagonist|player character)(?:'s|s')?\b", re.IGNORECASE)
+_AUXILIARY = {
+    "is": "are", "was": "were", "has": "have", "does": "do",
+    "isn't": "aren't", "wasn't": "weren't", "hasn't": "haven't",
+    "doesn't": "don't",
+}
+
+
+def in_the_players_own_terms(text: str) -> str:
+    """Rewrite model text that talks *about* the player into talking *to* them."""
+    if not text:
+        return text
+
+    def swap(match: "re.Match") -> str:
+        whole = match.group(0)
+        return "your" if whole.endswith(("'s", "s'")) else "you"
+
+    out = _THIRD_PERSON.sub(swap, text)
+    if out == text:
+        return text
+    # "you is spotted" -> "you are spotted".
+    for wrong, right in _AUXILIARY.items():
+        out = re.sub(rf"\b(you)\s+{re.escape(wrong)}\b", rf"\1 {right}",
+                     out, flags=re.IGNORECASE)
+    # A sentence that now opens with "you" should still open with a capital.
+    return re.sub(r"(^|(?<=[.!?]\s))you\b", "You", out)
+
+
 def _tide_spec(raw: Any) -> Dict[str, Any]:
     """The opposition's plan: what it wants and the moves it makes.
 
@@ -118,14 +164,16 @@ def _tide_spec(raw: Any) -> Dict[str, Any]:
     """
     if not isinstance(raw, dict):
         return {}
-    moves = [str(m).strip() for m in (raw.get("moves") or []) if str(m or "").strip()]
+    moves = [in_the_players_own_terms(str(m).strip())
+             for m in (raw.get("moves") or []) if str(m or "").strip()]
     if not moves:
         return {}
     return {
         "name": str(raw.get("name") or "").strip(),
-        "wants": str(raw.get("wants") or "").strip(),
+        "wants": in_the_players_own_terms(str(raw.get("wants") or "").strip()),
         "moves": moves[:6],
-        "if_completed": str(raw.get("if_completed") or "").strip(),
+        "if_completed": in_the_players_own_terms(
+            str(raw.get("if_completed") or "").strip()),
     }
 
 
@@ -138,7 +186,8 @@ def json_to_actplan(d:Dict[str,Any])->ActPlan:
     tides = [spec for spec in (_tide_spec(t) for t in raw_tides) if spec]
 
     return ActPlan(
-        goal=goal, intro_paragraph=d.get("intro_paragraph",""),
+        goal=in_the_players_own_terms(goal),
+        intro_paragraph=in_the_players_own_terms(d.get("intro_paragraph","")),
         pressure_evolution=d.get("pressure_evolution",""),
         suggested_encounters=d.get("suggested_encounters",[]) or [],
         seed_actors=d.get("seed_actors",[]) or [], seed_items=d.get("seed_items",[]) or [],

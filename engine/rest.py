@@ -148,6 +148,13 @@ def take_rest(run, *, rng: Optional[random.Random] = None,
     if result.dream_text:
         ev.prose(result.dream_text)
 
+    # A night restores the party's willingness to step in, not just your own
+    # body. Assists are counted per scene and nothing reset them, so a
+    # companion who had helped twice stayed spent across every night that
+    # followed -- for the rest of the act.
+    # `assists_left` is derived; `assists_used` is the one that moves.
+    run.assists_used = 0
+
     # --- 3. time passes --------------------------------------------------
     # This is the price of the night, and it is what stops rest being free.
     tick = run.clocks.tick(run.danger_id, 1)

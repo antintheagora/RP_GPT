@@ -17,7 +17,14 @@ from typing import Dict, List, Optional
 
 from engine.actions import Depth, Intent, ObserveTarget, Verb
 from engine.character import Condition, WeaponWeight
-from engine.clocks import ACT_SEGMENTS, Clock, ClockBoard, ClockKind
+from engine.clocks import (
+    ACT_DANGER_SEGMENTS,
+    ACT_SEGMENTS,
+    Clock,
+    ClockBoard,
+    ClockKind,
+    segments_for_turns,
+)
 from engine.director import Director
 from engine.model import SPECIAL_KEYS
 from engine.resolve import DEFAULT_BASE_DIFFICULTY, Bearing
@@ -167,13 +174,24 @@ def build_run(state) -> Run:
     # it -- those were never names a player could act on.
     project_spec = getattr(plan, "project_clock", None) or {}
     danger_spec = getattr(plan, "danger_clock", None) or {}
+
+    # A world states how long its acts should run, and until now nothing
+    # anywhere read it -- the number sat in world.json, travelled all the way
+    # into the session config, and was dropped. Act length was whatever the
+    # model felt like that day. When a world says, the world wins.
+    wanted = getattr(state, "turns_per_act_override", None)
+    if wanted:
+        project_segments = segments_for_turns(wanted)
+        danger_segments = max(4, project_segments - 2)
+    else:
+        project_segments = project_spec.get("segments") or ACT_SEGMENTS
+        danger_segments = danger_spec.get("segments") or ACT_DANGER_SEGMENTS
+
     clocks = ClockBoard([
         Clock(id="project", name=project_spec.get("name") or goal,
-              segments=project_spec.get("segments") or ACT_SEGMENTS,
-              kind=ClockKind.PROJECT),
+              segments=project_segments, kind=ClockKind.PROJECT),
         Clock(id="danger", name=danger_spec.get("name") or pressure,
-              segments=danger_spec.get("segments") or ACT_SEGMENTS,
-              kind=ClockKind.DANGER),
+              segments=danger_segments, kind=ClockKind.DANGER),
     ])
     # Restore where the clocks actually stood. This used to be rebuilt from a
     # 0-100 meter and scaled back, so the saved value and the restored one

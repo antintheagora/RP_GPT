@@ -233,9 +233,21 @@
       </div>
     </div>
 
+    {# The conversation itself. This used to print the mechanical summary of
+       each exchange -- "Jasper is unmoved.", twice -- while the dialogue that
+       had been written for it went to the log panel next door. #}
     {% if payload.talk.log %}
-      <ul class="space-y-1 text-sm text-tan">
-        {% for line in payload.talk.log %}<li>{{ line }}</li>{% endfor %}
+      <ul class="space-y-2 max-h-64 overflow-y-auto pr-1">
+        {% for line in payload.talk.log %}
+          {% if line.kind == 'note' %}
+            <li class="text-xs text-ash italic">{{ line.text }}</li>
+          {% else %}
+            <li class="text-sm {{ 'text-parchment' if line.kind == 'said' else 'text-verdigris' }}">
+              <span class="overline text-dust">{{ line.who }}</span>
+              <span class="block">{{ line.text }}</span>
+            </li>
+          {% endif %}
+        {% endfor %}
       </ul>
     {% endif %}
 
@@ -323,6 +335,11 @@
   {# Rest is not an attempt at anything, so it is not a menu verb. It states
      its price up front: the night is not free, and the danger clock is
      visible directly above this button. #}
+  {# Whether there is anything to recover. A night at full health and full
+     nerve only ticks the danger clock, so the button was offering a move
+     that is strictly bad and saying nothing about it. #}
+  {% set unhurt = cond and cond.hp >= cond.max_hp and cond.resolve >= cond.max_resolve
+                  and not cond.wounds.wounds %}
   <form hx-post="{{ url_for('handle_action') }}" hx-swap="none">
     <input type="hidden" name="action" value="rest" />
     <button class="w-full rounded-sm bg-hearth px-4 py-3 text-left hover:bg-edge transition">
@@ -330,6 +347,11 @@
       <span class="block text-sm text-dust">
         Recover, and dream. The world moves while you sleep{% if payload.clocks and payload.clocks|length > 1 %} — {{ payload.clocks[1].name }} advances{% endif %}.
       </span>
+      {% if unhurt %}
+        <span class="block text-sm text-brass mt-1">
+          Nothing to sleep off. Tonight would cost you a segment and give nothing back.
+        </span>
+      {% endif %}
     </button>
   </form>
 

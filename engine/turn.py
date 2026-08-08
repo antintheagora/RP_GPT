@@ -47,6 +47,18 @@ from engine.resolve import (
 from engine.scene import Obstacle, Scene
 from engine.tides import TideBoard, TideMove
 
+# Failing from Poised: you saw it going wrong and stopped. What "stopping"
+# looks like depends entirely on what you were doing, and one line for all of
+# them put "you pull back before it does" in the middle of a conversation.
+WITHDREW_FROM = {
+    Verb.PARLEY: "You hear how it is landing and let the thought go unsaid.",
+    Verb.ATTACK: "You check the swing before it commits you.",
+    Verb.OBSERVE: "Nothing here is worth the time it would take.",
+    Verb.USE_ITEM: "You think better of it and put it away.",
+    Verb.WITHDRAW: "You think better of the route and stay put.",
+    None: "You see it going wrong and pull back before it does.",
+}
+
 
 class Keeper(Protocol):
     """Rates an approach against an obstacle. A model, or a stub in tests."""
@@ -343,7 +355,11 @@ def advance_turn(
     # failure in between silently deleted.
     if resolution.can_withdraw:
         result.withdrew = True
-        ev.marginal("You see it going wrong and pull back before it does.")
+        # Said differently depending on what you were doing. Backing out of a
+        # sentence is not backing out of a lunge, and "you pull back before it
+        # does" landed mid-conversation, where there was nothing to pull back
+        # from and nothing had been risked.
+        ev.marginal(WITHDREW_FROM.get(intent.verb, WITHDREW_FROM[None]))
 
     if intent.verb is Verb.OBSERVE:
         observation = apply_observation(
@@ -461,6 +477,16 @@ def _next_stage(run: Run) -> str:
     return name
 
 
+# A clause that opens with one of these is a subordinate clause, not the name
+# of a thing. "The deeper you go, the more the old tech hums" split at the
+# comma and offered "The deeper you go" as the name of an obstacle.
+_NOT_A_NAME = (
+    "the deeper", "the further", "the closer", "the longer", "the more",
+    "as ", "when ", "while ", "after ", "before ", "because ", "if ",
+    "though ", "although ", "since ", "until ", "unless ", "whenever ",
+)
+
+
 def _next_problem_name(run: Run) -> str:
     """What stands in the way now, in the fiction's own words.
 
@@ -470,19 +496,29 @@ def _next_problem_name(run: Run) -> str:
     produced "You stumble through the heavy steam, your movements fluid and
     graceful even as a", which is not the name of anything.
     """
+    project = run.project
+    already = (project.name if project else "").strip().lower()
+
     text = (run.scene.description or "").strip()
     for sentence in text.replace("!", ".").replace("?", ".").split("."):
         clause = sentence.strip().split(",")[0].strip()
-        for opener in ("You ", "The ", "A "):
-            if clause.startswith(opener) and opener == "You ":
-                clause = clause[4:].strip()
-        if 12 <= len(clause) <= 60:
-            return clause[0].upper() + clause[1:]
+        if clause.startswith("You "):
+            clause = clause[4:].strip()
+        if not (12 <= len(clause) <= 60):
+            continue
+        low = clause.lower()
+        if low.startswith(_NOT_A_NAME):
+            continue                     # a subordinate clause, not a name
+        if low == already:
+            continue
+        return clause[0].upper() + clause[1:]
 
-    # Nothing clean in the prose: the clock says what this act is about, and
-    # it was authored short on purpose.
-    project = run.project
-    return project.name if project else "What is left of it"
+    # Nothing clean in the prose. This used to fall through to the project
+    # clock's name, which produced "That is behind you. Now: The Vault's Seal
+    # Weakens" -- naming the new problem after the progress bar sitting three
+    # inches above it, still showing 5/6. Better to say plainly that there is
+    # more of it than to name it after something else on the screen.
+    return "What is left of it"
 
 
 def _apply_clocks(run: Run, resolution: Resolution,

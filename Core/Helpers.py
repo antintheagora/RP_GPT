@@ -48,6 +48,12 @@ def sanitize_prose(raw: str) -> str:
     # Remove piles of blank lines or double spaces so the text flows smoothly.
     cleaned = re.sub(r"\s+\n\s+", "\n", cleaned)
     cleaned = re.sub(r"\s{2,}", " ", cleaned)
+    # Markdown emphasis. Models reach for it constantly and it is not a thing
+    # this game renders, so it arrives on screen as punctuation: one NPC
+    # opened with `*Hehehe! You smell like a fresh one` -- an asterisk that
+    # was never closed, because the closing one fell off the end of the
+    # character budget.
+    cleaned = re.sub(r"\*{1,3}|(?<!\w)_{1,3}(?!\w)|`", "", cleaned)
     # Make sure the sentence ends with strong punctuation so it feels complete.
     if cleaned and cleaned[-1] not in ".!?…":
         cleaned += "."

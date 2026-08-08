@@ -74,6 +74,12 @@ IMAGE_MODELS = ("flux", "gptimage", "turbo")
 IMAGE_STYLES = {
     "cinematic": ("cinematic film still, anamorphic, volumetric light, "
                   "muted colour grade, shallow depth of field"),
+    # Kept, but it does not currently work: these models are trained on
+    # photographs and will not degrade themselves on request. Tried through
+    # flux and turbo, and with far harder wording (PS1, flat polygons, 240p,
+    # "not photorealistic"), and every attempt came back photoreal. Getting
+    # this look needs a model fine-tuned for it, or post-processing. Left in
+    # place for when there is one.
     "retro3d": ("early CGI, 1990s Bryce 3D render, FMV cutscene aesthetic, "
                 "low-poly textures, eerie lighting, muted palette"),
     "painted": ("digital matte painting, painterly brushwork, dramatic light, "
@@ -82,7 +88,7 @@ IMAGE_STYLES = {
              "documentary framing, harsh natural light"),
 }
 
-DEFAULT_IMAGE_STYLE = "cinematic"
+DEFAULT_IMAGE_STYLE = "grim"
 
 
 # =============================

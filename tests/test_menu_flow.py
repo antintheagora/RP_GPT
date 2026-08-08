@@ -73,7 +73,7 @@ def _session(keeper=None, tmp_path=None, monkeypatch=None):
     session.keeper = keeper or StubKeeper()
     # Never touch the real save directory from a test.
     session.save = lambda: None
-    session._post_turn = lambda: None
+    session._post_turn = lambda **_: None
     return session
 
 
@@ -129,8 +129,10 @@ def test_the_old_numeric_codes_still_work():
 def test_the_payload_carries_countable_clocks_not_a_percentage():
     payload = _session().get_turn_payload()
     assert payload["clocks"], "the HUD has nothing to draw"
+    from engine.clocks import LEGAL_SEGMENTS
+
     for clock in payload["clocks"]:
-        assert clock["segments"] in (4, 6, 8)
+        assert clock["segments"] in LEGAL_SEGMENTS
         assert 0 <= clock["filled"] <= clock["segments"]
     assert "pressure" not in payload, "the 0-100 meter is gone"
     assert "turn_cap" not in payload, "acts do not end on a turn count any more"

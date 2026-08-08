@@ -38,6 +38,20 @@ from Core.AI_Dungeon_Master import (
 from Core.Choice_Handler import goal_lock_active
 
 
+
+def display_name(actor) -> str:
+    """A name as it should appear in prose.
+
+    Seeded actors arrive named however the model typed them, and the menu
+    offered "Talk to iguana" while the narration said "iguana crests a ridge".
+    A name is capitalised; a bare noun for a creature reads as one.
+    """
+    name = (getattr(actor, "name", "") or "").strip()
+    if not name:
+        return "Someone"
+    return name if name[:1].isupper() else name[:1].upper() + name[1:]
+
+
 def _core():
     """Access RP_GPT at runtime (prevents circular imports at import time)."""
     import RP_GPT as core  # type: ignore
@@ -148,7 +162,10 @@ def handle_post_turn_beat(state, g: GemmaClient):
             actor = try_discover_actor(state, g, related_bias)
             if not actor:
                 return
-            _ev.prose(f"Encounter: {actor.name} ({actor.kind}/{actor.role}) appears.")
+            # Was: "Encounter: iguana (creature/npc) appears." -- the label,
+            # the internal kind and the internal role, printed to the player,
+            # immediately above a paragraph that says the same thing properly.
+            _ev.chapter(f"{display_name(actor)} is here.")
             blurb = g.text(encounter_flavor_prompt(state, actor), tag="Encounter", max_chars=420)
             _ev.prose(wrap(sanitize_prose(blurb)))
             _ev.prose("")
@@ -178,7 +195,7 @@ def handle_post_turn_beat(state, g: GemmaClient):
                     _ev.prose("")
         else:
             # Item/world discovery
-            _ev.prose("Encounter: The world intrudes.")
+            _ev.chapter("The world intrudes.")
             blurb = g.text(encounter_flavor_prompt(state, None), tag="World vignette", max_chars=360)
             _ev.prose(wrap(sanitize_prose(blurb)))
             _ev.prose("")

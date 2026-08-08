@@ -595,9 +595,40 @@ def attack(self) -> int:
 - **Danger clocks** — what is trying to happen to you. *The Ironclad Patrol Sweeps the Quarter*
 - **Long clocks** — belong to Tides and advance off-screen
 
-Clocks have 4, 6, or 8 segments.
+Clocks have 4, 6, 8, 10 or 12 segments.
 
-**Display: bar and number both.** `Find the Coven's Archive ●●●●○○ 4/6`
+**An act is ten segments, and the danger clock racing it is eight.** **Built.**
+A world may say otherwise: `turns_per_act` in `world.json` sizes the act
+clock directly, roughly one segment per turn.
+
+This is the number the whole shape of a campaign rests on, and it was wrong.
+Acts were six segments and a Great roll fills three, so two good rolls ended
+one — Act 2 of a real playthrough lasted two turns. Every slow system in the
+game is downstream of it: at four turns an act, a Tide never takes a second
+move, reputation never travels, wounds never accumulate, and the Director,
+which holds a stance for two to three turns by design, expresses about one
+mood per act.
+
+Measured over 2,500 simulated acts:
+
+| project / danger | median act | ended in ≤3 turns | win rate |
+|---|---|---|---|
+| 6 / 6 | 5.3 turns | 16% *(capable character)* | 57% |
+| 8 / 8 | 6.7 turns | 0% | 64% |
+| **10 / 8** | **8.5 turns** | **0%** | **51%** |
+| 12 / 8 | 10.5 turns | 0% | 39% |
+
+**The two clocks must not be the same size.** They are racing, and
+lengthening both together quietly hands the race to whoever has the better
+rate — which is the player. At 10/10 the win rate is 71%; at 10/8 it is 51%.
+
+> The balance gate could not have caught any of this. It measured whether a
+> campaign was *winnable* and never how long one lasted, and it ran every
+> trial with every approach rated Dire — the pessimistic case. It proved the
+> game was not too hard. Nothing looked at the other direction. It measures
+> act length now.
+
+**Display: bar and number both.** `Find the Coven's Archive ●●●●○○○○○○ 4/10`
 
 **Filling, by outcome:**
 
@@ -1172,7 +1203,7 @@ All marked **[tunable]** unless noted otherwise.
 | Resist: reduce wound | 3 Resolve | |
 | Resist: negate level 1 | 5 Resolve | |
 | Rally raw portion | `damage // 3` | held one turn |
-| Clock sizes | 4, 6, or 8 segments | |
+| Clock sizes | 4, 6, 8, 10 or 12 segments | act 10, its danger clock 8 |
 | Clock fill, your clock | Critical 3 (+ a benefit) · Great 3 · Standard 2 · Limited 1 | the effect band *is* the fill |
 | Clock fill, opposing clock | Limited +1 · clean failure +1 · critical failure +2 | |
 | Scars to retirement | 4 | |

@@ -23,20 +23,43 @@ EMPTY_PIP = "○"     # ○
 
 # The only sizes a clock may be. Arbitrary sizes make progress impossible to
 # eyeball, and a player should be able to count a clock at a glance.
-LEGAL_SEGMENTS = (4, 6, 8)
+LEGAL_SEGMENTS = (4, 6, 8, 10, 12)
 
-# Measured over 600 simulated acts at average stats, with the effect bands as
-# they stand (Great fills 3, Standard 2):
+# Re-measured over 2,500 simulated acts, because a real campaign kept ending
+# before it started -- Act 2 of one playthrough lasted two turns.
 #
-#     segments   median act   ended in <=3 turns
-#         4        4 turns          38%
-#         6        6 turns          21%
-#         8        8 turns           5%
+#   project/danger | average character      | strong, playing well   | win rate
+#                  | median  p10  <=3 turns | median  p10  <=3 turns |
+#        6 / 6     |   5.3   3.7      4%    |   4.0   3.0     16%    |   57%
+#        8 / 8     |   6.7   5.0      0%    |   5.0   4.0      0%    |   64%
+#       10 / 8     |   8.5   6.3      0%    |   6.3   5.0      0%    |   51%
+#       12 / 8     |  10.5   7.7      0%    |   7.3   6.0      0%    |   39%
 #
-# A six-segment act ends in three turns or fewer a fifth of the time, which is
-# not a chapter. Acts take eight; a single obstacle inside one takes four.
+# Two things this says. A six-segment act ends in three turns or fewer one
+# time in six for a capable character -- that is not a chapter, it is a
+# formality, and the whole shape of a campaign was resting on it. And the two
+# clocks must not be the same size: making both longer makes the game *easier*
+# (a longer race favours whoever has the better rate, and that is the player),
+# so the danger clock stays a size behind the one it is racing.
 SCENE_SEGMENTS = 4
-ACT_SEGMENTS = 8
+ACT_SEGMENTS = 10
+ACT_DANGER_SEGMENTS = 8
+
+
+def segments_for_turns(turns: int) -> int:
+    """How big an act clock has to be for an act to last roughly that long.
+
+    Close to one segment per turn: a success fills two on average, and rather
+    less than every turn is a success. Worlds author `turns_per_act` and until
+    now nothing anywhere read it -- act length was whatever the model picked.
+    """
+    try:
+        wanted = int(turns)
+    except (TypeError, ValueError):
+        return ACT_SEGMENTS
+    if wanted <= 0:
+        return ACT_SEGMENTS
+    return min(LEGAL_SEGMENTS, key=lambda s: (abs(s - wanted), -s))
 
 
 class ClockKind(str, Enum):
@@ -125,9 +148,15 @@ class Clock:
 
     @classmethod
     def for_act(cls, id: str, name: str, kind: "ClockKind" = None) -> "Clock":
-        """An act-length clock. Eight segments, per the pacing measurement."""
-        return cls(id=id, name=name, segments=ACT_SEGMENTS,
-                   kind=kind or ClockKind.PROJECT)
+        """An act-length clock, sized by what it is for.
+
+        Ten for what the player is filling, eight for what is coming -- see
+        the measurement above. Equal-sized clocks quietly made the game
+        easier the longer they got.
+        """
+        kind = kind or ClockKind.PROJECT
+        segments = ACT_DANGER_SEGMENTS if kind is ClockKind.DANGER else ACT_SEGMENTS
+        return cls(id=id, name=name, segments=segments, kind=kind)
 
     @classmethod
     def for_scene(cls, id: str, name: str, kind: "ClockKind" = None) -> "Clock":

@@ -8,12 +8,20 @@
       <h3 class="text-lg font-semibold">Recent events</h3>
       <p class="text-xs text-ash">Turn {{ payload.turn }}</p>
     </div>
+    {# One heading per turn, not one per entry. Talking, looking and camping
+       are all free, so a single turn can produce six entries -- and the panel
+       stamped "Turn 5" on every one of them, six times down the column. The
+       number is now a divider between turns, which is what it was for. #}
     {% if events %}
-      <div class="space-y-4 max-h-[32rem] overflow-y-auto pr-2 scroll-fade">
+      <div class="space-y-3 max-h-[32rem] overflow-y-auto pr-2 scroll-fade">
+        {% set ns = namespace(last=None) %}
         {% for event in events|reverse %}
+          {% if event.turn != ns.last %}
+            <p class="overline text-ash pt-2 {{ 'border-t border-edge' if not loop.first }}">Turn {{ event.turn }}</p>
+            {% set ns.last = event.turn %}
+          {% endif %}
           <article class="rounded-sm border border-edge bg-soot/80 px-4 py-3 shadow-lg">
-            <p class="text-xs text-ash">Turn {{ event.turn }}</p>
-            <p class="mt-1 whitespace-pre-line leading-relaxed">{{ event.text }}</p>
+            <p class="whitespace-pre-line leading-relaxed">{{ event.text }}</p>
           </article>
         {% endfor %}
       </div>

@@ -432,9 +432,9 @@ def image_prompt_from_state(
     # sentence of the act's intro, so this read "close-up on Sable in The air
     # in the refinery smells of copper and rotting kelp".
     place = _short_place(state)
-    actor = getattr(state, "last_actor", None)
-    if actor is not None and actor.alive and actor.discovered:
-        parts.append(f"{actor.name} in {place}")
+    figure = _figure_in_shot(state)
+    if figure:
+        parts.append(f"{figure} in {place}")
     else:
         parts.append(f"wide establishing shot, {place}")
 
@@ -446,6 +446,37 @@ def image_prompt_from_state(
 
     parts.append("no text, no watermark, no signature")
     return compress_and_sanitize(", ".join(parts), max_len=max_len)
+
+
+def _figure_in_shot(state: "GameState") -> str:
+    """How to describe whoever is in the frame -- never by name.
+
+    A name carries no visual information, and several of them carry the
+    *wrong* information: "Sable" is a colour and an animal, "Brutus" pulls
+    Roman, "Scout" pulls binoculars and hillsides. The image host has no idea
+    who these people are and will happily draw the word instead of the
+    character.
+
+    Characters already carry a written appearance -- "lean thief with a sharp
+    grin", "shaggy dog with alert ears" -- which is exactly what a picture
+    wants. Falling back to what kind of thing they are beats falling back to
+    a proper noun.
+    """
+    actor = getattr(state, "last_actor", None)
+    if actor is None or not getattr(actor, "alive", True):
+        return ""
+    if not getattr(actor, "discovered", False):
+        return ""
+
+    look = (getattr(actor, "desc", "") or "").strip().rstrip(".")
+    if 6 <= len(look) <= 70:
+        return look
+
+    kind = (getattr(actor, "kind", "") or "").strip().lower()
+    if kind and len(kind) <= 30:
+        article = "an" if kind[:1] in "aeiou" else "a"
+        return f"{article} {kind}"
+    return "a lone figure"
 
 
 def _short_place(state: "GameState") -> str:
@@ -517,17 +548,26 @@ def _scene_nouns(state: "GameState", limit: int = 2) -> str:
 # =============================
 
 
-def _clock_schema(what: str) -> Dict[str, Any]:
+def _clock_schema(what: str, sizes: List[int]) -> Dict[str, Any]:
+    """One act clock, with the sizes the model is allowed to choose between.
+
+    The enum used to be [6, 8] for both clocks, and models overwhelmingly
+    picked 6. Six was already known to be too short -- the note in
+    engine/clocks.py measured it ending in three turns or fewer a fifth of
+    the time -- and offering it anyway is how a real campaign came to have a
+    two-turn second act. It is off the menu.
+
+    The two clocks get different sizes on purpose: they are racing, and
+    lengthening both together quietly hands the race to whoever has the
+    better rate, which is the player.
+    """
     return {
         "type": "object",
         "properties": {
             "name": {"type": "string", "description": what},
             # Constrained rather than validated: a model handed "integer" will
-            # propose 5 or 10, and the clock module would silently snap it.
-            # Six or eight. A standard success is worth two segments, so
-            # a 4-segment act is over in two good turns -- four is the
-            # size for a single obstacle, not for an act.
-            "segments": {"type": "integer", "enum": [6, 8]},
+            # propose 5 or 100, and the clock module would silently snap it.
+            "segments": {"type": "integer", "enum": list(sizes)},
         },
         "required": ["name", "segments"],
     }
@@ -549,8 +589,10 @@ def campaign_blueprint_schema(target_acts: int = 3) -> Dict[str, Any]:
             "intro_paragraph": {"type": "string"},
             "pressure_evolution": {"type": "string"},
             "suggested_encounters": {"type": "array", "items": {"type": "string"}},
-            "project_clock": _clock_schema("what the player is achieving"),
-            "danger_clock": _clock_schema("the bad thing that arrives when it fills"),
+            "project_clock": _clock_schema(
+                "what the player is achieving", [10, 12]),
+            "danger_clock": _clock_schema(
+                "the bad thing that arrives when it fills", [8, 10]),
             "tides": {
                 # Two or three, not one. Structure comes from the clocks; the
                 # organic feeling comes from which pressure the player chooses
@@ -741,6 +783,11 @@ language -- the player is shown these words.
                  between.
 
 Write moves that change the player's situation, never moods or weather.
+
+A move is printed on screen word for word, so write it the way the player
+should read it: "A cultist scout finds your tracks", never "the player's
+tracks". Do not use the words "player", "PC" or "protagonist" anywhere in a
+goal, an intro paragraph or a move.
 
 Mark each seeded actor `hostile`: true if they would fight the player on
 sight, false otherwise. At least one act should have someone hostile in it.

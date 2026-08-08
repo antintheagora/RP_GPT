@@ -383,6 +383,17 @@ def test_a_save_with_no_obstacles_still_opens_one():
 # ---- AN ACT IS A SEQUENCE ---
 # =============================
 
+def _to_halfway(run):
+    """Fill the project clock to the point the handover triggers on.
+
+    Written from the clock rather than as a number: these all said `tick(4)`
+    with the comment "halfway on an 8-segment clock", and when acts grew to
+    ten segments every one of them quietly stopped reaching the halfway mark
+    and stopped testing anything.
+    """
+    run.clocks.tick("project", run.project.segments // 2)
+
+
 def _stage_run():
     from engine.character import Condition
     from engine.clocks import Clock, ClockBoard, ClockKind
@@ -413,7 +424,7 @@ def test_an_act_does_not_stay_one_problem_the_whole_way():
     run = _stage_run()
     assert _next_stage(run) == "", "it moved on before anything had happened"
 
-    run.clocks.tick("project", 4)          # halfway on an 8-segment clock
+    _to_halfway(run)
     name = _next_stage(run)
 
     assert name, "the act never presented a second problem"
@@ -427,7 +438,7 @@ def test_the_second_problem_comes_from_the_fiction():
     from engine.turn import _next_stage
 
     run = _stage_run()
-    run.clocks.tick("project", 4)
+    _to_halfway(run)
     assert "outer door" in _next_stage(run).lower()
 
 
@@ -442,7 +453,7 @@ def test_the_name_is_a_name_and_not_a_paragraph():
         "graceful even as a racking cough forces you to pause against a "
         "rusted pillar for a long moment of respite before going on."
     )
-    run.clocks.tick("project", 4)
+    _to_halfway(run)
     name = _next_stage(run)
 
     assert len(name) <= 60, name
@@ -450,13 +461,33 @@ def test_the_name_is_a_name_and_not_a_paragraph():
     assert name[0].isupper()
 
 
-def test_prose_with_nothing_short_in_it_falls_back_to_the_clock():
+def test_prose_with_nothing_short_in_it_does_not_borrow_the_clock_s_name():
+    """This used to fall through to the project clock, so a real campaign
+    read "That is behind you. Now: The Vault's Seal Weakens" -- the new
+    problem named after the progress bar three inches above it, which was
+    still on screen showing 5/6."""
     from engine.turn import _next_stage
 
     run = _stage_run()
     run.scene.description = "x" * 400
-    run.clocks.tick("project", 4)
-    assert _next_stage(run) == run.project.name
+    _to_halfway(run)
+    name = _next_stage(run)
+    assert name
+    assert name != run.project.name
+
+
+def test_a_subordinate_clause_is_not_the_name_of_a_problem():
+    """"The deeper you go, the more the old tech hums" split at the comma and
+    offered "The deeper you go" as the thing standing in the way."""
+    from engine.turn import _next_stage
+
+    run = _stage_run()
+    run.scene.description = (
+        "The deeper you go, the more the Old World tech begins to hum. "
+        "A collapsed stairwell blocks the eastern corridor."
+    )
+    _to_halfway(run)
+    assert _next_stage(run) == "A collapsed stairwell blocks the eastern corridor"
 
 
 def test_the_second_problem_is_rated_fresh():
@@ -466,7 +497,7 @@ def test_the_second_problem_is_rated_fresh():
 
     run = _stage_run()
     run.scene.obstacle("main").rate({"INT": Bearing.IDEAL}, 4)
-    run.clocks.tick("project", 4)
+    _to_halfway(run)
     _next_stage(run)
 
     assert not run.scene.obstacle("stage2").is_rated()
@@ -476,7 +507,7 @@ def test_the_handover_happens_once():
     from engine.turn import _next_stage
 
     run = _stage_run()
-    run.clocks.tick("project", 4)
+    _to_halfway(run)
     assert _next_stage(run)
     for _ in range(5):
         assert _next_stage(run) == "", "it kept opening new problems"
