@@ -1,10 +1,13 @@
 {% set player = payload.player %}
 {% set cond = payload.condition %}
-<div class="ninebox" style="--img: var(--frame-image); --slice: 128px; --gap: 12px;">
+{# 128px corners on a 600px panel is a fifth of its width, and the content
+   only had 24px of padding -- so "Act 1 of 3 - Turn 1" was printed across the
+   corner quoin. #}
+<div class="ninebox" style="--img: var(--frame-image); --slice: 56px; --gap: 12px;">
   <div class="nf tl"></div><div class="nf t"></div><div class="nf tr"></div>
   <div class="nf l"></div><div class="nf c"></div><div class="nf r"></div>
   <div class="nf bl"></div><div class="nf b"></div><div class="nf br"></div>
-  <div class="nine-content p-6 space-y-5">
+  <div class="nine-content p-10 space-y-5">
 
   <div class="flex flex-wrap items-center justify-between gap-3">
     <div>
@@ -25,7 +28,12 @@
         <p class="text-lg font-semibold">{{ clock.name }}</p>
         <div class="mt-2 flex gap-1" aria-label="{{ clock.filled }} of {{ clock.segments }} filled">
           {% for i in range(clock.segments) %}
-            <span class="h-3 flex-1 rounded-sm {{ (('bg-rust' if clock.kind == 'danger' else 'bg-brass') if i < clock.filled else 'bg-hearth') }}"></span>
+            {# Unfilled segments were bg-hearth (#2a221e) on a bg-soot card (#1c1715)
+               -- so close that the pips were invisible and a clock you are meant
+               to count read as an empty bar with a number under it. The palette
+               already says what an unfilled segment is: pitch, a well, darker
+               than the card rather than lighter. #}
+            <span class="h-3 flex-1 rounded-sm ring-1 ring-edge/70 {{ (('bg-rust' if clock.kind == 'danger' else 'bg-brass') if i < clock.filled else 'bg-pitch') }}"></span>
           {% endfor %}
         </div>
         <p class="text-sm mt-1 text-dust">{{ clock.filled }} / {{ clock.segments }}</p>

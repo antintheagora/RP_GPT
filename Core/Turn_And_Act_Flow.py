@@ -144,8 +144,15 @@ def starting_companions(state, seeded, Actor):
     ]
     friendly.sort(key=lambda a: -int(getattr(a, "disposition", 0) or 0))
 
+    # Never empty the act to fill the party. If the blueprint seeded one
+    # friendly face and nobody else, promoting them leaves an act with nobody
+    # in it to find.
+    wanted = random.choice([1, 1, 2])
+    if len(seeded) - wanted < 1:
+        wanted = max(0, len(seeded) - 1)
+
     taken = []
-    for actor in friendly[:random.choice([1, 1, 2])]:
+    for actor in friendly[:wanted]:
         actor.role = "companion"
         actor.discovered = True
         # Their authored disposition stands. Forcing a friendly minimum here
@@ -258,7 +265,13 @@ def begin_act(state, idx: int):
                 _log.debug("suppressed error in Turn_And_Act_Flow", exc_info=True)
             if c not in state.act.actors:
                 state.act.actors.append(c)
-            journal_add(state, f"{c.name} joined (companion). Bio: {c.bio}")
+            # "Bio:" with nothing after it. Actors out of seed_actors carry
+            # no bio -- only the authored fallbacks ever did -- so the line
+            # falls back to whatever the blueprint did say about them.
+            about = (getattr(c, "bio", "") or getattr(c, "personality", "")
+                     or getattr(c, "kind", "")).strip()
+            journal_add(state, f"{c.name} joined (companion)."
+                               + (f" {about}" if about else ""))
             if not getattr(c, "portrait_path", None):
                 try:
                     core.queue_image_event(

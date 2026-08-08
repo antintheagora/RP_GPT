@@ -511,3 +511,32 @@ def test_only_the_companions_taken_get_a_character_profile():
     assert chosen_first < profile_call, (
         "profiles must be written after the choice, not before it"
     )
+
+
+def test_promoting_a_companion_never_empties_the_act():
+    """One friendly face and nobody else is not a party, it is an empty act."""
+    import RP_GPT as core
+    from Core.Turn_And_Act_Flow import starting_companions
+
+    only_one = [core.Actor("Osric", "ferryman", role="npc", disposition=5)]
+    state = core.GameState(
+        scenario=core.Scenario.DARK_FANTASY, scenario_label="X",
+        player=core.Player(name="A"),
+        blueprint=core.blueprint_from_json(
+            {"campaign_goal": "g", "pressure_name": "p",
+             "acts": {"1": {"goal": "g", "intro_paragraph": "x"}}}),
+        pressure_name="p")
+    chosen = starting_companions(state, only_one, core.Actor)
+    assert [a.name for a in only_one] == ["Osric"], "the act keeps its one actor"
+    assert chosen and chosen[0].name != "Osric", "so the fallback supplies the ally"
+
+
+def test_the_journal_does_not_write_bio_with_nothing_after_it():
+    """Seeded actors carry no bio; only the authored fallbacks ever did."""
+    import inspect
+
+    from Core import Turn_And_Act_Flow
+
+    source = inspect.getsource(Turn_And_Act_Flow.begin_act)
+    assert "Bio: {c.bio}" not in source
+    assert 'joined (companion).' in source
