@@ -20,11 +20,21 @@
         <a href="{{ url_for('landing') }}" class="text-xs uppercase tracking-wide text-slate-400 hover:text-white">Back to worlds</a>
       </div>
       <p class="panel-subtle">Toggle who travels with this world. Pick at least one companion to continue.</p>
-      <div class="roster-list u-scroll scroll-fade">
+      {# The registry is global and keeps everyone every campaign has ever
+         generated -- a hundred and twenty-six names here, several of them
+         near-duplicates and several of them factions. Scrolling that to find
+         one person is not realistic. #}
+      <label class="roster-filter">
+        <input type="search" placeholder="Filter by name or kind…" autocomplete="off"
+               data-filter="#roster-list" data-filter-count="#roster-count" />
+        <span id="roster-count" class="roster-count"></span>
+      </label>
+      <div id="roster-list" class="roster-list u-scroll scroll-fade">
         {% for role, label in sections %}
-        <p class="roster-heading">{{ label }}</p>
+        <p class="roster-heading" data-filter-group>{{ label }}</p>
         {% for entry in catalog[role] %}
-        <div class="roster-entry {% if char_param == role ~ ':' ~ entry.slug %}is-focused{% endif %}">
+        <div class="roster-entry {% if char_param == role ~ ':' ~ entry.slug %}is-focused{% endif %}"
+             data-filter-item="{{ (entry.name ~ ' ' ~ (entry.kind or entry.role)) | lower }}">
           <form method="post" action="{{ url_for('toggle_roster_member', slug=world.slug) }}">
             <input type="hidden" name="role" value="{{ role }}" />
             <input type="hidden" name="character" value="{{ entry.slug }}" />
@@ -180,7 +190,11 @@
       {% else %}
       <p class="text-sm text-slate-400">Select someone from the left column to edit their profile.</p>
       {% endif %}
-      <form method="get" action="{{ url_for('world_characters', slug=world.slug) }}" class="mt-6">
+      {# Sticky, because it sat under a 520px character form inside a panel
+         that scrolls -- the only way forward from this screen was below the
+         fold of a nested scroller with the scrollbar masked out by
+         .scroll-fade. #}
+      <form method="get" action="{{ url_for('world_characters', slug=world.slug) }}" class="panel-footer">
         <button class="u-button w-full" type="submit" {% if not can_continue %}disabled title="Select at least one companion"{% endif %}>Continue</button>
       </form>
     </div>

@@ -73,7 +73,9 @@
     </div>
   </div>
 
-  <div class="grid gap-4 sm:grid-cols-2">
+  {# This was a two-column grid holding exactly one box, so half the row was
+     always empty. #}
+  <div>
     <div class="rounded-xl bg-night/80 border border-slate-700/80 p-4">
       {# Only groups that have heard of you. A faction you have never crossed
          has no opinion, and printing "neutral" would claim otherwise. #}
@@ -116,7 +118,7 @@
             </div>
             <div class="mt-1 h-1.5 w-full rounded bg-slate-800">
               <div class="h-full rounded bg-rose-400"
-                   style="width: {{ (100 * foe.hp / foe.max_hp) | round }}%"></div>
+                   style="width: {{ (100 * foe.hp / (foe.max_hp or 1)) | round }}%"></div>
             </div>
           </li>
         {% endfor %}
@@ -138,7 +140,13 @@
               <span class="font-semibold">{{ tide.name }}</span>
               <span class="text-slate-500 tabular-nums">{{ tide.filled }} / {{ tide.segments }}</span>
             </div>
-            {% if tide.wants %}<p class="text-slate-400">It wants {{ tide.wants }}.</p>{% endif %}
+            {# The model writes these as whole sentences -- "To find the map
+               before the humans do." -- so pasting one straight after "It
+               wants" gave "It wants To find the map before the humans do.." #}
+            {% if tide.wants %}
+              {% set want = tide.wants | trim | trim('.') %}
+              <p class="text-slate-400">It wants {{ want[0] | lower }}{{ want[1:] }}.</p>
+            {% endif %}
           </li>
         {% endfor %}
       </ul>
@@ -150,7 +158,9 @@
      simply has no image block until the first one lands. #}
   {% if payload.image_url %}
     <figure class="rounded-xl overflow-hidden border border-slate-700/80">
-      <img src="{{ payload.image_url }}" alt="{{ payload.situation[:120] }}"
+      {# `payload.situation[:120]` -- slicing None raises, and the very line
+         below this block already allows for the situation being empty. #}
+      <img src="{{ payload.image_url }}" alt="{{ (payload.situation or 'The scene')[:120] }}"
            class="w-full object-cover" style="aspect-ratio: 16 / 9;" loading="lazy" />
     </figure>
   {% endif %}
@@ -325,21 +335,9 @@
 
   {% endif %}
 
-  {# Reading your own journal is not a die roll. It used to POST an action
-     that the engine resolved as a perception check and that showed you no
-     journal at all. #}
-  <details class="rounded-xl border border-slate-700/80 bg-night/80 p-4">
-    <summary class="cursor-pointer text-sm font-semibold">The journal so far</summary>
-    {% if payload.journal_tail %}
-      <ul class="mt-3 space-y-2 text-sm text-slate-300">
-        {% for entry in payload.journal_tail %}
-          <li class="border-l-2 border-slate-700 pl-3">{{ entry }}</li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <p class="mt-3 text-sm text-slate-500">Nothing written down yet.</p>
-    {% endif %}
-  </details>
+  {# The journal used to be printed here as well as in the log panel beside
+     it: the same six entries, twice, on one screen. It has one home now, and
+     it is the panel you read rather than the panel you act in. #}
 
   {% if payload.game_over %}
     <div class="rounded-xl border border-red-500/60 bg-red-500/10 p-4">
@@ -347,5 +345,4 @@
     </div>
   {% endif %}
   </div>
-</div>
 </div>

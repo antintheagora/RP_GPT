@@ -40,7 +40,11 @@
             <div>
               <label class="block text-sm">Gemma / Ollama model</label>
               <div class="mt-1 u-input-shell">
-                <input type="text" name="model" value="{{ previous.get('model') if previous else 'gemma3:12b' }}" class="u-input" />
+                {# Was hardcoded to gemma3:12b, which is not installed and is
+                   two versions behind Core.Config. The field is always sent,
+                   so that stale string won every time and the configured
+                   default was never used. #}
+                <input type="text" name="model" value="{{ previous.get('model') or default_model }}" class="u-input" />
               </div>
             </div>
           </div>

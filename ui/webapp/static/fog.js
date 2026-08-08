@@ -198,11 +198,24 @@ class FogSystem {
         }
     }
 
-    animate() {
+    animate(now) {
         // Stop if destroyed
         if (this.destroyed) {
             return;
         }
+
+        this.animationFrameId = requestAnimationFrame((t) => this.animate(t));
+
+        // fpsLimit was declared in the config and never used: eighty soft
+        // radial gradients, each up to 700px across, were being redrawn on
+        // every single frame the display could offer. That is a lot of GPU to
+        // spend on background weather, and on a laptop it is audible.
+        const minGap = 1000 / FOG_CONFIG.fpsLimit;
+        if (now !== undefined && this.lastFrame !== undefined &&
+            now - this.lastFrame < minGap) {
+            return;
+        }
+        this.lastFrame = now;
 
         this.ctxBg.clearRect(0, 0, this.width, this.height);
         this.ctxFg.clearRect(0, 0, this.width, this.height);
@@ -215,8 +228,6 @@ class FogSystem {
                 p.draw(this.ctxFg);
             }
         });
-
-        this.animationFrameId = requestAnimationFrame(() => this.animate());
     }
 
     detach() {
@@ -242,9 +253,15 @@ class FogSystem {
     }
 }
 
+// Drifting fog is exactly the kind of continuous ambient motion that
+// prefers-reduced-motion exists for. Everything else on the page honours it;
+// this did not.
+const FOG_WANTED = !(window.matchMedia &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    window.fogSystem = new FogSystem();
+    if (FOG_WANTED) window.fogSystem = new FogSystem();
 });
 
 // Handle HTMX swaps to persist fog
@@ -260,7 +277,7 @@ document.body.addEventListener('htmx:afterSwap', (event) => {
     if (event.target === document.body) {
         if (window.fogSystem) {
             window.fogSystem.attach();
-        } else {
+        } else if (FOG_WANTED) {
             window.fogSystem = new FogSystem();
         }
     }

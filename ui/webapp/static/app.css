@@ -64,7 +64,7 @@
      Controls the clickable "cards" used for selecting scenarios/worlds.
      These have a highlighted glow effect when selected.
   */
-  --selector-image: url('/static/ui/input_forms3.png');
+  --selector-image: url('/static/ui/Input_Forms3.png');
   /* 9-slice texture for selectors */
   --selector-slice: 256;
   /* Corner slice size */
@@ -115,8 +115,14 @@
   /* Pixels for top edge (larger for gargoyle) */
   --game-frame-bottom: 600;
   /* Pixels for bottom edge (larger for candle) */
-  --game-frame-thickness: clamp(150px, 6vw, 150px);
-  /* How thick the frame appears on screen */
+  --game-frame-thickness: clamp(64px, 12vh, 150px);
+  /* How thick the frame appears on screen.
+     This was clamp(150px, 6vw, 150px) -- a clamp whose floor and ceiling are
+     the same number can only ever be 150px, so the middle term did nothing.
+     Being fixed, it cost 300px of height on every screen: on a 720px laptop
+     window that is 42% of the display given over to a border, and it is why
+     the play screen ran so far past the fold. It now scales with the window
+     and still reaches the original 150px on a tall monitor. */
 
   /* --- IMAGE FRAME SETTINGS ---
      The decorative frame around character and world portrait images.
@@ -141,10 +147,22 @@
    positioned relative to the decorative game frame.
    ========================================================================== */
 
+/* The page scrolls. The body used to carry Tailwind's `overflow-hidden`,
+   which propagates from the root box to the viewport and switches off
+   scrolling for the whole app -- no scrollbar, no wheel, nothing. Anything
+   past the fold simply could not be reached.
+
+   Sideways is still clamped: the fixed frame and the fog canvases are sized
+   to the viewport and a stray overhang used to produce a horizontal scrollbar
+   under the border. */
+html {
+  overflow-x: hidden;
+}
+
 /* Main Content Area
    This is the container for all page content (world selection, roster, etc.)
    It's positioned inside the game frame with padding to prevent overlap.
-   
+
    NOTE: The padding values are calculated from --game-frame-thickness
    so content automatically stays inside the decorative border.
 */
@@ -163,10 +181,83 @@
   transition: opacity 120ms ease, filter 120ms ease;
 }
 
-/* Loading State: Content fades slightly when HTMX is fetching new content */
-.htmx-request .app-content {
-  opacity: 0.7;
-  filter: blur(0.5px);
+/* Loading State: content settles back while the model is working.
+   The old selector was `.htmx-request .app-content`, and htmx puts that class
+   on the element that made the request -- a button *inside* .app-content, so
+   the rule could never match. shell.js now marks the body instead. */
+body.is-thinking .app-content {
+  opacity: 0.75;
+  filter: blur(0.4px);
+}
+
+body.is-thinking .app-content button,
+body.is-thinking .app-content summary {
+  pointer-events: none;
+}
+
+/* A moving bar along the top of the frame. Local inference is fifteen to
+   sixty seconds; the one thing the screen must not do is look dead. */
+.thinking-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  width: 100%;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 200ms ease;
+  background: linear-gradient(90deg, transparent, #f97316, transparent);
+  background-size: 40% 100%;
+  background-repeat: no-repeat;
+}
+
+body.is-thinking .thinking-bar {
+  opacity: 1;
+  animation: thinking-sweep 1.4s linear infinite;
+}
+
+@keyframes thinking-sweep {
+  from { background-position: -40% 0; }
+  to { background-position: 140% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.is-thinking .thinking-bar {
+    animation: none;
+    background: #f97316;
+  }
+}
+
+/* The way back out. Sits on the frame itself, above the decoration. */
+.menu-tab {
+  position: fixed;
+  top: 8px;
+  right: 12px;
+  z-index: 70;
+  padding: 4px 14px;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #c3c08d;
+  background: rgba(10, 8, 12, 0.75);
+  border: 1px solid rgba(195, 192, 141, 0.35);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.menu-tab:hover {
+  color: #fdf5e4;
+  border-color: rgba(255, 189, 107, 0.8);
+}
+
+.settings-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  align-items: stretch;
+  margin-bottom: 1.5rem;
 }
 
 
@@ -877,6 +968,48 @@ textarea.u-input {
   gap: 0.75rem;
 }
 
+/* The only way forward from a screen must not be below the fold of a nested
+   scroller whose scrollbar is masked out by .scroll-fade. */
+.panel-footer {
+  position: sticky;
+  bottom: 0;
+  margin-top: 1.5rem;
+  padding-top: 0.75rem;
+  background: linear-gradient(to top, rgba(6, 5, 10, 0.95) 60%, transparent);
+}
+
+.roster-filter {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  margin-bottom: 0.75rem;
+}
+
+.roster-filter input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  color: var(--input-text);
+  background: rgba(6, 5, 10, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+}
+
+.roster-filter input:focus {
+  outline: none;
+  border-color: rgba(255, 189, 107, 0.7);
+}
+
+.roster-count {
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(226, 232, 240, 0.55);
+  white-space: nowrap;
+}
+
 .roster-heading {
   text-transform: uppercase;
   letter-spacing: 0.18em;
@@ -1019,10 +1152,15 @@ textarea.u-input {
   mix-blend-mode: normal;
 }
 
-/* On mobile: make the frame thinner to save screen space */
+/* On a narrow window: make the frame thinner to save screen space.
+   This used to override `.game-frame-shell`'s border-width directly, which
+   left `.app-content` padding still calculated from the full thickness --
+   the two disagreed, and on a 375px screen the frame drew at 45px while the
+   content was inset by 105px on each side, leaving 164px to read in. Setting
+   the variable moves both together. */
 @media (max-width: 768px) {
-  .game-frame-shell {
-    border-width: clamp(40px, 12vw, 70px);
+  :root {
+    --game-frame-thickness: clamp(40px, 12vw, 70px);
   }
 }
 
@@ -1146,8 +1284,7 @@ textarea.u-input {
   color: #8a7a5c;
 }
 .continue-line {
-  font-size: 13px; font-style: italic; color: #a89madeup;
-  color: #a89a80;
+  font-size: 13px; font-style: italic; color: #a89a80;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -1166,7 +1303,76 @@ textarea.u-input {
   font-size: 14px;
 }
 
-/* ---- Live chronicle -------------------------------------------------- */
+/* ---- The play screen -------------------------------------------------
+   Two columns, each scrolling inside the frame, the same way the world,
+   roster and creator screens already work. The play screen was the only one
+   that did not do this, and it is by far the tallest: roughly 2,500px of
+   clocks, party, tides, situation, menu and journal poured into whatever the
+   window happened to be. Without a scroller of its own it relied on the page
+   scrolling -- which the body had switched off. */
+.play-grid {
+  display: grid;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .play-grid {
+    grid-template-columns: 1.05fr 1fr;
+  }
+}
+
+.play-panel {
+  max-height: calc(100vh - var(--game-frame-thickness) * 2 - 2rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.play-panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+.play-panel::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+}
+
+.play-panel::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* ---- Live chronicle --------------------------------------------------
+   The stream had nowhere to go: there was no #chronicle element anywhere in
+   the app, so chronicle.js fell back to appending paragraphs onto the end of
+   #log-panel -- outside its frame, and wiped the instant htmx swapped the
+   panel back in. This is a home of its own that htmx never touches. */
+.chronicle-feed {
+  display: none;
+  margin-bottom: 1.25rem;
+  padding: 1rem 1.25rem;
+  max-height: 40vh;
+  overflow-y: auto;
+  background: rgba(10, 8, 12, 0.72);
+  border-left: 3px solid rgba(179, 49, 31, 0.7);
+}
+
+.chronicle-feed:not(:empty),
+body.is-thinking .chronicle-feed {
+  display: block;
+}
+
+/* Handing the turn over to the settled log panel beside it. */
+.chronicle-feed.is-handing-over {
+  opacity: 0;
+  transition: opacity 800ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chronicle-feed.is-handing-over {
+    transition: none;
+  }
+}
+
 .chron { margin: 0 0 .85rem; line-height: 1.65; }
 .chron-prose, .chron-dialogue { color: #e6dccb; font-size: 17px; }
 .chron-dialogue { font-style: italic; }

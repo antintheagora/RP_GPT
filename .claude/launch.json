@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "rpgpt-web",
+      "runtimeExecutable": ".venv/Scripts/python.exe",
+      "runtimeArgs": ["-m", "flask", "--app", "ui.webapp.server:create_app", "run", "--port", "5111"],
+      "port": 5111
+    }
+  ]
+}

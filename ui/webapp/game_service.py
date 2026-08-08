@@ -963,6 +963,22 @@ class GameSession:
             except Exception:
                 _log.debug("stream listener failed", exc_info=True)
 
+    def rebuild_run(self) -> None:
+        """Re-derive the engine from the campaign state.
+
+        The web layer seeds a world's chosen companions and cast into
+        `state` *after* the session is built, and the Run was already made
+        from a state that had none of them. So the party panel read "Alone,
+        for now" while five companions sat in the save, none of them could be
+        talked to, and none could ever assist.
+
+        Only safe before the first turn, which is the only place it is used:
+        it throws away the Director's stance and the scene's obstacle ratings
+        along with everything else derived from the state.
+        """
+        self.run = build_run(self.state)
+        self._options = None
+
     # ---------------------------------------------------------- persistence
 
     def save(self) -> Optional[str]:

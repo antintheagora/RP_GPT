@@ -30,26 +30,46 @@
     }
   </script>
   <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}" />
+  <link rel="icon" href="{{ url_for('static', filename='ui/nine_slice.png') }}" />
+  <script src="https://unpkg.com/htmx.org@1.9.10" defer></script>
+  {# Loaded from <head> so hx-boost, which replaces the whole of <body>, does
+     not re-run them and stack up a second copy of every listener. #}
+  <script src="{{ url_for('static', filename='shell.js') }}" defer></script>
   <script src="{{ url_for('static', filename='fog.js') }}" defer></script>
   <script src="{{ url_for('static', filename='chronicle.js') }}" defer></script>
-  <script src="https://unpkg.com/htmx.org@1.9.10" defer></script>
 </head>
 
-<body class="bg-night text-slate-100 min-h-screen relative overflow-hidden font-body" hx-boost="true" hx-target="this"
+{# `overflow-hidden` used to be here. The root element's overflow propagates
+   to the viewport, so it turned off scrolling for the entire app -- and the
+   play screen is more than three times the height of a laptop window. Every
+   action button, the camp button and the journal sat below the fold with no
+   scrollbar and no wheel. The game could be read but not played. #}
+<body class="bg-night text-slate-100 min-h-screen relative font-body" hx-boost="true" hx-target="this"
   hx-swap="innerHTML" hx-history-elt="true">
   <div class="fixed inset-0 -z-30 bg-cover bg-center opacity-90"
-    style="background-image: url('{{ url_for('static', filename='ui/world_backdrop.png') }}');"></div>
+    style="background-image: url('{{ url_for('static', filename='ui/World_Backdrop.png') }}');"></div>
   <div class="fixed inset-0 -z-20 backdrop-overlay"></div>
   <div class="game-frame-shell" aria-hidden="true"></div>
 
-  <!-- Settings Overlay (ESC to toggle) -->
+  {# A menu you can only reach by guessing a keystroke is a menu nobody
+     opens. The keystroke still works; this is so it is discoverable. #}
+  <button type="button" class="menu-tab" data-menu="toggle" title="Menu (Esc)">Menu</button>
+
+  {# The world is thinking. Local inference takes fifteen to sixty seconds and
+     the screen used to give no sign at all that a click had registered. #}
+  <div class="thinking-bar" aria-hidden="true"></div>
+
+  <!-- Settings Overlay (Esc or the Menu button) -->
   <div id="settings-overlay" class="settings-overlay hidden">
     <div class="settings-panel">
-      <h2 class="settings-title">Settings</h2>
-      <form method="post" action="{{ url_for('reset') }}" class="settings-form">
-        <button type="submit" class="u-button settings-btn">Reset Game</button>
-      </form>
-      <button id="settings-close" class="settings-close">Press ESC to close</button>
+      <h2 class="settings-title">Menu</h2>
+      <div class="settings-actions">
+        <a href="{{ url_for('landing') }}" class="u-button" data-menu="close">Worlds</a>
+        <form method="post" action="{{ url_for('reset') }}" class="settings-form">
+          <button type="submit" class="u-button settings-btn">End this run</button>
+        </form>
+      </div>
+      <button class="settings-close" data-menu="close">Press Esc to close</button>
     </div>
   </div>
 
@@ -57,19 +77,6 @@
   <div class="app-content">
     {% block content %}{% endblock %}
   </div>
-
-  <script>
-    // ESC key toggles settings overlay
-    document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') {
-        const overlay = document.getElementById('settings-overlay');
-        overlay.classList.toggle('hidden');
-      }
-    });
-    document.getElementById('settings-close')?.addEventListener('click', function () {
-      document.getElementById('settings-overlay').classList.add('hidden');
-    });
-  </script>
 </body>
 
 </html>

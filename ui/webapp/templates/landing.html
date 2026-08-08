@@ -14,7 +14,10 @@
       <input type="hidden" name="path" value="{{ run.path }}">
       <button type="submit" class="continue-button">
         <span class="continue-title">{{ run.title }}</span>
-        <span class="continue-meta">{{ run.player }} &middot; Act {{ run.act }}/{{ run.act_count }} &middot; Turn {{ run.turn }}</span>
+        {# `saved_at` was collected and then never shown, and three runs of
+           the same world at the same turn are otherwise identical cards --
+           there was no way to tell which one you were just playing. #}
+        <span class="continue-meta">{{ run.player }} &middot; Act {{ run.act }}/{{ run.act_count }} &middot; Turn {{ run.turn }}{% if run.saved_when %} &middot; {{ run.saved_when }}{% endif %}</span>
         {% if run.last_line %}<span class="continue-line">{{ run.last_line }}</span>{% endif %}
         <span class="continue-cta">Continue</span>
       </button>

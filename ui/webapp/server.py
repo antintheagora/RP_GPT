@@ -320,6 +320,10 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
     app.secret_key = os.environ.get("RP_GPT_FLASK_SECRET", "dev-secret")
     app.config["SESSION_COOKIE_NAME"] = os.environ.get("RP_GPT_SESSION_COOKIE", "rpgpt_webui")
     app.config["SESSION_STORE"] = store or SessionStore()
+    # Templates are cached unless debug is on, and this is a desktop app run
+    # from source: editing a template and seeing nothing change -- with no
+    # error to explain it -- costs more than one stat() per render.
+    app.config["TEMPLATES_AUTO_RELOAD"] = True
 
     def _store() -> SessionStore:
         return app.config["SESSION_STORE"]
@@ -335,6 +339,13 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
         if not current:
             abort(409, description="No active game session.")
         return current
+
+    @app.get("/favicon.ico")
+    def favicon():
+        """Browsers ask for this whatever the <link> says, and a 404 in the
+        log on every single page view buries anything worth reading."""
+        return send_from_directory(str(Path(app.static_folder) / "ui"),
+                                   "nine_slice.png", mimetype="image/png")
 
     @app.route("/assets/<path:filename>")
     def serve_assets(filename):
@@ -393,7 +404,7 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
             "turns_per_act": "–",
             "pressure": "Custom",
             "is_virtual": True,
-            "portrait_url": url_for("static", filename="ui/world_backdrop.png"),
+            "portrait_url": url_for("static", filename="ui/World_Backdrop.png"),
         }
         worlds = [virtual]
         for entry in catalog:
@@ -402,7 +413,7 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
             entry["portrait_url"] = (
                 url_for("world_portrait", slug=entry["slug"])
                 if entry.get("portrait_file")
-                else url_for("static", filename="ui/world_backdrop.png")
+                else url_for("static", filename="ui/World_Backdrop.png")
             )
             worlds.append(entry)
         selected_slug = request.args.get("world") or (worlds[0]["slug"] if worlds else None)
@@ -433,8 +444,23 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
                 "turn": summary.get("turn", 1),
                 "last_line": summary.get("last_line", ""),
                 "saved_at": run.get("saved_at", 0),
+                "saved_when": _when(run.get("saved_at", 0)),
             })
         return out
+
+    def _when(stamp: float) -> str:
+        """How long ago, in words. Several saves share a world, a player and a
+        turn number, and a bare epoch float tells nobody anything."""
+        if not stamp:
+            return ""
+        seconds = max(0, time.time() - float(stamp))
+        for size, name in ((60, "second"), (60, "minute"), (24, "hour")):
+            if seconds < size:
+                count = int(seconds)
+                return f"{count} {name}{'' if count == 1 else 's'} ago"
+            seconds /= size
+        days = int(seconds)
+        return f"{days} day{'' if days == 1 else 's'} ago"
 
     @app.get("/chronicle/stream")
     def chronicle_stream():
@@ -514,7 +540,7 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
                 enriched["portrait_url"] = (
                     url_for("character_portrait", role=role, slug=enriched["slug"])
                     if enriched.get("portrait_file")
-                    else url_for("static", filename="ui/world_backdrop.png")
+                    else url_for("static", filename="ui/World_Backdrop.png")
                 )
                 display_catalog[role].append(enriched)
         selections = {
@@ -532,7 +558,7 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
                 current_entry["portrait_url"] = (
                     url_for("character_portrait", role=current_entry["role"], slug=current_entry["slug"])
                     if current_entry.get("portrait_file")
-                    else url_for("static", filename="ui/world_backdrop.png")
+                    else url_for("static", filename="ui/World_Backdrop.png")
                 )
         if not current_entry:
             for role, _ in ROSTER_SECTIONS:
@@ -636,7 +662,7 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
             enriched["portrait_url"] = (
                 url_for("player_portrait", slug=enriched["slug"])
                 if enriched.get("portrait_file")
-                else url_for("static", filename="ui/world_backdrop.png")
+                else url_for("static", filename="ui/World_Backdrop.png")
             )
             display_players.append(enriched)
         selected_slug = request.args.get("player") or (display_players[0]["slug"] if display_players else None)
@@ -648,7 +674,7 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
                 selected_entry["portrait_url"] = (
                     url_for("player_portrait", slug=selected_entry["slug"])
                     if selected_entry.get("portrait_file")
-                    else url_for("static", filename="ui/world_backdrop.png")
+                    else url_for("static", filename="ui/World_Backdrop.png")
                 )
         return render_template(
             "characters.html",
@@ -721,10 +747,16 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
                 error=str(exc),
                 previous={},
                 has_active=False,
+                default_model=DEFAULT_MODEL,
             ), 400
 
-        # Put the world's chosen roster into the opening scene.
+        # Put the world's chosen roster into the opening scene, then re-derive
+        # the engine from it. Seeding alone was not enough: the Run had
+        # already been built from a state with no companions in it, so the
+        # party panel said "Alone, for now" while the roster sat in the save
+        # unreachable -- nobody to talk to and nobody to assist.
         _apply_world_roster(session.state, world)
+        session.rebuild_run()
         session.state.world_folder = slug
         session.save()
 
@@ -760,33 +792,64 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
 
         Ported from Main_Menu._apply_world_roster_to_state, which was the only
         code that turned roster picks into live actors and went out with the
-        pygame stack.
+        pygame stack. Two things the first port dropped:
+
+        * `begin_act` has already seeded a party of its own, so appending the
+          world's picks on top gave "Brutus, Brutus, Sable, Sable" -- an
+          authored roster is a statement about who the party *is*, not a set
+          of extras.
+        * `allow_random_characters` is a real setting with a button on the
+          roster screen, and nothing anywhere read it.
         """
         import RP_GPT as core
 
-        for role, key in WORLD_SELECTION_KEYS.items():
-            for char_slug in world.get(key) or []:
-                entry = _load_character_entry(role, _character_folder(role, char_slug))
-                if not entry:
-                    continue
-                actor = core.Actor(
-                    name=entry["name"],
-                    kind=entry.get("kind") or role,
-                    role=role,
-                    hp=int(entry.get("hp") or 14),
-                    attack=int(entry.get("attack") or 3),
-                    personality=entry.get("personality") or "",
-                    desc=entry.get("desc") or "",
-                    bio=entry.get("bio") or "",
-                    species=entry.get("species") or "human",
-                    discovered=(role == "companion"),
-                    alive=True,
-                )
-                if role == "companion":
-                    state.companions.append(actor)
-                    state.act.actors.append(actor)
-                else:
+        def actor_for(role: str, char_slug: str):
+            entry = _load_character_entry(role, _character_folder(role, char_slug))
+            if not entry:
+                return None
+            return core.Actor(
+                name=entry["name"],
+                kind=entry.get("kind") or role,
+                role=role,
+                hp=int(entry.get("hp") or 14),
+                attack=int(entry.get("attack") or 3),
+                personality=entry.get("personality") or "",
+                desc=entry.get("desc") or "",
+                bio=entry.get("bio") or "",
+                species=entry.get("species") or "human",
+                discovered=(role == "companion"),
+                alive=True,
+            )
+
+        allow_random = bool(world.get("allow_random", True))
+
+        chosen = [actor_for("companion", slug)
+                  for slug in world.get("selected_companions") or []]
+        chosen = [actor for actor in chosen if actor]
+        if chosen:
+            # The world named the party. Anyone the act seeded stands down.
+            state.companions = []
+            state.act.actors = [a for a in state.act.actors
+                                if getattr(a, "role", "") != "companion"]
+            for actor in chosen:
+                state.companions.append(actor)
+                state.act.actors.append(actor)
+
+        pool = []
+        for role in ("npc", "enemy"):
+            for slug in world.get(WORLD_SELECTION_KEYS[role]) or []:
+                actor = actor_for(role, slug)
+                if actor:
+                    pool.append(actor)
+
+        if not allow_random:
+            state.act.undiscovered = pool
+        else:
+            known = {getattr(a, "name", "").lower() for a in state.act.undiscovered}
+            for actor in pool:
+                if actor.name.lower() not in known:
                     state.act.undiscovered.append(actor)
+                    known.add(actor.name.lower())
 
     @app.get("/legacy-start")
     def legacy_start():
@@ -795,6 +858,7 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
             has_active=bool(_current_session()),
             previous={},
             error=None,
+            default_model=DEFAULT_MODEL,
         )
 
     @app.post("/start")
@@ -819,7 +883,9 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
             session = _store().create_session(config)
         except GemmaError as exc:
             return (
-                render_template("legacy_start.html", error=str(exc), previous=form.to_dict(flat=True), has_active=False),
+                render_template("legacy_start.html", error=str(exc),
+                                previous=form.to_dict(flat=True),
+                                has_active=False, default_model=DEFAULT_MODEL),
                 400,
             )
         flask_session["session_id"] = session.id
