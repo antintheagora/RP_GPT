@@ -133,3 +133,59 @@ def test_the_dead_turn_image_path_is_gone():
     assert not hasattr(image_gen, "rate_limit_images"), (
         "the pacer moved to the worker, where the requests actually are"
     )
+
+
+# =============================
+# --- WHAT A PORTRAIT DRAWS ---
+# =============================
+
+def test_a_personality_dressed_as_a_description_is_still_a_personality():
+    """Found by rendering a review sheet and looking at it.
+
+    Sister Marrow's portrait prompt was "Close-up portrait of Gruff,
+    pragmatic, and weary of the rising tides" and she came back as a bearded
+    man. That text beat the old detector twice: `gruff` and `weary` were not
+    in its 42-word list, and the filler in "and weary of the rising tides"
+    diluted the one hit that remained to 0.125 against a 0.34 threshold.
+    """
+    from Core.Image_Gen import reads_as_personality
+
+    assert reads_as_personality("Gruff, pragmatic, and weary of the rising tides.")
+    assert reads_as_personality("Greedy, opportunistic")
+    assert reads_as_personality("brutish, single-minded, focused on destruction")
+    assert reads_as_personality("Stoic")
+    assert reads_as_personality("")
+
+
+def test_a_real_description_survives_even_when_it_names_a_trait():
+    """Widening the word list alone would chase an open vocabulary and start
+    throwing away descriptions. Faces are described with adjectives."""
+    from Core.Image_Gen import reads_as_personality
+
+    assert not reads_as_personality("scarred scout with keen eyes")
+    assert not reads_as_personality("tall, broad-shouldered, black beard, chain mail")
+    assert not reads_as_personality(
+        "A gaunt woman in a burned leather coat, grey hair shaved at the sides")
+    assert not reads_as_personality(
+        "a hunched figure in a tattered green robe, face hidden by a hood")
+
+
+def test_the_name_stays_in_the_prompt():
+    """It was dropped the moment a usable desc existed -- throwing away the
+    one word most likely to carry who somebody is. "Sister Marrow" says habit
+    and order and probably woman; the description alone said none of it."""
+    from Core.Image_Gen import make_actor_portrait_prompt
+    from engine.model import Actor
+
+    drawable = Actor(name="Sister Marrow", kind="human", role="enemy",
+                     desc="a gaunt woman in a grey habit, shaved head, "
+                          "salt-cracked hands")
+    assert "Sister Marrow" in make_actor_portrait_prompt(drawable)
+
+    unusable = Actor(name="Sister Marrow", kind="human", role="enemy",
+                     desc="Gruff, pragmatic, and weary of the rising tides.")
+    prompt = make_actor_portrait_prompt(unusable)
+    assert "Sister Marrow" in prompt
+    assert "weary of the rising tides" not in prompt, (
+        "the personality reached the image generator anyway"
+    )

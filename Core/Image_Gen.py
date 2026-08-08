@@ -134,34 +134,95 @@ greedy opportunistic ruthless loyal brutish cunning pragmatic wary bitter
 zealous stoic anxious amiable cautious inquisitive aggressive joyful serene
 proud cruel kind gentle patient reckless honest treacherous devoted grim
 suspicious arrogant humble curious desperate stubborn single-minded driven
-corrupted duty-bound protective keen wry twitchy
+corrupted duty-bound protective keen wry twitchy gruff weary jaded fanatical
+paranoid vengeful merciful pious sardonic dour genial brooding restless
+calculating impulsive fearless craven earnest sly bold timid volatile
+""".split())
+
+#: Words that name something a picture can contain. The question a portrait
+#: prompt actually needs answered is not "is this personality" but "is there
+#: anything here to draw", and that is the more robust of the two: traits are
+#: an open vocabulary and bodies are not.
+_VISIBLE_WORDS = frozenset("""
+hair eyes eye face beard moustache stubble scar scarred skin freckles
+tall short thin lean broad stocky wiry gaunt heavy slight burly slender
+young old elderly middle-aged teenage grey greying bald braided shaved
+coat cloak robe robes armour armor mail helm hood hat mask boots gloves
+tunic vest jacket shirt trousers dress uniform rags leather chain plate
+tattoo tattooed pierced ring necklace amulet belt satchel pack sword axe
+knife blade staff bow rifle pistol lantern scarf apron shawl veil
+red brown black blonde blond white silver golden auburn ginger dark pale
+missing crooked broken bandaged burned weathered lined hollow sunken
+man woman girl boy figure hunched stooped upright posture jaw brow nose
+grin smile scowl teeth tooth lips mouth ears ear chin cheek cheeks throat
+hands hand fingers arms shoulders back chest legs feet
+fur shaggy mane tail snout muzzle paws claws wings scales horns hooves
+feathers whiskers pelt hide antlers fangs
+dog wolf cat horse bird rat crow raven hound beast creature
+""".split())
+
+#: Words that carry no signal either way and only dilute a proportion.
+#: "Gruff, pragmatic, and weary of the rising tides" is three traits in four
+#: real words -- and eight words once "and of the" are counted, which drops
+#: the ratio from 0.75 to 0.125 and let it through.
+_FILLER = frozenset("""
+a an the and or of in on at to with for from by is was are were be been
+this that these those their his her its they he she it who whom whose
+very quite rather somewhat always never often about as but so than
 """.split())
 
 
 def reads_as_personality(text: str) -> bool:
-    """Is this a description of who somebody is, rather than what they look like?
+    """Is this who somebody is, rather than what they look like?
 
     `desc` is the field the portrait prompt draws from, and for 68 of the
     game's 148 profiles it holds a copy of `personality` -- so the image
     generator was being asked for a close-up portrait of "Greedy,
-    opportunistic". Anything that is mostly character adjectives and short
-    enough to be a trait list is treated as unusable, and replaced.
+    opportunistic".
+
+    Two signals, because one was not enough. Caught in a review render:
+    Sister Marrow's portrait prompt was "Close-up portrait of Gruff,
+    pragmatic, and weary of the rising tides" and she came back as a bearded
+    man. That text failed the old test twice over -- `gruff` and `weary` were
+    not in a 42-word list, and the filler in "and weary of the rising tides"
+    diluted the one hit that remained to 0.125.
+
+    Widening the list alone would be chasing an open vocabulary. The second
+    signal is the closed one: a description with nothing visible in it --
+    no body, no clothing, no colour -- is not a description of a face,
+    whatever adjectives it happens to use.
     """
     words = [w.strip(" .,;:-").lower() for w in (text or "").split()]
     words = [w for w in words if w]
     if not words:
         return True
-    if len(words) > 14:
-        return False          # long enough to be a real description
-    hits = sum(1 for w in words if w in _TRAIT_WORDS)
+
+    meaningful = [w for w in words if w not in _FILLER]
+    if not meaningful:
+        return True
+
+    visible = sum(1 for w in meaningful if w in _VISIBLE_WORDS)
+    traits = sum(1 for w in meaningful if w in _TRAIT_WORDS)
+
+    # Anything with several drawable things in it is a description, however
+    # long, and however many traits it also mentions. "A gaunt, weary woman
+    # in a burned leather coat" is both, and it is drawable.
+    if visible >= 2:
+        return False
+
+    if len(words) > 14 and visible:
+        return False          # long, and it does name something to draw
 
     # A proportion, not a count. One trait word among five is how people
     # actually describe faces -- "scarred scout with keen eyes" is an
-    # appearance that happens to contain "keen", and counting hits threw it
-    # away. A trait list is *mostly* trait words: "greedy, opportunistic" is
-    # all of them, "brutish, single-minded, focused on destruction" is two in
-    # five.
-    return hits / len(words) >= 0.34
+    # appearance that happens to contain "keen". A trait list is *mostly*
+    # trait words once the filler is set aside.
+    if traits and traits / len(meaningful) >= 0.34:
+        return True
+
+    # Nothing to draw and nothing long enough to be hiding it.
+    return visible == 0 and len(meaningful) <= 12
+
 
 def describe_actor_physical(g: "GemmaClient", state: "GameState", actor: "Actor") -> str:
     """Ask Gemma for a short physical description so players can picture an NPC."""
@@ -221,8 +282,14 @@ def make_actor_portrait_prompt(actor: "Actor", detail: str = "moderate",
         if fresh and not reads_as_personality(fresh):
             actor.desc = fresh
             desc = fresh
-    focus = desc if desc and not reads_as_personality(desc) else (
-        f"{actor.name}, a {actor.kind} ({actor.role})")
+    # The name stays either way. It used to be dropped the moment a usable
+    # desc existed, which threw away the one word most likely to carry what
+    # somebody is -- "Sister Marrow" says habit and order and probably woman,
+    # and "Gruff, pragmatic and weary" on its own gets you a bearded man.
+    if desc and not reads_as_personality(desc):
+        focus = f"{actor.name}: {desc}"
+    else:
+        focus = f"{actor.name}, a {actor.kind} ({actor.role})"
     tiers = {
         "minimal": "plain backdrop, soft rim light",
         "moderate": "plain backdrop, soft rim light, subtle film grain",

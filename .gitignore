@@ -46,3 +46,4 @@ node_modules/
 # afterwards. It is not tracked because the game writes to it every turn:
 # six turns of play produced twenty-four modified or new files.
 Characters/
+art/style_review/
