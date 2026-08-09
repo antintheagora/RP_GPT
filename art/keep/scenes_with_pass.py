@@ -1243,20 +1243,10 @@ def bone_flats(path):
 
     # Middle-distance rocks, so there is something between the weeds at your
     # feet and the mountains an hour's walk away.
-    #
-    # The fifth is deliberately missing. At (-20, 320) it stood 9.6 m up in
-    # the exact middle of the frame and closed the horizon behind it -- the
-    # one direction this scene needs to stay open. It stays in the list as
-    # `None` rather than being deleted, because the seed is the index: taking
-    # the entry out would renumber the rock after it and change a shape that
-    # is not the one being complained about.
-    for index, rock in enumerate((
+    for index, (x, y, size, squat) in enumerate((
             (-34.0, 78.0, 8.0, 0.70), (30.0, 115.0, 12.0, 0.55),
             (-62.0, 180.0, 18.0, 0.50), (54.0, 235.0, 16.0, 0.62),
-            None, (78.0, 400.0, 38.0, 0.50))):
-        if rock is None:
-            continue
-        x, y, size, squat = rock
+            (-20.0, 320.0, 30.0, 0.45), (78.0, 400.0, 38.0, 0.50))):
         outcrop(x, y, size, sandstone, seed=index * 7 + 3, squat=squat)
 
     # The near ground again, densely enough that the cracks can be cut into
