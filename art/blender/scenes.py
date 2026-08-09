@@ -131,6 +131,11 @@ def arch(x_from, x_to, y, springing, material, stones=13, thickness=0.34,
     radius = span / 2
     centre = (x_from + x_to) / 2
     made = []
+    if fitted:
+        # The band the stones sit on. Without it they are thirteen objects
+        # holding a shape by coincidence.
+        made.append(arch_core(x_from, x_to, y, springing, material,
+                              thickness=thickness, depth=depth, axis=axis))
     for index in range(stones):
         angle = math.pi * (index + 0.5) / stones
         px = centre - radius * math.cos(angle)
@@ -241,6 +246,69 @@ def terrain(size=400.0, resolution=340, kind="hetero", height=34.0,
     if material:
         ground.data.materials.append(material)
     return ground
+
+
+def arch_core(x_from, x_to, y, springing, material, thickness=0.34,
+              depth=0.66, axis="X", inset=0.045, segments=64,
+              name="ArchCore"):
+    """The solid ring an arch is actually made of.
+
+    Thirteen separate stones arranged on a curve is not an arch. It is
+    thirteen stones that happen to be arranged on a curve, and nothing in the
+    picture explains why they are still up there -- no mortar, no core, no
+    contact you can see. Fixing the joints so the stones touch does not help,
+    because a joint you cannot see cannot do the explaining.
+
+    So: one continuous band following exactly the path the voussoirs follow,
+    from the impost at one end, over, to the impost at the other. Set in by
+    `inset` on every face, so each stone still stands proud of it and reads
+    as its own stone, and the band between them reads as what is holding
+    them.
+
+    Built as a swept rectangular section rather than a cylinder difference,
+    because the section has to match the stones' own and a boolean on
+    sixty-four segments is slower and worse.
+    """
+    span = abs(x_to - x_from)
+    radius = span / 2
+    centre = (x_from + x_to) / 2
+    r_in = radius - thickness / 2 + inset
+    r_out = radius + thickness / 2 - inset
+    half_depth = depth / 2 - inset
+
+    verts = []
+    for index in range(segments + 1):
+        angle = math.pi * index / segments
+        cos_a, sin_a = math.cos(angle), math.sin(angle)
+        for r in (r_in, r_out):
+            along = centre - r * cos_a
+            z = springing + r * sin_a
+            for side in (-half_depth, half_depth):
+                if axis == "X":
+                    verts.append((along, y + side, z))
+                else:
+                    verts.append((y + side, along, z))
+
+    faces = []
+    for index in range(segments):
+        a, b = index * 4, (index + 1) * 4
+        faces.append((a + 0, a + 1, b + 1, b + 0))      # intrados
+        faces.append((a + 2, b + 2, b + 3, a + 3))      # extrados
+        faces.append((a + 0, b + 0, b + 2, a + 2))      # one cheek
+        faces.append((a + 1, a + 3, b + 3, b + 1))      # the other
+    last = segments * 4
+    faces.append((0, 2, 3, 1))                          # springing, one end
+    faces.append((last + 0, last + 1, last + 3, last + 2))
+
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(verts, [], faces)
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    obj.data.materials.append(material)
+    for polygon in obj.data.polygons:
+        polygon.use_smooth = True
+    return obj
 
 
 def jamb(x, y, top, material, width=0.34, depth=0.60, courses=6,
