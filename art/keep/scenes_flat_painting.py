@@ -832,15 +832,11 @@ def hoop_chandelier(x, y, ceiling, material, flame_material, drop=1.15,
     """
     made = []
     hang = ceiling - drop
-    # The spokes leave the pole halfway down it, and the rim finishes level
-    # with the pole's own foot. Hung the other way -- spokes off the top and
-    # the rim swinging below the end of the shaft -- nothing is holding
-    # anything up and the wheel reads as threaded onto a stick.
-    hub = hang + (drop - 0.30) * 0.48
+    hub = hang + 0.62
 
     bpy.ops.mesh.primitive_cylinder_add(
-        vertices=10, radius=0.040, depth=ceiling - hang,
-        location=(x, y, (ceiling + hang) / 2))
+        vertices=10, radius=0.040, depth=ceiling - (hang - 0.42),
+        location=(x, y, (ceiling + hang - 0.42) / 2))
     pole = bpy.context.active_object
     pole.name = name
     pole.data.materials.append(material)
@@ -848,7 +844,7 @@ def hoop_chandelier(x, y, ceiling, material, flame_material, drop=1.15,
         polygon.use_smooth = True
     made.append(pole)
 
-    for z, size in ((hub, 0.115), (hang, 0.105)):
+    for z, size in ((hub, 0.135), (hang - 0.44, 0.105)):
         made.append(look.sphere((x, y, z), size, material,
                                 segments=16, rings=10, name=name))
 
@@ -2076,7 +2072,6 @@ def painted_hall(path):
 
     FLOOR, LANDING, CEILING = 0.0, 3.60, 10.4
     HALL, DEEP = 10.0, 24.0
-    VIEW_W, VIEW_H, VIEW_Z = 5.2, 4.4, 2.5
 
     plaster = dressed("Ochre plaster", block_scale=0.30, wetness=0.10,
                       mossy=False, seed=91, mortar=0.0, relief=0.55,
@@ -2104,15 +2099,10 @@ def painted_hall(path):
     tiles = look.checker("Chequer", square=0.95, roughness=0.055,
                          dark=(0.009, 0.009, 0.011, 1.0),
                          pale=(0.520, 0.505, 0.480, 1.0))
-    # Oak, and the grain runs along one axis rather than mottling in all
-    # three -- which is the only thing separating wood from stone at this
-    # distance. `grain_axis` drops the noise frequency along X so cracks
-    # and figure lie lengthways instead of swirling.
-    oak = dressed("Frame oak", block_scale=1.1, wetness=0.14, mossy=False,
-                  seed=101, mortar=0.14, relief=0.85, specular=0.30,
-                  grain_axis=0, grain=9.0,
-                  dark=(0.052, 0.026, 0.011, 1.0),
-                  tint=(0.185, 0.098, 0.038, 1.0))
+    gilt = dressed("Gilt", block_scale=1.6, wetness=0.30, mossy=False,
+                   seed=71, mortar=0.20, relief=0.6, specular=1.4,
+                   dark=(0.280, 0.190, 0.055, 1.0),
+                   tint=(0.880, 0.640, 0.190, 1.0))
 
     # --- the shell -------------------------------------------------------
     look.block((0, DEEP / 2, FLOOR - 0.3), (HALL * 2, DEEP, 0.6), tiles,
@@ -2121,21 +2111,8 @@ def painted_hall(path):
         look.block((side * (HALL + 0.4), DEEP / 2 - 3.0, CEILING / 2),
                    (0.8, DEEP + 8.0, CEILING + 1.0), plaster, bevel=0.05,
                    name="SideWall")
-    # Four pieces round an opening, not one slab with a picture stuck on it.
-    # The picture is a hole now and the world is on the other side of it,
-    # which is the only way a painting gets parallax: move and the hill moves
-    # against the frame, because it is actually further away.
-    JAMB = (HALL * 2 + 1.6 - VIEW_W) / 2
-    for side in (-1, 1):
-        look.block((side * (VIEW_W + JAMB) / 2, DEEP + 0.4, CEILING / 2),
-                   (JAMB, 0.8, CEILING + 1.0),
-                   plaster, bevel=0.05, name="EndWall")
-    look.block((0, DEEP + 0.4, (VIEW_Z + VIEW_H + CEILING + 0.9) / 2),
-               (VIEW_W, 0.8, CEILING + 0.9 - VIEW_Z - VIEW_H), plaster,
-               bevel=0.05, name="EndWall")
-    look.block((0, DEEP + 0.4, (VIEW_Z - 0.1) / 2),
-               (VIEW_W, 0.8, VIEW_Z + 0.1), plaster, bevel=0.05,
-               name="EndWall")
+    look.block((0, DEEP + 0.4, CEILING / 2), (HALL * 2 + 1.6, 0.8,
+               CEILING + 1.0), plaster, bevel=0.05, name="EndWall")
     look.block((0, -9.6, CEILING / 2), (HALL * 2 + 1.6, 0.8, CEILING + 1.0),
                plaster, bevel=0.05, name="BackWall")
 
@@ -2204,46 +2181,24 @@ def painted_hall(path):
         column(side * 9.0, DEEP - 1.15, FLOOR, CEILING + 0.64, 0.80, pale)
 
     # --- the painting ----------------------------------------------------
-    # There is no painted panel any more -- what was a lit rectangle is an
-    # opening, and everything past it is real geometry a long way off.
-    # Opaque, not `foliage`. That shader is translucent, which is right
-    # for a leaf you are looking through and wrong for a hillside you
-    # are looking at: lit from behind through this opening the grass
-    # stopped being lit and started glowing, and the near ground came
-    # back white. A horizontal surface under a 48-degree sun is well lit
-    # whichever way the sun faces, so none of that was needed anyway.
-    #
-    # Sun 2.3 and sky 0.68, both well down. An open field takes the
-    # whole dome plus the sun with nothing shading it, so it runs two
-    # stops over anything indoors -- and past a point AgX takes the
-    # green out along with the brightness, which is how grass ends up
-    # sage.
-    turf = dressed("Hillside", block_scale=0.34, wetness=0.22,
-                   mossy=True, seed=53, mortar=0.0, relief=0.45,
-                   dark=(0.013, 0.036, 0.008, 1.0),
-                   tint=(0.072, 0.230, 0.034, 1.0))
-    # Origin -9.3, not -3, and height 5 rather than 8. Measured, the
-    # first pass put the hill's median surface at z +14.3 while the
-    # sight line through the opening is at -1.9 by the time it gets
-    # there -- so the view went straight under the hill and out to a
-    # ridge 700 m away. `height` multiplies a fractal that runs past 3,
-    # which is the third time that has caught me in this file.
-    #
-    # Then flatter again. At height 5 the near peaks stood above the
-    # opening's upper sight line and shut the sky out entirely -- the
-    # window has to show a horizon, not a hillside, and a horizon needs
-    # the ground to stay under the line for the whole run out to it.
-    terrain(size=220, resolution=200, kind="hetero", height=2.6, seed=17.3,
-            offset=0.86, origin=(0, 135, -6.6), material=turf)
-    terrain(size=900, resolution=180, kind="hetero", height=26.0, seed=5.1,
-            offset=0.80, origin=(40, 620, -26.0), material=turf)
+    VIEW_W, VIEW_H, VIEW_Z = 5.2, 4.4, 2.5
+    # Strength 3.2, not 6. Emission is the same trade every bright thing in
+    # this file makes: past a point AgX rolls it off toward white and takes
+    # the hue with it, and a window onto a white nothing is a lamp. Dimmer
+    # and more saturated reads as further away and more real, and the sconces
+    # make up the light it stops giving the room.
+    view = look.window_light("The way out", strength=2.0, horizon=0.42,
+                             base=VIEW_Z, height=VIEW_H, cloud=0.38,
+                             sky=(0.045, 0.210, 0.920), ground=(0.130, 0.480, 0.050))
+    look.block((0, DEEP - 0.16, VIEW_Z + VIEW_H / 2), (VIEW_W, 0.12, VIEW_H),
+               view, bevel=None, name="Painting")
     # The frame, four members rather than a slab with a hole in it.
     for dx, dz, w, h in ((0, VIEW_H / 2 + 0.28, VIEW_W + 1.12, 0.56),
                          (0, -VIEW_H / 2 - 0.28, VIEW_W + 1.12, 0.56),
                          (VIEW_W / 2 + 0.28, 0, 0.56, VIEW_H + 1.12),
                          (-VIEW_W / 2 - 0.28, 0, 0.56, VIEW_H + 1.12)):
         look.block((dx, DEEP - 0.20, VIEW_Z + VIEW_H / 2 + dz), (w, 0.42, h),
-                   oak, bevel=0.07, name="Frame")
+                   gilt, bevel=0.07, name="Frame")
 
     # --- something the size of a chandelier, being a chandelier --------
     #
@@ -2258,7 +2213,7 @@ def painted_hall(path):
                     look.glowing("Candle", colour=(1.0, 0.660, 0.300, 1.0),
                                  strength=26.0),
                     drop=1.30, radius=1.05, candles=8, legs=6,
-                    energy=3200)
+                    energy=210)
 
     # --- and something that just came through -------------------------
     #
@@ -2281,36 +2236,70 @@ def painted_hall(path):
                        math.radians(-25.0)), name="Pigeon")
 
     # --- light -----------------------------------------------------------
-    #
-    # Two sources for the whole picture: the wheel of candles, and the sun
-    # outside. Everything else is gone -- both sconces, the pair over the
-    # landing, and the hard key that was throwing the bird at the wall.
-    #
-    # The sun does that job now instead, and does it better. It comes in
-    # through the opening at 48 degrees, which puts the bird's shadow on the
-    # chequer at (-4, 9) -- and because a sun is parallel, that shadow is
-    # life size rather than the two-and-a-half-times smear any lamp in this
-    # room would make of it. Eleven metres of bird across a floor whose tiles
-    # are just under two.
-    look.sun((math.radians(-41.8), 0, math.radians(-18.0)), energy=2.3,
-             angle=0.006, color=(1.0, 0.945, 0.845))
-    # 3.4, not 4.6: the grass is translucent and backlit through this
-    # opening, so it lights up rather than merely being lit, and at 4.6
-    # the hill came back nearer white than green.
+    # Two sconces, warm and weak, only there to keep the corners from being
+    # holes. Everything else in the room is lit by the picture.
+    # No bulbs. A visible source is a bright disc the eye goes to instead of
+    # going where the light lands, and there was nothing on the wall for it
+    # to be coming out of anyway -- so the lamps are just gone and only what
+    # they do is left.
+    # Everything here is down by half or more. The room was lit like a room
+    # somebody works in; it wants to be lit like one somebody is creeping
+    # through, where most of it is dark and the eye goes where the light is.
+    look.point_light((8.4, 7.0, 6.4), energy=130,
+                     radius=0.45, color=(1.0, 0.615, 0.290))
 
-    # The sky the opening looks at. Nothing else can see it: the room is
-    # closed, so this reaches the inside only through the hole in the wall.
-    look.bryce_sky(bands=[(0.00, (0.640, 0.760, 0.880)),
-                          (0.12, (0.330, 0.545, 0.860)),
-                          (0.45, (0.120, 0.320, 0.760)),
-                          (1.00, (0.035, 0.130, 0.480))],
-                   strength=0.68, bend=2.2,
-                   cloud_colour=(0.97, 0.97, 0.98), cloud_amount=0.42,
-                   cloud_scale=2.2, cloud_sharpness=(0.50, 0.72), seed=11.0)
+    # And one hard source, high on the right, only there to throw the bird at
+    # the left wall. Small radius on purpose: a shadow's edge is as wide as
+    # the lamp that made it, so a 2 m softbox at this range gives a smear and
+    # a 150 mm one gives an outline you can read the primaries off.
+    look.point_light((6.3, 16.4, 9.3), energy=2600,
+                     radius=0.15, color=(1.0, 0.720, 0.430))
 
+    # The left sconce is gone. It stood two metres off the left wall, which
+    # is the one surface the bird is supposed to be thrown against -- it was
+    # filling in the shadow at point-blank range, and no amount of key light
+    # wins against a fill sitting on the screen you are projecting onto.
+    # Falloff across the wingspan is now the hard lamp's job as well as the
+    # shadow's, which is what a key light is for.
+
+    # Two more over the landing, and much less orange than the sconces.
+    #
+    # Sampled off the frame the carpet came back at hue 19 degrees, value
+    # 0.187 -- a dark orange, which is what brown is. Neither half of that is
+    # the material's fault: the amber sconces carry the hue round toward
+    # orange before it ever reaches the eye, and nothing else was lighting
+    # the landing at all, so what did arrive was too dim to read as a colour.
+    # These are near-white, close, and only over the carpet. Weak, too:
+    # at 1250 the landing came back at value 0.705 and saturation 0.43,
+    # which is pink. A colour needs to be somewhere in the middle of
+    # the range to be a colour at all -- too dark is brown and too
+    # bright is white, and red has less room between the two than most.
+    #
+    # Low and well back, too. At (5.6, -4.4, 5.6) they were between the
+    # camera and the balustrade and lit its face: the rail stopped being
+    # a silhouette and became bright stone across the bottom of the
+    # frame. Dropped to the carpet's own height and pulled back to the
+    # lens, the rail is nine metres off instead of six and gets a
+    # quarter of what it was getting.
+    #
+    # And weak, with the carpet made brighter to compensate. The rail's
+    # brightness depends only on the lamp; the carpet's depends on the
+    # lamp AND its own colour, so trading energy for albedo keeps the red
+    # where it is and takes the spill off everything else.
+    for side in (-1, 1):
+        look.point_light((side * 5.6, -6.6, 4.70), energy=78,
+                         radius=0.8, color=(1.0, 0.815, 0.700))
+
+    # Air, so the picture throws a shaft rather than just a pool.
+    # Enough to carry a shaft, not enough to fill the room. At 0.010 the far
+    # wall and the whole roof went to milk and the painting lit fog instead
+    # of stone.
     look.haze(size=44, density=0.0034, colour=(0.55, 0.62, 0.72),
               origin=(0, 10.0, 5.0), height=13.0)
 
+    # High enough to see over the rail. The balustrade is a foreground
+    # element, not a fence to be stuck behind -- at 5.65 it cut the floor off
+    # at the knees and the stairs never appeared at all.
     look.camera((0.0, -7.6, 6.55), (0.0, DEEP, 3.55), lens=30)
     look.view_transform("AgX", look="High Contrast", exposure=0.72)
     _finish(path, "painted_hall")
