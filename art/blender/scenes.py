@@ -781,15 +781,23 @@ def jungle_tree(x, y, trunk_material, leaf_material, height=14.0, girth=0.72,
 BORROWED = {
     "pigeon": (r"C:/Users/antho/Documents/Projects/ALU Shirt/References"
                r"/Pigeon/pigeon.blend"),
+    "panther": (r"C:/Users/antho/Documents/Projects/ALU Shirt/References"
+                r"/Panther/panther.blend"),
 }
 
 
-def borrowed(key, location, span, rotation=(0, 0, 0), name=None):
+def borrowed(key, location, span, rotation=(0, 0, 0), frame=None, name=None):
     """Append an object from another .blend and put it where it goes.
 
     `span` is the width you want it to end up, in metres, because that is the
     measurement anybody has an instinct for -- the model arrives normalised to
     one unit on its longest axis and this scales from that.
+
+    `frame` poses a rigged model by standing the whole scene on that frame of
+    its own animation. It is much the cheapest way to get an attitude out of
+    an animated asset: a walk cycle already contains every pose the animal can
+    hold, so picking one is a matter of finding the frame rather than of
+    moving bones.
 
     Missing files are a warning, not a crash. A backdrop that will not render
     because somebody else's asset folder moved is worse than a backdrop with
@@ -801,6 +809,9 @@ def borrowed(key, location, span, rotation=(0, 0, 0), name=None):
         return []
     with bpy.data.libraries.load(path, link=False) as (source, arrived):
         arrived.objects = list(source.objects)
+        # Actions explicitly, not just as a dependency of the armature. A rig
+        # arrives posed at whatever frame it was saved on otherwise.
+        arrived.actions = list(source.actions)
     made = []
     for obj in arrived.objects:
         if obj is None:
@@ -815,8 +826,11 @@ def borrowed(key, location, span, rotation=(0, 0, 0), name=None):
     root.location = location
     root.rotation_euler = rotation
     root.scale = tuple(axis * span for axis in root.scale)
+    if frame is not None:
+        bpy.context.scene.frame_set(frame)
     bpy.context.view_layer.update()
-    print(f"[scene] '{key}': {len(made)} objects at {span:.1f} m across")
+    print(f"[scene] '{key}': {len(made)} objects at {span:.1f} m across"
+          + (f", posed on frame {frame}" if frame is not None else ""))
     return made
 
 
@@ -2163,7 +2177,7 @@ PAINTED_HALL_MOODS = {
 }
 
 
-def painted_hall(path, mood="noon"):
+def painted_hall(path, mood="noon", view="balcony"):
     """A hall with a way out of it hanging on the far wall.
 
     Everything here is arranged around one idea: the picture is the only
@@ -2489,6 +2503,40 @@ def painted_hall(path, mood="noon"):
                              eye=(1.48, 2.42), turns=2.1, seed=7.0),
                bevel=0.0, name="Skin")
 
+    # --- and something on the floor ------------------------------------
+    #
+    # kenchoo's "Black Panther", CC-BY, 2.2 m nose to tail, posed on frame
+    # 247 of its own walk cycle -- which is the low, weight-forward part of
+    # the stride rather than the neutral standing frame the file opens on.
+    # An animated asset already contains every attitude it can hold; getting
+    # one out of it is a matter of finding the frame, not of moving bones.
+    #
+    # Heading is the other half of it. The bird is coming at the camera and
+    # to the left; the cat crosses the frame the other way, at roughly a
+    # right angle to the view. Two things moving the same way in one picture
+    # read as one event, and the whole reason for having both is that they
+    # are not.
+    borrowed("panther", (2.3, 10.9, 0.02), 2.2,
+             rotation=(0.0, 0.0, math.radians(120.0)), frame=247,
+             name="Panther")
+
+    # A black cat in a dim room is a hole in the floor. Two lamps, neither of
+    # them visible: one behind and above it, which is what puts an edge on
+    # the back and the top of the head and separates it from the chequer, and
+    # a much weaker cold one from the left so the near side is not solid
+    # black. Rim first, fill second -- a fill bright enough to model a black
+    # coat by itself would light the whole room with it.
+    # High, and well past the cat. A lamp low over a mirror-polished
+    # floor puts a bright bead of itself on the tiles, which is a
+    # reflection of a lamp that is not in the room -- the whole point of
+    # these two was that they do their work without being seen. Tucked
+    # in behind the bird as well, so what glow it puts in the room's air
+    # is behind something rather than hanging on the wall by itself.
+    look.point_light((-2.2, 16.8, 4.20), energy=850, radius=0.30,
+                     color=(1.0, 0.760, 0.480))
+    look.point_light((-6.4, 7.4, 2.10), energy=240, radius=0.60,
+                     color=(0.600, 0.730, 1.000))
+
     # --- light -----------------------------------------------------------
     #
     # Two sources for the whole picture: the wheel of candles, and the sun
@@ -2558,11 +2606,24 @@ def painted_hall(path, mood="noon"):
     look.haze(size=1520, density=0.00030, colour=(0.60, 0.71, 0.86),
               origin=(0, 800, 40.0), height=300.0)
 
-    look.camera((0.0, -7.6, 6.55), (0.0, DEEP, 3.55), lens=30)
+    if view == "stair":
+        # Part way down the right-hand flight, looking back across the room.
+        # Standing height above the tread it is on -- the steps run 3.6 m over
+        # thirteen, so at y=5.2 the surface is about 2.0 and the lens wants to
+        # be a person's height above that, not a person's height above zero.
+        #
+        # Aimed down, and back a couple of metres. Pointed at the picture
+        # the cat sat 28 degrees off the axis against a 24-degree half
+        # frame -- below the bottom edge, on a floor nobody could see. The
+        # aim has to include the floor if the thing standing on it is
+        # meant to be in the shot.
+        look.camera((8.20, 3.40, 3.95), (-1.5, 17.5, 2.60), lens=26)
+    else:
+        look.camera((0.0, -7.6, 6.55), (0.0, DEEP, 3.55), lens=30)
     look.view_transform("AgX", look="High Contrast",
                         exposure=lit["exposure"])
-    _finish(path, "painted_hall" if mood == "noon"
-            else f"painted_hall_{mood}")
+    stem = "painted_hall" if mood == "noon" else f"painted_hall_{mood}"
+    _finish(path, stem if view == "balcony" else f"{stem}_{view}")
 
 
 def main():
@@ -2593,6 +2654,7 @@ def main():
         if mood != "noon":
             jobs[f"painted_hall_{mood}"] = (
                 lambda p, mood=mood: painted_hall(p, mood=mood))
+    jobs["painted_hall_stair"] = lambda p: painted_hall(p, view="stair")
     wanted = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 
     # `export` writes an OBJ instead of a PNG. Its own word rather than a

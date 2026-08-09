@@ -165,6 +165,10 @@ without it if the path is wrong, minus the bird.
 (https://creativecommons.org/licenses/by/4.0/), from
 https://sketchfab.com/3d-models/none-d135106ba138411fbe8d779b2fb90599
 
+**Black Panther** — by **kenchoo**, licensed **CC-BY 4.0**
+(https://creativecommons.org/licenses/by/4.0/), from
+https://sketchfab.com/3d-models/black-panther-7fca11c89cca4362a525c891a8345112
+
 CC-BY is not CC0: the credit has to travel with anything published that
-contains it. If `painted_hall.png` ships in the game, restore50 is named in
-whatever credits the game has.
+contains it. If `painted_hall.png` ships in the game, restore50 and
+kenchoo are both named in whatever credits the game has.
