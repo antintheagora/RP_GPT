@@ -666,7 +666,7 @@ def drowned_steps(path):
     # at different depths read as one confused object.
     for index in range(11):
         width = 7.4 - index * 0.32
-        look.block((11.1 + index * 0.18, 26 + index * 2.05,
+        look.block((7.4 + index * 0.18, 9 + index * 2.05,
                     -1.5 + index * 0.62),
                    (width, 1.9, 0.55), stone, name="Step")
 
