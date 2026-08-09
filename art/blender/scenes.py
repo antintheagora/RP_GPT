@@ -329,7 +329,7 @@ def undercroft(path, floor=True, render=True, groups=None,
     look.view_transform("AgX", look="Medium High Contrast")
 
     stone = dressed("Crypt stone", block_scale=1.6, wetness=0.78,
-                            mossy=True, seed=2, mortar=0.85)
+                            mossy=True, seed=2, mortar=0.85, coursed=fitted)
     floor_stone = dressed("Flagstone", block_scale=1.1, wetness=0.92,
                                   mossy=False, seed=8, mortar=0.35)
     wax = dressed("Tallow", block_scale=1.0, wetness=0.2, mossy=False,

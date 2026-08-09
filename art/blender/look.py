@@ -310,7 +310,7 @@ def _crack_field(tree, coords, scale, width, seed_offset, location):
     return line
 
 
-def damp_stone(name="Damp stone", block_scale=7.0, wetness=0.55,
+def damp_stone(name="Damp stone", block_scale=7.0, wetness=0.55, coursed=False,
                mossy=True, seed=0, tint=None, mortar=1.0, world_space=False,
                cracks=0.0, puddling=0.0, grain_axis=None, grain=5.0):
     """Dark stone that has been underground a long time.
@@ -370,8 +370,30 @@ def damp_stone(name="Damp stone", block_scale=7.0, wetness=0.55,
     voronoi.location = (-1200, 300)
     voronoi.feature = "DISTANCE_TO_EDGE"
     sock(voronoi, "Scale", block_scale)
-    sock(voronoi, "Randomness", 0.85)
-    tree.links.new(coords, voronoi.inputs["Vector"])
+
+    joint_source = coords
+    if coursed:
+        # Masonry is laid in courses. Voronoi at randomness 0.85 is
+        # crazy-paving: irregular polygons meeting at random angles, which on
+        # a flat wall reads as a heap of blocks balanced on their corners
+        # rather than as a wall somebody built.
+        #
+        # Two changes and it is masonry. Drop the randomness so the cells are
+        # nearly a grid, and squash the vertical so they come out wider than
+        # they are tall -- which is the proportion of a dressed stone and the
+        # reason courses read as horizontal at all. Still a 3D field, so it
+        # works on every face of every object without the triplanar
+        # projection a brick texture would need.
+        squash = tree.nodes.new("ShaderNodeVectorMath")
+        squash.location = (-1400, 300)
+        squash.operation = "MULTIPLY"
+        squash.inputs[1].default_value = (1.0, 1.0, 2.1)
+        tree.links.new(coords, squash.inputs[0])
+        joint_source = squash.outputs["Vector"]
+        sock(voronoi, "Randomness", 0.22)
+    else:
+        sock(voronoi, "Randomness", 0.85)
+    tree.links.new(joint_source, voronoi.inputs["Vector"])
     # `mortar` is how much of the masonry the *shader* is responsible for.
     # Turn it down where the blocks are really modelled, or the procedural
     # joints draw a second, differently-shaped wall over the real one and the
