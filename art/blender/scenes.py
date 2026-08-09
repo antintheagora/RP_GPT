@@ -2082,8 +2082,12 @@ def painted_hall(path):
                       mossy=False, seed=91, mortar=0.0, relief=0.55,
                       dark=(0.105, 0.072, 0.026, 1.0),
                       tint=(0.400, 0.290, 0.105, 1.0))
+    # Specular right down. The patch on the right-hand column was a gloss
+    # highlight off the chandelier -- polished stone reflecting a lamp
+    # thirteen metres away, which is real but reads as a light nobody put
+    # there. The stone in this hall is dressed, not waxed.
     pale = dressed("Hall stone", block_scale=0.9, wetness=0.14, mossy=False,
-                   seed=23, mortar=0.28, relief=0.7,
+                   seed=23, mortar=0.28, relief=0.7, specular=0.10,
                    dark=(0.115, 0.110, 0.100, 1.0),
                    tint=(0.395, 0.380, 0.355, 1.0))
     beam = dressed("Dark beam", block_scale=1.1, wetness=0.16, mossy=False,
@@ -2125,16 +2129,22 @@ def painted_hall(path):
     # The picture is a hole now and the world is on the other side of it,
     # which is the only way a painting gets parallax: move and the hill moves
     # against the frame, because it is actually further away.
+    # `bevel=0` on all four, and the head and sill 20mm wider than the
+    # opening so they tuck behind the jambs. A bevel is a chamfer, and a
+    # chamfer along a joint between two pieces of the same wall draws a
+    # groove down it -- four of them, radiating from the corners of the
+    # picture, which is exactly what was showing. The wall is one surface, so
+    # its pieces must not admit to being pieces.
     JAMB = (HALL * 2 + 1.6 - VIEW_W) / 2
     for side in (-1, 1):
         look.block((side * (VIEW_W + JAMB) / 2, DEEP + 0.4, CEILING / 2),
                    (JAMB, 0.8, CEILING + 1.0),
-                   plaster, bevel=0.05, name="EndWall")
+                   plaster, bevel=0.0, name="EndWall")
     look.block((0, DEEP + 0.4, (VIEW_Z + VIEW_H + CEILING + 0.9) / 2),
-               (VIEW_W, 0.8, CEILING + 0.9 - VIEW_Z - VIEW_H), plaster,
-               bevel=0.05, name="EndWall")
+               (VIEW_W + 0.02, 0.8, CEILING + 0.9 - VIEW_Z - VIEW_H), plaster,
+               bevel=0.0, name="EndWall")
     look.block((0, DEEP + 0.4, (VIEW_Z - 0.1) / 2),
-               (VIEW_W, 0.8, VIEW_Z + 0.1), plaster, bevel=0.05,
+               (VIEW_W + 0.02, 0.8, VIEW_Z + 0.1), plaster, bevel=0.0,
                name="EndWall")
     look.block((0, -9.6, CEILING / 2), (HALL * 2 + 1.6, 0.8, CEILING + 1.0),
                plaster, bevel=0.05, name="BackWall")
@@ -2220,8 +2230,9 @@ def painted_hall(path):
     # sage.
     turf = dressed("Hillside", block_scale=0.34, wetness=0.22,
                    mossy=True, seed=53, mortar=0.0, relief=0.45,
-                   dark=(0.013, 0.036, 0.008, 1.0),
-                   tint=(0.072, 0.230, 0.034, 1.0))
+                   specular=0.10,
+                   dark=(0.010, 0.062, 0.005, 1.0),
+                   tint=(0.050, 0.340, 0.028, 1.0))
     # Origin -9.3, not -3, and height 5 rather than 8. Measured, the
     # first pass put the hill's median surface at z +14.3 while the
     # sight line through the opening is at -1.9 by the time it gets
@@ -2233,10 +2244,12 @@ def painted_hall(path):
     # opening's upper sight line and shut the sky out entirely -- the
     # window has to show a horizon, not a hillside, and a horizon needs
     # the ground to stay under the line for the whole run out to it.
-    terrain(size=220, resolution=200, kind="hetero", height=2.6, seed=17.3,
-            offset=0.86, origin=(0, 135, -6.6), material=turf)
-    terrain(size=900, resolution=180, kind="hetero", height=26.0, seed=5.1,
-            offset=0.80, origin=(40, 620, -26.0), material=turf)
+    # One range, and it ends. The second one stood on the horizon and filled
+    # the top half of the opening with rock, where the whole point of cutting
+    # a hole in a wall is that there is sky through it. Nothing past 295 m
+    # now, so above the near hill's own skyline there is only the dome.
+    terrain(size=260, resolution=220, kind="hetero", height=2.6, seed=17.3,
+            offset=0.86, origin=(0, 165, -6.6), material=turf)
     # The frame, four members rather than a slab with a hole in it.
     for dx, dz, w, h in ((0, VIEW_H / 2 + 0.28, VIEW_W + 1.12, 0.56),
                          (0, -VIEW_H / 2 - 0.28, VIEW_W + 1.12, 0.56),
@@ -2308,8 +2321,23 @@ def painted_hall(path):
                    cloud_colour=(0.97, 0.97, 0.98), cloud_amount=0.42,
                    cloud_scale=2.2, cloud_sharpness=(0.50, 0.72), seed=11.0)
 
-    look.haze(size=44, density=0.0034, colour=(0.55, 0.62, 0.72),
-              origin=(0, 10.0, 5.0), height=13.0)
+    # And a lamp immediately behind the opening, which is the tidiest way
+    # to get a beam: the wall is the barn door. Everything it throws at
+    # the masonry stops there and only the cone through the hole gets in,
+    # so the shape of the light is the shape of the frame without a spot
+    # cone having to be aimed at anything. A hint of green in it, from the
+    # field it is supposed to be coming off.
+    look.point_light((0.0, 24.62, VIEW_Z + VIEW_H * 0.45), energy=2400,
+                     radius=0.30, color=(0.735, 1.0, 0.790))
+
+    # The air stops at the wall. Left running to y=32 it enclosed the beam
+    # lamp, which then lit the volume around itself and hung a glowing ball
+    # in the middle of the opening -- a lamp is invisible to a camera until
+    # you give it something to shine on, and fog three feet away is exactly
+    # that. It ends at 23 now, a foot short of the masonry, so the beam
+    # becomes visible only after it is through the hole.
+    look.haze(size=36, density=0.0040, colour=(0.55, 0.62, 0.72),
+              origin=(0, 5.0, 5.0), height=13.0)
 
     look.camera((0.0, -7.6, 6.55), (0.0, DEEP, 3.55), lens=30)
     look.view_transform("AgX", look="High Contrast", exposure=0.72)
