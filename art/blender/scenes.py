@@ -2465,9 +2465,15 @@ def painted_hall(path, mood="noon", view="balcony"):
     # it, which matters because a wing aimed at the lens has no width. The
     # position is not a guess -- a ray through the middle of the mark, taken
     # out to twelve metres, lands at (-6.6, 5.5).
+    # Yaw is per view, and that is a decision rather than an oversight. The
+    # model faces -Y, so -25 brings it at the balcony lens and +27 brings it
+    # at the one on the stair -- the same bird in the same place, turned to
+    # meet whoever is looking. A backdrop is a picture, not a simulation, and
+    # nothing in either frame can tell you the other exists.
     borrowed("pigeon", (-3.3, 15.2, 6.10), 11.2,
              rotation=(math.radians(-9.0), math.radians(-19.0),
-                       math.radians(-25.0)), name="Pigeon")
+                       math.radians(27.0 if view == "stair" else -25.0)),
+             name="Pigeon")
 
     # A membrane across the opening, so it stops being a window.
     #
@@ -2511,13 +2517,14 @@ def painted_hall(path, mood="noon", view="balcony"):
     # An animated asset already contains every attitude it can hold; getting
     # one out of it is a matter of finding the frame, not of moving bones.
     #
-    # Heading is the other half of it. The bird is coming at the camera and
-    # to the left; the cat crosses the frame the other way, at roughly a
-    # right angle to the view. Two things moving the same way in one picture
-    # read as one event, and the whole reason for having both is that they
-    # are not.
-    borrowed("panther", (2.3, 10.9, 0.02), 2.2,
-             rotation=(0.0, 0.0, math.radians(120.0)), frame=247,
+    # Heading is the other half of it, and the two are set against each other
+    # deliberately: the cat takes the line the bird has just come off -- yaw
+    # -25, which was the bird's -- while the bird turns to +27 and comes at
+    # the lens. Their paths cross at about fifty degrees. Two things moving
+    # the same way in one picture read as one event; two things crossing read
+    # as two, which is the whole reason for having both.
+    borrowed("panther", (1.0, 13.6, 0.02), 5.5,
+             rotation=(0.0, 0.0, math.radians(-25.0)), frame=247,
              name="Panther")
 
     # A black cat in a dim room is a hole in the floor. Two lamps, neither of
@@ -2532,9 +2539,9 @@ def painted_hall(path, mood="noon", view="balcony"):
     # these two was that they do their work without being seen. Tucked
     # in behind the bird as well, so what glow it puts in the room's air
     # is behind something rather than hanging on the wall by itself.
-    look.point_light((-2.2, 16.8, 4.20), energy=850, radius=0.30,
+    look.point_light((-2.6, 18.4, 4.60), energy=980, radius=0.30,
                      color=(1.0, 0.760, 0.480))
-    look.point_light((-6.4, 7.4, 2.10), energy=240, radius=0.60,
+    look.point_light((-6.8, 9.6, 2.40), energy=300, radius=0.60,
                      color=(0.600, 0.730, 1.000))
 
     # --- light -----------------------------------------------------------
@@ -2612,12 +2619,14 @@ def painted_hall(path, mood="noon", view="balcony"):
         # thirteen, so at y=5.2 the surface is about 2.0 and the lens wants to
         # be a person's height above that, not a person's height above zero.
         #
-        # Aimed down, and back a couple of metres. Pointed at the picture
-        # the cat sat 28 degrees off the axis against a 24-degree half
-        # frame -- below the bottom edge, on a floor nobody could see. The
-        # aim has to include the floor if the thing standing on it is
-        # meant to be in the shot.
-        look.camera((8.20, 3.40, 3.95), (-1.5, 17.5, 2.60), lens=26)
+        # At the head of the flight rather than part way down it, because
+        # the rail has to be in shot. The balustrade stands at y=1.3 and the
+        # picture at y=23.6, and from anywhere down the stairs those two are
+        # more than ninety degrees apart -- wider than any lens here can hold
+        # without bending the room. From the top they close to about sixty
+        # and both fit: measured, the rail's end lands 32 degrees off axis
+        # against a 35-degree half frame, which puts it at the left edge.
+        look.camera((8.35, 0.60, 4.55), (-3.5, 12.0, 3.40), lens=26)
     else:
         look.camera((0.0, -7.6, 6.55), (0.0, DEEP, 3.55), lens=30)
     look.view_transform("AgX", look="High Contrast",
