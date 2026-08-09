@@ -27,6 +27,7 @@ lost in the dark.
 
 import math
 import os
+import random
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -445,6 +446,123 @@ def monolith(x, y, height, width, material, lean=0.0, twist=0.0, z=0.0):
     """A standing slab. Bryce put these everywhere and so does this game."""
     return look.block((x, y, z + height / 2), (width, width * 0.62, height),
                       material, rotation=(lean, lean * 0.6, twist), name="Monolith")
+
+
+def _twig(base, heading, length, radius, segments, material, rng,
+          droop=0.2, wander=0.22, name="Twig"):
+    """One tapering, bending stick, and where it ended up.
+
+    A branch drawn as a single straight cone reads as a pencil. Three or four
+    short segments, each aimed a little off the last, is enough for the eye
+    to call it grown instead of manufactured -- and the silhouette is the
+    whole object here, since a dead bush has no leaves to hide behind and
+    nothing in this scene is near enough to read shading on.
+
+    Returns the parts, the tip, and the direction it was travelling, so a
+    caller can fork off the end rather than guessing where the end was.
+    """
+    made = []
+    point = Vector(base)
+    aim = Vector(heading).normalized()
+    step = length / segments
+    for index in range(segments):
+        thick = radius * (1.0 - 0.72 * index / segments)
+        end = point + aim * step
+        bpy.ops.mesh.primitive_cone_add(
+            vertices=7, radius1=thick, radius2=thick * 0.62, depth=step,
+            location=(point + end) / 2)
+        obj = bpy.context.active_object
+        obj.name = name
+        obj.rotation_mode = "QUATERNION"
+        obj.rotation_quaternion = aim.to_track_quat("Z", "Y")
+        obj.data.materials.append(material)
+        for polygon in obj.data.polygons:
+            polygon.use_smooth = True
+        made.append(obj)
+        point = end
+        aim = (aim + Vector((rng.uniform(-wander, wander),
+                             rng.uniform(-wander, wander),
+                             -droop))).normalized()
+    return made, point, aim
+
+
+def bramble(x, y, material, scale=1.0, stems=8, seed=0, z=0.0):
+    """A dead thornbush: a knot of stems leaning out and curling over."""
+    rng = random.Random(seed)
+    made = []
+    for _ in range(stems):
+        angle = rng.uniform(0, math.tau)
+        spread = rng.uniform(0.55, 1.30)
+        parts, tip, heading = _twig(
+            (x + math.cos(angle) * 0.05 * scale,
+             y + math.sin(angle) * 0.05 * scale, z - 0.04),
+            Vector((math.cos(angle) * spread, math.sin(angle) * spread, 1.0)),
+            scale * rng.uniform(0.55, 1.05), scale * 0.030, 3,
+            material, rng, droop=0.34, wander=0.30, name="Bramble")
+        made += parts
+        if rng.random() < 0.65:
+            fork = (heading + Vector((rng.uniform(-0.6, 0.6),
+                                      rng.uniform(-0.6, 0.6),
+                                      -0.25))).normalized()
+            more, _, _ = _twig(tip, fork, scale * rng.uniform(0.18, 0.40),
+                               scale * 0.015, 2, material, rng,
+                               droop=0.42, wander=0.36, name="Bramble")
+            made += more
+    return made
+
+
+def dead_tree(x, y, material, height=4.2, seed=0, z=0.0, limbs=5):
+    """A trunk that forked three times and then stopped."""
+    rng = random.Random(seed)
+    trunk, top, _ = _twig(
+        (x, y, z - 0.2),
+        Vector((rng.uniform(-0.09, 0.09), rng.uniform(-0.09, 0.09), 1.0)),
+        height * 0.54, height * 0.064, 4, material, rng,
+        droop=0.01, wander=0.07, name="Trunk")
+    made = list(trunk)
+    for index in range(limbs):
+        angle = math.tau * index / limbs + rng.uniform(-0.45, 0.45)
+        spread = rng.uniform(0.45, 1.05)
+        branch, tip, heading = _twig(
+            top, Vector((math.cos(angle) * spread,
+                         math.sin(angle) * spread, 1.0)),
+            height * rng.uniform(0.28, 0.46), height * 0.031, 4,
+            material, rng, droop=-0.05, wander=0.17, name="Limb")
+        made += branch
+        for _ in range(rng.randint(1, 2)):
+            fork = (heading + Vector((rng.uniform(-0.75, 0.75),
+                                      rng.uniform(-0.75, 0.75),
+                                      rng.uniform(-0.25, 0.25)))).normalized()
+            spray, _, _ = _twig(tip, fork, height * rng.uniform(0.11, 0.23),
+                                height * 0.013, 3, material, rng,
+                                droop=-0.02, wander=0.32, name="Twig")
+            made += spray
+    return made
+
+
+def outcrop(x, y, size, material, seed=0, squat=0.55, z=0.0):
+    """A weathered knob of rock, half buried.
+
+    Buried on purpose. A boulder resting exactly on the ground plane draws
+    the seam where the two meet, and nothing in a desert sits on the surface
+    -- it comes up out of it.
+    """
+    rng = random.Random(seed)
+    bpy.ops.mesh.primitive_ico_sphere_add(
+        subdivisions=3, radius=size, location=(x, y, z - size * squat * 0.30))
+    obj = bpy.context.active_object
+    obj.name = "Outcrop"
+    obj.scale = (rng.uniform(0.72, 1.35), rng.uniform(0.72, 1.35), squat)
+    obj.rotation_euler = (0, 0, rng.uniform(0, math.tau))
+    # Feature size has to be a fraction of the rock, not a multiple of it.
+    # At 0.9/size an eighteen-metre rock got noise with a twenty-metre
+    # wavelength, which displaces the whole thing one way and leaves an egg.
+    look.weather(obj, amount=size * 0.30, scale=3.5 / max(size, 0.6),
+                 cuts=3, seed=seed)
+    obj.data.materials.append(material)
+    for polygon in obj.data.polygons:
+        polygon.use_smooth = True
+    return obj
 
 
 def _finish(path, name, samples=420):
@@ -952,6 +1070,148 @@ def export_obj(path, name="undercroft", segments=None, floor=True,
     return out
 
 
+def bone_flats(path):
+    """Hot, dead, and open to the horizon in every direction.
+
+    The camera is at knee height, which is the whole scene. From standing you
+    look down onto a plain and read it as a map; from 600mm you look along it
+    and every dead thing on it stands against the sky instead of against the
+    ground. It is also the only way the near dirt gets to be a surface rather
+    than a floor.
+
+    Nothing here is alive. The rule that keeps that honest is that no object
+    is allowed to be green and no shadow is allowed to be cool -- there is no
+    water in the scene to justify either.
+    """
+    look.wipe()
+    look.use_cycles(samples=460)
+    look.view_transform("AgX", look="Medium High Contrast")
+
+    # Cracked dirt. `mortar` here is not masonry -- the same voronoi that cuts
+    # joints between blocks cuts polygons into dried mud, and it is the one
+    # pattern everybody recognises as "this ground has not seen rain".
+    hardpan = dressed("Hardpan", block_scale=0.30, wetness=0.03, mossy=False,
+                      seed=41, mortar=0.42, cracks=1.05,
+                      tint=(0.238, 0.170, 0.104, 1.0))
+    sandstone = dressed("Sandstone", block_scale=0.09, wetness=0.05,
+                        mossy=False, seed=13, mortar=0.22, cracks=0.45,
+                        tint=(0.255, 0.176, 0.112, 1.0))
+    far_rock = dressed("Far rock", block_scale=0.02, wetness=0.04,
+                       mossy=False, seed=29, mortar=0.10,
+                       tint=(0.205, 0.152, 0.116, 1.0))
+    # Sun-bleached rather than brown. Dead wood outdoors goes grey, and wood
+    # that has stayed brown reads as wet.
+    deadwood = dressed("Deadwood", block_scale=2.2, wetness=0.04, mossy=False,
+                       seed=55, mortar=0.18, relief=0.55,
+                       tint=(0.086, 0.070, 0.055, 1.0))
+
+    # The plain, and it has to be the only thing under the camera.
+    #
+    # `keep_clear` levels a terrain to world zero near the origin, which is
+    # what makes it safe to stand inside a mountain range -- and it means
+    # every terrain carrying it arrives at the same height at the camera's
+    # feet. Built with all three clearing, the foreground surveyed as the
+    # flattened middle of a range 1250 m away, drawn in far-rock at nine
+    # metres a vertex, with three rows of actual plain visible at 45 m. So
+    # exactly one grid clears here, and the ranges start beyond this one's
+    # far edge instead.
+    # Nearly flat, and it has to be. From 620mm off the ground a 1.7 m rise
+    # forty metres out is a horizon: the sight line over it passes eleven
+    # metres up at four hundred, so every rock in the middle distance was
+    # behind it. The clearing runs to eighty metres and what relief is left
+    # never reaches the height of the lens, which is the difference between a
+    # plain that undulates and a plain with a wall on it.
+    terrain(size=2800, resolution=620, kind="hetero", height=0.85, seed=9.4,
+            offset=0.92, origin=(0, 350, -0.4), material=hardpan,
+            keep_clear=80.0)
+
+    # Two ranges rather than one, at different distances, because a single
+    # ridge line reads as a painted backdrop -- it is the band of haze between
+    # the near range and the far one that says how far away either of them is.
+    #
+    # Neither clears. A cleared range is level in the middle and full height
+    # the moment the clearing ends, which draws a circular escarpment right
+    # around the camera at exactly the clearing radius -- surveyed at 360 to
+    # 400 m, and it was the hard wall across the middle of the frame. These
+    # simply begin past the plain's edge and rise out of it.
+    terrain(size=1800, resolution=320, kind="ridged", height=95.0, seed=4.7,
+            offset=0.88, origin=(-260, 1650, -34), material=far_rock)
+    terrain(size=3000, resolution=300, kind="ridged", height=240.0, seed=2.3,
+            offset=0.95, origin=(320, 2600, -70), material=far_rock)
+
+    # Middle-distance rocks, so there is something between the weeds at your
+    # feet and the mountains an hour's walk away.
+    for index, (x, y, size, squat) in enumerate((
+            (-34.0, 78.0, 8.0, 0.70), (30.0, 115.0, 12.0, 0.55),
+            (-62.0, 180.0, 18.0, 0.50), (54.0, 235.0, 16.0, 0.62),
+            (-20.0, 320.0, 30.0, 0.45), (78.0, 400.0, 38.0, 0.50))):
+        outcrop(x, y, size, sandstone, seed=index * 7 + 3, squat=squat)
+
+    # Stones, close in. Everything else here starts twelve metres out, and a
+    # plain with nothing inside twelve metres has no near edge -- the ground
+    # arrives already middle-distance and the frame loses its depth at the
+    # bottom rather than at the top.
+    grit = random.Random(77)
+    for index in range(18):
+        outcrop(grit.uniform(-15.0, 15.0), grit.uniform(-14.5, 26.0),
+                grit.uniform(0.10, 0.55), sandstone,
+                seed=index * 5 + 61, squat=grit.uniform(0.45, 0.85))
+
+    # Dead things, thinning out with distance the way a dry plain does.
+    for index, (x, y, height) in enumerate((
+            (-6.8, 21.0, 4.6), (13.5, 47.0, 3.4), (-24.0, 78.0, 3.9))):
+        dead_tree(x, y, deadwood, height=height, seed=index * 11 + 5)
+
+    scatter = random.Random(2024)
+    for index in range(22):
+        # Pushed off the centre line: a bush directly in front of a knee-high
+        # lens is a bush across the whole picture.
+        y = -6.0 + index * 3.4 + scatter.uniform(-1.2, 1.2)
+        x = scatter.uniform(-1.0, 1.0) * (3.0 + y * 0.55)
+        if abs(x) < 1.6:
+            x += 3.2 * (1 if x >= 0 else -1)
+        bramble(x, y, deadwood, scale=scatter.uniform(0.55, 1.15),
+                stems=scatter.randint(6, 10), seed=index * 13 + 1)
+
+    # A hot sky is mostly empty. Bands go from bleached dust at the horizon
+    # to a blue that only arrives well up the dome, and the cloud is thin and
+    # high rather than the weather in the other three scenes.
+    look.bryce_sky(bands=[(0.00, (0.620, 0.470, 0.320)),
+                          (0.09, (0.430, 0.352, 0.276)),
+                          (0.30, (0.196, 0.222, 0.298)),
+                          (1.00, (0.052, 0.086, 0.186))],
+                   # 1.75 lit the shadows back in: sampled across the tree's
+                   # own shadow the ground read 0.367 against 0.468 beside
+                   # it, a fifth of a stop, on a plain whose only scale is
+                   # the length of its shadows. The sun is doing more of the
+                   # work and the dome less.
+                   strength=1.10, bend=3.2,
+                   cloud_colour=(0.82, 0.74, 0.62), cloud_amount=0.30,
+                   cloud_scale=3.6, cloud_sharpness=(0.55, 0.82), seed=6.0)
+
+    # 25 degrees up, thrown from ahead and to the left, so every shadow runs
+    # to the right and a little toward the camera. Aimed side-on the light
+    # threw its shadows along +Y -- away down the frame, foreshortened to
+    # almost nothing and mostly hidden behind the thing casting them. A
+    # shadow you cannot see the length of measures nothing, and the length of
+    # them is the only thing in an empty plain that says how big it is.
+    look.sun((math.radians(65.1), 0, math.radians(-104.1)), energy=7.8,
+             angle=0.016, color=(1.0, 0.855, 0.640))
+    # 0.00085 read as no mountains at all. At 1700 m that leaves 23 per cent
+    # of the rock and fills the rest with lit haze, which lands on exactly the
+    # value the sky is already at -- the range was rendering, and surveying
+    # found it at z +248, but there was nothing to see. Distance has to be
+    # readable as well as present.
+    look.haze(size=7000, density=0.00055, colour=(0.56, 0.42, 0.29),
+              origin=(0, 1400, 30), height=460)
+
+    # Knee height, aimed four degrees down, which puts the horizon at two
+    # fifths and gives the ground the other three.
+    look.camera((0.0, -18.0, 0.62), (0.6, 55.0, -4.4), lens=35)
+    look.view_transform("AgX", look="Medium High Contrast", exposure=0.94)
+    _finish(path, "bone_flats")
+
+
 def main():
     out = os.path.abspath(OUT)
     os.makedirs(out, exist_ok=True)
@@ -971,6 +1231,7 @@ def main():
         "drowned_steps": drowned_steps,
         "glass_waste": glass_waste,
         "hollow_king": hollow_king,
+        "bone_flats": bone_flats,
     }
     wanted = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 
