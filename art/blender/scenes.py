@@ -821,60 +821,78 @@ def borrowed(key, location, span, rotation=(0, 0, 0), name=None):
 
 
 def hoop_chandelier(x, y, ceiling, material, flame_material, drop=1.15,
-                    radius=1.05, candles=8, energy=1500, name="Hoop"):
-    """A ring of candles on a chain. Nothing else.
+                    radius=1.05, candles=8, legs=6, energy=1500, name="Hoop"):
+    """A wheel on a pole: one shaft down the middle, legs out to the rim.
 
-    It is here to be a known size. A very large bird a long way off and a
-    normal bird close up project to the same shape, and nothing in an empty
-    room tells the two apart -- so the room needs one object whose size is
-    not in question, hung at the same depth, for the eye to measure against.
-    A chandelier is about a metre across in everybody's head, which is the
-    whole reason to use one.
+    The first version hung the ring on three stays that leaned out from
+    nothing in particular, and they read as sticks stuck into it rather than
+    as the thing holding it up. A chandelier is legible because the load path
+    is: pole, hub, spokes, rim. Follow that and it explains itself; skip it
+    and no amount of candles will.
     """
     made = []
     hang = ceiling - drop
-    bpy.ops.mesh.primitive_cylinder_add(vertices=6, radius=0.035, depth=drop,
-                                        location=(x, y, ceiling - drop / 2))
-    chain = bpy.context.active_object
-    chain.name = name
-    chain.data.materials.append(material)
-    made.append(chain)
+    hub = hang + 0.62
 
-    bpy.ops.mesh.primitive_torus_add(major_radius=radius, minor_radius=0.052,
-                                     major_segments=44, minor_segments=8,
+    bpy.ops.mesh.primitive_cylinder_add(
+        vertices=10, radius=0.040, depth=ceiling - (hang - 0.42),
+        location=(x, y, (ceiling + hang - 0.42) / 2))
+    pole = bpy.context.active_object
+    pole.name = name
+    pole.data.materials.append(material)
+    for polygon in pole.data.polygons:
+        polygon.use_smooth = True
+    made.append(pole)
+
+    for z, size in ((hub, 0.135), (hang - 0.44, 0.105)):
+        made.append(look.sphere((x, y, z), size, material,
+                                segments=16, rings=10, name=name))
+
+    for index in range(legs):
+        angle = math.tau * index / legs
+        start = Vector((x, y, hub))
+        finish = Vector((x + math.cos(angle) * radius,
+                         y + math.sin(angle) * radius, hang))
+        along = finish - start
+        bpy.ops.mesh.primitive_cylinder_add(
+            vertices=6, radius=0.030, depth=along.length,
+            location=tuple((start + finish) / 2))
+        leg = bpy.context.active_object
+        leg.name = name
+        leg.rotation_mode = "QUATERNION"
+        leg.rotation_quaternion = along.normalized().to_track_quat("Z", "Y")
+        leg.data.materials.append(material)
+        for polygon in leg.data.polygons:
+            polygon.use_smooth = True
+        made.append(leg)
+
+    bpy.ops.mesh.primitive_torus_add(major_radius=radius, minor_radius=0.048,
+                                     major_segments=48, minor_segments=8,
                                      location=(x, y, hang))
-    ring = bpy.context.active_object
-    ring.name = name
-    ring.data.materials.append(material)
-    made.append(ring)
-
-    for index in range(3):
-        angle = math.tau * index / 3
-        made.append(look.block(
-            (x + math.cos(angle) * radius * 0.5,
-             y + math.sin(angle) * radius * 0.5, hang + drop * 0.32),
-            (0.045, 0.045, drop * 0.64), material,
-            rotation=(math.cos(angle) * 0.34, math.sin(angle) * 0.34, 0),
-            bevel=0.01, name=name))
+    rim = bpy.context.active_object
+    rim.name = name
+    rim.data.materials.append(material)
+    made.append(rim)
 
     for index in range(candles):
         angle = math.tau * index / candles
         spot = (x + math.cos(angle) * radius, y + math.sin(angle) * radius)
         bpy.ops.mesh.primitive_cylinder_add(
-            vertices=10, radius=0.055, depth=0.34,
-            location=(spot[0], spot[1], hang + 0.20))
+            vertices=10, radius=0.052, depth=0.30,
+            location=(spot[0], spot[1], hang + 0.17))
         candle = bpy.context.active_object
         candle.name = name
         candle.data.materials.append(material)
         for polygon in candle.data.polygons:
             polygon.use_smooth = True
         made.append(candle)
-        made.append(look.sphere((spot[0], spot[1], hang + 0.42), 0.055,
+        made.append(look.sphere((spot[0], spot[1], hang + 0.36), 0.050,
                                 flame_material, segments=12, rings=8,
                                 name=name))
-    look.point_light((x, y, hang + 0.32), energy=energy, radius=radius * 0.9,
+    look.point_light((x, y, hang + 0.28), energy=energy, radius=radius * 0.85,
                      color=(1.0, 0.615, 0.290))
     return made
+
 
 
 def column(x, y, base, top, radius, material, sides=16, name="Column"):
@@ -2169,7 +2187,7 @@ def painted_hall(path):
     # the hue with it, and a window onto a white nothing is a lamp. Dimmer
     # and more saturated reads as further away and more real, and the sconces
     # make up the light it stops giving the room.
-    view = look.window_light("The way out", strength=3.2, horizon=0.42,
+    view = look.window_light("The way out", strength=2.0, horizon=0.42,
                              base=VIEW_Z, height=VIEW_H, cloud=0.38,
                              sky=(0.045, 0.210, 0.920), ground=(0.130, 0.480, 0.050))
     look.block((0, DEEP - 0.16, VIEW_Z + VIEW_H / 2), (VIEW_W, 0.12, VIEW_H),
@@ -2189,14 +2207,13 @@ def painted_hall(path):
     # fifteen metres off and an ordinary one three metres off project to
     # the same shape; what separates them is having something nearby
     # whose size nobody has to be told.
-    brass = dressed("Brass", block_scale=2.0, wetness=0.35, mossy=False,
-                    seed=97, mortar=0.0, relief=0.5, specular=1.2,
-                    dark=(0.055, 0.036, 0.012, 1.0),
-                    tint=(0.310, 0.205, 0.062, 1.0))
-    hoop_chandelier(0.0, 12.5, CEILING, brass,
+    steel = look.metal("Wrought steel", colour=(0.330, 0.352, 0.385, 1.0),
+                       roughness=0.36, pitting=0.55, seed=3.0)
+    hoop_chandelier(0.0, 12.5, CEILING, steel,
                     look.glowing("Candle", colour=(1.0, 0.660, 0.300, 1.0),
                                  strength=26.0),
-                    drop=1.30, radius=1.05, candles=8, energy=1500)
+                    drop=1.30, radius=1.05, candles=8, legs=6,
+                    energy=210)
 
     # --- and something that just came through -------------------------
     #
@@ -2225,25 +2242,25 @@ def painted_hall(path):
     # going where the light lands, and there was nothing on the wall for it
     # to be coming out of anyway -- so the lamps are just gone and only what
     # they do is left.
-    look.point_light((8.4, 7.0, 6.4), energy=900,
+    # Everything here is down by half or more. The room was lit like a room
+    # somebody works in; it wants to be lit like one somebody is creeping
+    # through, where most of it is dark and the eye goes where the light is.
+    look.point_light((8.4, 7.0, 6.4), energy=130,
                      radius=0.45, color=(1.0, 0.615, 0.290))
 
-    # The left sconce moved up beside the bird, and it is the size cue.
-    #
-    # A shadow will not do it: the bird flies at 6.1 m under a 10.4 m
-    # ceiling, so any lamp in this room is only four metres above it and
-    # throws a shadow magnified two and a half times -- thirty metres of it,
-    # which is wider than the hall and reads as darkness rather than as a
-    # bird. Falloff does it instead. Put the lamp two metres off the near
-    # wingtip and the near wing is lit at two metres while the far one is
-    # lit at thirteen, so one is bright and the other is barely there. Light
-    # only falls off across an object when the object is large compared to
-    # its distance from the lamp, which is exactly the thing being claimed.
-    # Off the wall by two metres as well: at 8.7 it burned a hotspot on
-    # the plaster that was the brightest thing in the frame, and the eye
-    # went to the wall rather than to the wing it is lighting.
-    look.point_light((-7.6, 13.9, 7.9), energy=680,
-                     radius=0.38, color=(1.0, 0.615, 0.290))
+    # And one hard source, high on the right, only there to throw the bird at
+    # the left wall. Small radius on purpose: a shadow's edge is as wide as
+    # the lamp that made it, so a 2 m softbox at this range gives a smear and
+    # a 150 mm one gives an outline you can read the primaries off.
+    look.point_light((6.3, 16.4, 9.3), energy=2600,
+                     radius=0.15, color=(1.0, 0.720, 0.430))
+
+    # The left sconce is gone. It stood two metres off the left wall, which
+    # is the one surface the bird is supposed to be thrown against -- it was
+    # filling in the shadow at point-blank range, and no amount of key light
+    # wins against a fill sitting on the screen you are projecting onto.
+    # Falloff across the wingspan is now the hard lamp's job as well as the
+    # shadow's, which is what a key light is for.
 
     # Two more over the landing, and much less orange than the sconces.
     #
@@ -2270,7 +2287,7 @@ def painted_hall(path):
     # lamp AND its own colour, so trading energy for albedo keeps the red
     # where it is and takes the spill off everything else.
     for side in (-1, 1):
-        look.point_light((side * 5.6, -6.6, 4.70), energy=165,
+        look.point_light((side * 5.6, -6.6, 4.70), energy=78,
                          radius=0.8, color=(1.0, 0.815, 0.700))
 
     # Air, so the picture throws a shaft rather than just a pool.
@@ -2284,7 +2301,7 @@ def painted_hall(path):
     # element, not a fence to be stuck behind -- at 5.65 it cut the floor off
     # at the knees and the stairs never appeared at all.
     look.camera((0.0, -7.6, 6.55), (0.0, DEEP, 3.55), lens=30)
-    look.view_transform("AgX", look="Medium High Contrast", exposure=1.02)
+    look.view_transform("AgX", look="High Contrast", exposure=0.72)
     _finish(path, "painted_hall")
 
 

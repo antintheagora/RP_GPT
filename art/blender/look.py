@@ -879,6 +879,50 @@ def glowing(name, colour=CANDLE, strength=25.0):
     return mat
 
 
+def metal(name="Steel", colour=(0.400, 0.425, 0.455, 1.0), roughness=0.30,
+          pitting=0.35, seed=0.0):
+    """Metal, which needs `Metallic` at 1 and nothing else pretending.
+
+    A grey stone shader with the specular turned up is not metal and never
+    looks like it: a dielectric reflects a *white* highlight and keeps its
+    own colour underneath, while a metal tints what it reflects and has no
+    diffuse at all. That difference is most of what the eye uses to tell
+    steel from painted wood, and no amount of adjusting a stone will produce
+    it.
+
+    Roughness varies in patches rather than sitting at one value, because a
+    uniform roughness is a mirror ball -- what says *forged* is that some of
+    it catches the light and some of it does not.
+    """
+    mat, tree, bsdf, _ = _new_material(name)
+    coord = tree.nodes.new("ShaderNodeTexCoord")
+    coord.location = (-1100, 0)
+    mapping = tree.nodes.new("ShaderNodeMapping")
+    mapping.location = (-920, 0)
+    sock(mapping, "Location", (seed * 2.1, seed * 1.3, seed * 3.7))
+    tree.links.new(coord.outputs["Object"], mapping.inputs["Vector"])
+
+    grain = _noise(tree, 26.0, detail=7.0, roughness=0.6, location=(-720, 0),
+                   distortion=0.4)
+    tree.links.new(mapping.outputs["Vector"], grain.inputs["Vector"])
+    worn = _ramp(tree, [(0.36, (max(0.02, roughness - 0.18 * pitting),) * 3 + (1.0,)),
+                        (0.68, (min(1.0, roughness + 0.42 * pitting),) * 3 + (1.0,))],
+                 location=(-480, 0))
+    tree.links.new(out(grain, ("Fac", "Color")), worn.inputs["Fac"])
+    tree.links.new(out(worn, "Color"), bsdf.inputs["Roughness"])
+
+    bump = tree.nodes.new("ShaderNodeBump")
+    bump.location = (150, -260)
+    sock(bump, "Strength", 0.18 * pitting)
+    sock(bump, "Distance", 0.004)
+    tree.links.new(out(grain, ("Fac", "Color")), bump.inputs["Height"])
+    tree.links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
+
+    sock(bsdf, "Base Color", tuple(colour[:3]) + (1.0,))
+    sock(bsdf, "Metallic", 1.0)
+    return mat
+
+
 def checker(name="Checker", square=0.9, dark=(0.010, 0.010, 0.012, 1.0),
             pale=(0.560, 0.545, 0.520, 1.0), roughness=0.07, seed=0.0):
     """Polished chequer, measured in metres rather than in object widths.
@@ -1758,7 +1802,7 @@ __all__ = [
     "WEAR", "worn_edge", "bryce_sky", "wedge",
     "wipe", "use_cycles", "view_transform", "render_to", "camera",
     "area_light", "point_light", "sun", "sock", "out",
-    "damp_stone", "rusted_iron", "heavy_cloth", "glowing", "scrying_glass", "sphere", "inp", "checker", "window_light", "sea_water", "foliage", "subdivide_adaptively", "still_water",
+    "damp_stone", "rusted_iron", "heavy_cloth", "glowing", "scrying_glass", "sphere", "inp", "metal", "checker", "window_light", "sea_water", "foliage", "subdivide_adaptively", "still_water",
     "block", "roughen", "weather", "fog", "haze", "sky_gradient",
     "PITCH", "SOOT", "STONE_DARK", "STONE_LIGHT", "MOSS_DEEP", "MOSS_LIT",
     "RUST", "RUST_DEEP", "IRON", "BRASS", "CLOTH_OXBLOOD", "CANDLE",
