@@ -650,14 +650,23 @@ def drowned_steps(path):
     bpy.ops.mesh.primitive_plane_add(size=3000, location=(0, 0, 0))
     bpy.context.active_object.data.materials.append(water)
 
+    # 38 metres lower than it was built. The range filled everything above
+    # the waterline -- surveyed at 0.3% of the frame left as sky -- so the
+    # scene had no horizon, and a Bryce landscape without a horizon is just a
+    # wall with a texture on it.
     terrain(size=1400, resolution=300, kind="hetero", height=78.0, seed=3.1,
-            offset=0.72, origin=(0, 620, -26), material=far_stone,
+            offset=0.72, origin=(0, 620, -64), material=far_stone,
             keep_clear=200.0)
 
     # A drowned stair climbing out of the water toward the camera's right.
+    #
+    # 9.5 metres further right than it was. The monolith at (7, 62) rose
+    # directly out of the stair's top steps -- surveyed as four columns of
+    # the frame where both are drawn -- and two objects sharing a silhouette
+    # at different depths read as one confused object.
     for index in range(11):
         width = 7.4 - index * 0.32
-        look.block((1.6 + index * 0.18, 26 + index * 2.05,
+        look.block((11.1 + index * 0.18, 26 + index * 2.05,
                     -1.5 + index * 0.62),
                    (width, 1.9, 0.55), stone, name="Step")
 
