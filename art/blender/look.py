@@ -1077,7 +1077,12 @@ def oil_film(name="Oil film", tint=(0.90, 0.95, 1.00, 1.00), ripple=0.055,
     # which is what looking through a film actually looks like.
     clear = tree.nodes.new("ShaderNodeBsdfTransparent")
     clear.location = (-300, -560)
-    sock(clear, "Color", tint)
+    # Near white, deliberately not `tint`. The transparent branch is
+    # what fills the eye, and the eye is supposed to be a hole -- if it
+    # carries the film's colour then the film has no edge and the whole
+    # panel is tinted. `tint` belongs to the refraction and the oil,
+    # which is to say to the rim.
+    sock(clear, "Color", (0.970, 0.980, 1.000, 1.000))
 
     # Fully clear at the middle, `clarity` by the rim.
     open_eye = tree.nodes.new("ShaderNodeMapRange")
