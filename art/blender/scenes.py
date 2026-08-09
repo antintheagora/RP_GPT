@@ -678,6 +678,20 @@ def drowned_steps(path):
                  lean=0.02 * (1 if index % 2 else -1), twist=index * 0.4,
                  z=-1.2)
 
+    # Something in the water that is not stone.
+    #
+    # The scene is six slabs, a stair and a mountain, all of them the same
+    # rock at different sizes, so there is nothing in the frame for the eye
+    # to actually land on. This is the one object with a colour of its own.
+    #
+    # Centred exactly on z=0, so the water plane cuts it in half and the
+    # mirror supplies the other half. Position is not a guess: a ray through
+    # the middle of the mark, out to where it meets the water, lands at
+    # (-1.40, 20.22) at 29.3 metres, where the frame is 32.9 metres wide --
+    # so the radius that fills the mark is 2.24.
+    look.sphere((-1.40, 20.22, 0.0), 2.24,
+                look.scrying_glass("Drowned light", glow=0.7), name="Orb")
+
     # Bands and cloud rather than a clean two-stop fade. Bryce skies are the
     # most recognisable thing about the software and none of that was here.
     look.bryce_sky(bands=[(0.00, (0.290, 0.120, 0.052)),

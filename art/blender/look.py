@@ -66,6 +66,21 @@ def sock(node, names, value):
     return False
 
 
+def inp(node, names):
+    """Fetch an input socket by whichever of `names` exists, or None.
+
+    No fallback to the first socket, unlike `out`. Guessing wrong on an
+    output draws the wrong picture; guessing wrong on an input wires colour
+    into roughness and draws a picture nobody can explain.
+    """
+    if isinstance(names, str):
+        names = (names,)
+    for name in names:
+        if name in node.inputs:
+            return node.inputs[name]
+    return None
+
+
 def out(node, names):
     """Fetch an output socket by whichever of `names` exists."""
     if isinstance(names, str):
@@ -848,6 +863,150 @@ def worn_edge(size, wear=WEAR):
     return min(wear, min(abs(n) for n in size) * WEAR_LIMIT)
 
 
+def scrying_glass(name="Scrying glass", glow=0.85, seed=0.0):
+    """Glass with weather inside it.
+
+    Two textures doing separate jobs. A wave in bands is a stack of stripes,
+    and distortion is what drags them out of line -- enough of it and stripes
+    become marble, which is the only cheap way to get colour that turns
+    through an object rather than being painted on it. Noise, separately,
+    goes to the normal rather than the colour, so the surface ripples without
+    the colours rippling with it.
+
+    Lit from inside at `glow` rather than by the scene, because the thing it
+    has to look like is a light source that happens to be solid.
+    """
+    mat, tree, bsdf, _ = _new_material(name)
+    coord = tree.nodes.new("ShaderNodeTexCoord")
+    coord.location = (-1500, 0)
+    mapping = tree.nodes.new("ShaderNodeMapping")
+    mapping.location = (-1300, 0)
+    sock(mapping, "Location", (seed * 2.3, seed * 1.7, seed * 3.1))
+    tree.links.new(coord.outputs["Object"], mapping.inputs["Vector"])
+    coords = mapping.outputs["Vector"]
+
+    # Marble, not stripes. Offsetting the coordinate by a noise field before
+    # the wave reads it is what makes a band curl; the wave's own distortion
+    # only makes it wobble along its length, so the stripes stay parallel and
+    # the thing reads as a beach ball.
+    warp = _noise(tree, 1.05, detail=4.0, roughness=0.5,
+                  location=(-1160, 520))
+    tree.links.new(coords, warp.inputs["Vector"])
+    centred = tree.nodes.new("ShaderNodeVectorMath")
+    centred.location = (-980, 520)
+    centred.operation = "SUBTRACT"
+    centred.inputs[1].default_value = (0.5, 0.5, 0.5)
+    tree.links.new(out(warp, ("Color", "Fac")), centred.inputs[0])
+    swirl = tree.nodes.new("ShaderNodeVectorMath")
+    swirl.location = (-820, 520)
+    swirl.operation = "SCALE"
+    sock(swirl, "Scale", 2.4)
+    tree.links.new(centred.outputs["Vector"], swirl.inputs[0])
+    marbled = tree.nodes.new("ShaderNodeVectorMath")
+    marbled.location = (-660, 520)
+    marbled.operation = "ADD"
+    tree.links.new(coords, marbled.inputs[0])
+    tree.links.new(swirl.outputs["Vector"], marbled.inputs[1])
+
+    wave = tree.nodes.new("ShaderNodeTexWave")
+    wave.location = (-1000, 240)
+    wave.wave_type = "BANDS"
+    wave.bands_direction = "DIAGONAL"
+    wave.wave_profile = "SIN"
+    # Distortion has to stay low enough that a band is still a band. At 8.5
+    # the stripes broke into hairlines finer than the pixels they landed on,
+    # every colour in the ramp appeared inside one pixel, and the sphere
+    # averaged out to white -- six colours mixed at that scale are grey.
+    sock(wave, "Scale", 0.75)
+    sock(wave, "Distortion", 1.8)
+    sock(wave, "Detail", 2.0)
+    sock(wave, "Detail Scale", 1.2)
+    sock(wave, "Detail Roughness", 0.5)
+    tree.links.new(marbled.outputs["Vector"], wave.inputs["Vector"])
+
+    # Cool through warm and back. A ramp that only travels one way reads as a
+    # gradient; one that turns round reads as something moving.
+    # Saturated on purpose. AgX rolls a bright surface off toward white and
+    # takes the hue with it, so a colour that is merely tinted arrives grey:
+    # at half these saturations the sphere rendered as a pale cyan pearl with
+    # no violet, amber or green in it anywhere.
+    hues = _ramp(tree, [(0.00, (0.004, 0.052, 0.108, 1.0)),
+                        (0.22, (0.004, 0.285, 0.225, 1.0)),
+                        (0.44, (0.112, 0.016, 0.330, 1.0)),
+                        (0.62, (0.430, 0.088, 0.014, 1.0)),
+                        (0.80, (0.092, 0.330, 0.082, 1.0)),
+                        (1.00, (0.016, 0.115, 0.320, 1.0))],
+                 location=(-700, 240))
+    tree.links.new(out(wave, ("Color", "Fac")), hues.inputs["Fac"])
+
+    swell = _noise(tree, 5.2, detail=7.0, roughness=0.55,
+                   location=(-1000, -280), distortion=1.7)
+    tree.links.new(coords, swell.inputs["Vector"])
+    chop = _noise(tree, 24.0, detail=5.0, roughness=0.5,
+                  location=(-1000, -540))
+    tree.links.new(coords, chop.inputs["Vector"])
+
+    bump = tree.nodes.new("ShaderNodeBump")
+    bump.location = (150, -320)
+    sock(bump, "Strength", 0.42)
+    sock(bump, "Distance", 0.085)
+    tree.links.new(out(swell, ("Fac", "Color")), bump.inputs["Height"])
+    ripple = tree.nodes.new("ShaderNodeBump")
+    ripple.location = (330, -420)
+    sock(ripple, "Strength", 0.16)
+    sock(ripple, "Distance", 0.018)
+    tree.links.new(out(chop, ("Fac", "Color")), ripple.inputs["Height"])
+    tree.links.new(bump.outputs["Normal"], ripple.inputs["Normal"])
+    tree.links.new(ripple.outputs["Normal"], bsdf.inputs["Normal"])
+
+    # The same colours at a sixth of the level for the surface, and at full
+    # strength for the glow.
+    #
+    # Measured in the frame, the sphere came out at value 0.65 and saturation
+    # 0.10 next to stone at 0.46 and 0.51 -- brighter than the rock and
+    # nearly as bright as the sky, which is where AgX rolls off and throws
+    # the hue away. The cause was albedo: these colours run to 0.43 where the
+    # scene's stone is 0.06, so lit by the same sky the sphere was seven
+    # times too bright before a single photon of its own was added.
+    dim = _mix(tree, "MULTIPLY", location=(-450, 130), factor=1.0)
+    tree.links.new(out(hues, "Color"), _mix_in(dim, 0))
+    _mix_in(dim, 1).default_value = (0.16, 0.16, 0.16, 1.0)
+
+    base = inp(bsdf, "Base Color")
+    if base is not None:
+        tree.links.new(_mix_out(dim), base)
+    emit = inp(bsdf, ("Emission Color", "Emission"))
+    if emit is not None:
+        tree.links.new(out(hues, "Color"), emit)
+    sock(bsdf, "Emission Strength", glow)
+    # Enough glass to catch the sky, not enough to hand the sky the colour.
+    # At 0.86 the sphere refracted a bright hazy background through six
+    # saturated hues and came out pale everywhere; the reflection off a
+    # near-mirror surface was doing the same, hence the roughness.
+    sock(bsdf, ("Transmission Weight", "Transmission"), 0.06)
+    sock(bsdf, "Roughness", 0.21)
+    sock(bsdf, "Metallic", 0.0)
+    sock(bsdf, "IOR", 1.36)
+    # A sphere reflects the whole upper hemisphere, and in this scene that is
+    # a bright overcast sky. At the default specular level it laid an even
+    # pale film over every colour underneath -- measured at saturation 0.16
+    # where the stone beside it is 0.51. Quarter strength keeps the wet
+    # highlight and loses the film.
+    sock(bsdf, ("Specular IOR Level", "Specular"), 0.22)
+    return mat
+
+
+def sphere(location, radius, material, segments=72, rings=36, name="Sphere"):
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=radius, segments=segments,
+                                         ring_count=rings, location=location)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.data.materials.append(material)
+    for polygon in obj.data.polygons:
+        polygon.use_smooth = True
+    return obj
+
+
 def block(location, size, material, rotation=(0, 0, 0), bevel=None,
           name="Block"):
     """One dressed stone. Bevelled, because a sharp edge reads as cardboard.
@@ -1277,7 +1436,7 @@ __all__ = [
     "WEAR", "worn_edge", "bryce_sky", "wedge",
     "wipe", "use_cycles", "view_transform", "render_to", "camera",
     "area_light", "point_light", "sun", "sock", "out",
-    "damp_stone", "rusted_iron", "heavy_cloth", "glowing", "still_water",
+    "damp_stone", "rusted_iron", "heavy_cloth", "glowing", "scrying_glass", "sphere", "inp", "still_water",
     "block", "roughen", "weather", "fog", "haze", "sky_gradient",
     "PITCH", "SOOT", "STONE_DARK", "STONE_LIGHT", "MOSS_DEEP", "MOSS_LIT",
     "RUST", "RUST_DEEP", "IRON", "BRASS", "CLOTH_OXBLOOD", "CANDLE",
