@@ -579,7 +579,7 @@ def outcrop(x, y, size, material, seed=0, squat=0.55, z=0.0):
 
 
 def ruined_road(start, end, material, width=5.8, slab=3.6, gap=0.35,
-                seed=0, sink=0.10):
+                seed=0, sink=0.10, bare_at=None, bare_radius=0.0):
     """A road that has stopped being one.
 
     Laid as separate slabs rather than a ribbon, because everything that says
@@ -591,6 +591,11 @@ def ruined_road(start, end, material, width=5.8, slab=3.6, gap=0.35,
     Slabs sit slightly proud of the ground and are sunk by `sink` at most, so
     the surface it was built on reads as having moved rather than the road
     as having been dropped on top.
+
+    `bare_at` clears a radius of it entirely. A road that runs right up under
+    the lens puts one slab two metres from a camera 620mm off the ground,
+    which is a black panel across a quarter of the frame -- and a road with a
+    stretch missing is more of a ruin than a road without one.
     """
     rng = random.Random(seed)
     origin = Vector((start[0], start[1], 0.0))
@@ -619,6 +624,9 @@ def ruined_road(start, end, material, width=5.8, slab=3.6, gap=0.35,
             if rng.random() < 0.14:
                 drop -= rng.uniform(0.06, 0.20)   # one slab well under
             spot = centre + across * offset
+            if bare_at is not None and math.hypot(
+                    spot.x - bare_at[0], spot.y - bare_at[1]) < bare_radius:
+                continue
             made.append(look.block(
                 (spot.x, spot.y, drop),
                 (width / 2 - 0.06, step - gap, 0.22), material,
@@ -1189,7 +1197,11 @@ def bone_flats(path):
     # behind it. The clearing runs to eighty metres and what relief is left
     # never reaches the height of the lens, which is the difference between a
     # plain that undulates and a plain with a wall on it.
-    terrain(size=5200, resolution=700, kind="hetero", height=0.85, seed=9.4,
+    # 0.30, not 0.85, for the same reason the ranges were not 260 -- `height`
+    # multiplies a fractal that runs past 3, so 0.85 was building rises of
+    # 2.33 m. One of those at 96 m is a horizon to a lens 620 mm up: it hides
+    # the real one, and everything between it and the mountains.
+    terrain(size=5200, resolution=700, kind="hetero", height=0.30, seed=9.4,
             offset=0.92, origin=(0, 700, -0.4), material=hardpan,
             keep_clear=80.0)
 
@@ -1272,7 +1284,8 @@ def bone_flats(path):
     roadbed = dressed("Roadbed", block_scale=0.55, wetness=0.05, mossy=False,
                       seed=63, mortar=0.70, cracks=1.5, relief=0.75,
                       shade=0.085, specular=0.05, tint=(0.068, 0.065, 0.070, 1.0))
-    ruined_road((-3.4, -24.0), (11.5, 300.0), roadbed, seed=91)
+    ruined_road((-3.4, -24.0), (11.5, 300.0), roadbed, seed=91,
+                bare_at=(0.0, -18.0), bare_radius=10.5)
 
     # Stones, close in. Everything else here starts twelve metres out, and a
     # plain with nothing inside twelve metres has no near edge -- the ground
