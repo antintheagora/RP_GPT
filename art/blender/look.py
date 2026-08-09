@@ -237,6 +237,70 @@ def point_light(location, energy=60, radius=0.05, color=CANDLE[:3]):
     return light
 
 
+def unseen(obj, in_mirrors=True):
+    """Take a thing out of the picture without taking it out of the room.
+
+    Cycles asks a separate visibility question per ray type, and only the
+    camera's is turned off here. So a wall set this way goes on doing every
+    part of a wall's job -- it stops light, it casts shadow, it bounces its
+    own colour back inside -- while the lens looks straight through it.
+
+    Deleting the wall instead would do neither. The room would lose the light
+    the wall was holding in and gain all the light it was holding out, and
+    the lighting you spent a week on would be a different lighting.
+
+    `in_mirrors=False` takes it out of the reflections as well, which is a
+    separate question and mostly a question about lamps. A lamp hidden from
+    the camera is still there to a glossy ray, so a polished floor puts a
+    hard bead of it on the tiles -- a picture of a light that is not in the
+    room. Off, and it goes on lighting everything and appears in nothing.
+    """
+    obj.visible_camera = False
+    if not in_mirrors:
+        obj.visible_glossy = False
+    return obj
+
+
+def backdrop(location, size, rotation=(0, 0, 0), colour=(1.0, 1.0, 1.0),
+             strength=300.0, name="Backdrop"):
+    """A field of flat colour that only the lens can see.
+
+    The mirror image of `unseen`: every ray type *but* the camera's is off,
+    so this lights nothing, casts nothing, appears in no reflection and is
+    not in the path of any bounce. It is the thing behind everything else and
+    that is all it is.
+
+    `strength` is far past the point where the view transform clips, on
+    purpose. The ask is a colour that arrives exactly -- pure white, so it can
+    be keyed out later -- and an emitter that merely looks bright comes back
+    as 250-ish and mottled. One that is three or four stops into the clip
+    comes back 255 everywhere, through haze and all.
+    """
+    bpy.ops.mesh.primitive_plane_add(size=1.0, location=location)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.scale = (size[0], size[1], 1.0)
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    obj.rotation_euler = rotation
+
+    material = bpy.data.materials.new(name)
+    material.use_nodes = True
+    tree = material.node_tree
+    tree.nodes.clear()
+    output = tree.nodes.new("ShaderNodeOutputMaterial")
+    emission = tree.nodes.new("ShaderNodeEmission")
+    emission.location = (-240, 0)
+    sock(emission, "Color", tuple(colour) + (1.0,))
+    sock(emission, "Strength", strength)
+    tree.links.new(emission.outputs["Emission"], output.inputs["Surface"])
+    obj.data.materials.append(material)
+
+    for ray in ("diffuse", "glossy", "transmission", "volume_scatter",
+                "shadow"):
+        setattr(obj, f"visible_{ray}", False)
+    return obj
+
+
 def sun(rotation, energy=3.0, angle=0.02, color=(1.0, 0.78, 0.55)):
     data = bpy.data.lights.new("Sun", type="SUN")
     data.energy = energy
@@ -1834,7 +1898,7 @@ def fog(strength=0.02, colour=(0.30, 0.28, 0.24), bounds=None):
 
 
 def haze(size=700.0, density=0.004, colour=(0.42, 0.30, 0.24),
-         origin=(0, 0, 0), height=None):
+         origin=(0, 0, 0), height=None, width=None):
     """Atmosphere in a box, for anything with sky in it.
 
     `fog()` puts the scatter in the *world* volume, which in Cycles is
@@ -1857,6 +1921,12 @@ def haze(size=700.0, density=0.004, colour=(0.42, 0.30, 0.24),
         # just built is behind two hundred metres of fog and the whole frame
         # goes one flat colour.
         box.scale.z = height / size
+    if width is not None:
+        # And narrower than it is long, for a room. A hall's air wants to be
+        # as deep as the hall and no wider than its walls; a cube big enough
+        # to fill the length also reaches out through the sides, which nobody
+        # notices until something on the other side of a wall has to be seen.
+        box.scale.x = width / size
     material = bpy.data.materials.new("Haze")
     material.use_nodes = True
     tree = material.node_tree
@@ -2040,6 +2110,7 @@ __all__ = [
     "WEAR", "worn_edge", "bryce_sky", "wedge",
     "wipe", "use_cycles", "view_transform", "render_to", "camera",
     "area_light", "point_light", "sun", "sock", "out",
+    "unseen", "backdrop",
     "damp_stone", "rusted_iron", "heavy_cloth", "glowing", "scrying_glass", "sphere", "inp", "oil_film", "metal", "checker", "window_light", "sea_water", "foliage", "subdivide_adaptively", "still_water",
     "block", "roughen", "weather", "fog", "haze", "sky_gradient",
     "PITCH", "SOOT", "STONE_DARK", "STONE_LIGHT", "MOSS_DEEP", "MOSS_LIT",

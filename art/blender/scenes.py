@@ -823,11 +823,26 @@ def borrowed(key, location, span, rotation=(0, 0, 0), frame=None, name=None):
     if not made:
         return []
     root = next((o for o in made if o.parent is None), made[0])
+    # Pose first, then place, and force euler before either.
+    #
+    # Both halves of that are bugs this cost a lot to find. The panther's rig
+    # arrives with `rotation_mode` set to QUATERNION, and an object in
+    # quaternion mode ignores `rotation_euler` completely -- it stores the
+    # number and does nothing with it, with no error and nothing in the
+    # render to say so. Every heading this file has ever asked that cat to
+    # take was silently dropped, and the animal has been standing at yaw
+    # zero in all of them. Its imported quaternion is the identity, so
+    # switching to euler moves nothing that was ever moving.
+    #
+    # And `frame_set` re-evaluates animation, which can write over an
+    # object's own transform. Setting the frame first and the transform
+    # afterwards costs nothing and cannot lose either way round.
+    if frame is not None:
+        bpy.context.scene.frame_set(frame)
+    root.rotation_mode = "XYZ"
     root.location = location
     root.rotation_euler = rotation
     root.scale = tuple(axis * span for axis in root.scale)
-    if frame is not None:
-        bpy.context.scene.frame_set(frame)
     bpy.context.view_layer.update()
     print(f"[scene] '{key}': {len(made)} objects at {span:.1f} m across"
           + (f", posed on frame {frame}" if frame is not None else ""))
@@ -2177,7 +2192,7 @@ PAINTED_HALL_MOODS = {
 }
 
 
-def painted_hall(path, mood="noon", view="balcony"):
+def painted_hall(path, mood="noon", view="balcony", cutaway=False):
     """A hall with a way out of it hanging on the far wall.
 
     Everything here is arranged around one idea: the picture is the only
@@ -2185,6 +2200,14 @@ def painted_hall(path, mood="noon", view="balcony"):
     chequer throws what reaches it back up at the ceiling, and the painting
     burns a hole in the far wall with daylight from somewhere else on the
     other side of it. Two sconces keep the corners from going to black.
+
+    `cutaway` takes the left wall out of the picture and puts a colossal cat
+    through the gap. Out of the picture, not out of the room: the wall is
+    still there to every ray but the camera's, so the hall is lit exactly as
+    it is in every other version and the lens simply does not draw it. What
+    is behind it is flat white, which is the whole reason for the variant --
+    white keys out, so the image can be printed on something and the void
+    becomes whatever the thing is made of.
     """
     look.wipe()
     look.use_cycles(samples=560, volume_bounces=2)
@@ -2238,10 +2261,12 @@ def painted_hall(path, mood="noon", view="balcony"):
     # --- the shell -------------------------------------------------------
     look.block((0, DEEP / 2, FLOOR - 0.3), (HALL * 2, DEEP, 0.6), tiles,
                bevel=0.02, name="Floor")
+    side_wall = {}
     for side in (-1, 1):
-        look.block((side * (HALL + 0.4), DEEP / 2 - 3.0, CEILING / 2),
-                   (0.8, DEEP + 8.0, CEILING + 1.0), plaster, bevel=0.05,
-                   name="SideWall")
+        side_wall[side] = look.block(
+            (side * (HALL + 0.4), DEEP / 2 - 3.0, CEILING / 2),
+            (0.8, DEEP + 8.0, CEILING + 1.0), plaster, bevel=0.05,
+            name="SideWall")
     # Four pieces round an opening, not one slab with a picture stuck on it.
     # The picture is a hole now and the world is on the other side of it,
     # which is the only way a painting gets parallax: move and the hill moves
@@ -2265,6 +2290,63 @@ def painted_hall(path, mood="noon", view="balcony"):
                name="EndWall")
     look.block((0, -9.6, CEILING / 2), (HALL * 2 + 1.6, 0.8, CEILING + 1.0),
                plaster, bevel=0.05, name="BackWall")
+
+    if cutaway:
+        # The left wall stops being drawn and goes on being a wall. Every
+        # ray type but the camera's still meets it, so it holds the light in
+        # and the outside out exactly as before -- which is the difference
+        # between this and knocking it down. Knock it down and the room
+        # loses the light the wall was keeping and gains all the light it
+        # was keeping off, and none of the lighting is the lighting any more.
+        look.unseen(side_wall[-1])
+
+        # And one piece that was never needed until now. The side walls run
+        # y -7..25 while the back wall sits at -9.6, so each back corner has
+        # a 2.2 m slot in it that has never mattered because there has never
+        # been a light on the other side. There is one now, and light finds
+        # a slot the way water finds a crack.
+        look.unseen(look.block((-(HALL + 0.4), -8.1, CEILING / 2),
+                               (0.8, 2.2, CEILING + 1.0), plaster,
+                               bevel=0.0, name="SideWall"))
+
+        # A shed over the outside, before any of it can be lit deliberately.
+        #
+        # Cutting a wall out of a room does not put the far half of the cat
+        # in the dark -- it puts it outdoors, under the same sky and the same
+        # sun the painting looks at, and a whole hemisphere of blue lights it
+        # far better than anything indoors. That is why the first pass came
+        # back with a rump at luma 207 and a tail at 228: not the lamp, which
+        # turned out to be doing almost nothing, but the world. Cutting the
+        # lamp by four changed the tail by seven points, which is what a
+        # measurement is for.
+        #
+        # So the space gets a box round it, invisible like the wall and
+        # working like the wall. Dark inside so it bounces almost nothing,
+        # closed on every side, and short of y 30 so it never shades the
+        # hillside the picture is looking at. What lights the cat out there
+        # is then exactly one lamp, which can be set to anything.
+        look.unseen(look.block((-22.2, 0.0, 2.5), (23.6, 60.0, 45.0),
+                               beam, bevel=0.0, name="OutsideShed"))
+
+        # Then white, and nothing else, behind all of it.
+        #
+        # 24 m out and 77 by 34, and every one of those is measured. It has
+        # to stand clear behind the cat's tail at -21.7, it has to catch
+        # every ray that leaves through the missing wall, and it has to stay
+        # out of the way of the one other hole in this room.
+        #
+        # That last is the tight one. The picture looks out over the same
+        # ground, and its sight lines pass through the space behind the wall
+        # on their way to the horizon -- the first pass put a white band down
+        # forty per cent of the painting because the panel was in the way of
+        # them. Swept at 220 x 220 across both frames: rays through the wall
+        # cross this plane between y 5.5 and 66.7, and the first ray through
+        # the picture that gets this far crosses at 75.4. So the panel ends
+        # at 71, which is four metres clear on each side of a gap that is
+        # nine metres wide and would not have been found by looking.
+        look.backdrop((-24.0, 32.5, 3.0), (34.0, 77.0),
+                      rotation=(0.0, math.radians(90.0), 0.0),
+                      strength=320.0, name="WhiteVoid")
 
     # A coffered roof: beams both ways with dark panels behind them, which is
     # the one part of the room the light never reaches and so has to be shape
@@ -2478,10 +2560,37 @@ def painted_hall(path, mood="noon", view="balcony"):
     # than +27 on the stair one: still toward the lens, but angled off
     # toward the far flight so the bird is going somewhere rather than
     # posing.
-    borrowed("pigeon", (-3.3, 15.2, 6.10), 11.2,
-             rotation=(math.radians(-9.0), math.radians(-19.0),
-                       math.radians(10.0 if view == "stair" else -25.0)),
-             name="Pigeon")
+    # In the cutaway it moves forward and down and comes in to 7.5 m, and
+    # all three are the cat's doing. Searched over four hundred positions
+    # and three sizes: at 11.2 m there is nowhere left in the room that
+    # clears the animal by even a metre, and at any real height the wings
+    # run into a back that is nine metres off the floor. The clear air is in
+    # front of it. At (4.0, 11.0, 4.2) the bird stands 4.2 m off the nearest
+    # point of the cat and crosses the frame right by its face -- which is a
+    # better picture than the one I was aiming for anyway, because a bird
+    # that has not noticed is worth more than a bird that has.
+    #
+    # And the smaller bird is not a loss. The point of this variant is how
+    # big the cat is, and nothing says that like a seven-metre pigeon
+    # looking ordinary next to it.
+    perch, wingspan = (((4.0, 11.0, 4.2), 7.5) if cutaway
+                       else ((-3.3, 15.2, 6.10), 11.2))
+    # Square on, outside the cutaway, and that is a decision rather than the
+    # old code with the numbers taken out.
+    #
+    # Every rotation this file has ever asked of either borrowed model was
+    # dropped by the quaternion bug in `borrowed`, so the version of this
+    # picture that got looked at and approved is the version with both
+    # animals unrotated -- wings level, bird square to the lens, coming
+    # straight out of the painting. Fixing the bug and leaving the old
+    # numbers in place would have banked the bird hard over and turned it
+    # side-on, silently changing nine renders nobody asked to change. So the
+    # approved framing is written down as what it actually is. The headings
+    # are one number away whenever they are wanted.
+    tilt = ((math.radians(-9.0), math.radians(-19.0),
+             math.radians(10.0 if view == "stair" else -25.0))
+            if cutaway else (0.0, 0.0, 0.0))
+    borrowed("pigeon", perch, wingspan, rotation=tilt, name="Pigeon")
 
     # A membrane across the opening, so it stops being a window.
     #
@@ -2525,20 +2634,43 @@ def painted_hall(path, mood="noon", view="balcony"):
     # An animated asset already contains every attitude it can hold; getting
     # one out of it is a matter of finding the frame, not of moving bones.
     #
-    # Heading is the other half of it, and the two are set against each other
-    # deliberately: the cat takes the line the bird has just come off -- yaw
-    # -25, which was the bird's -- while the bird turns to +27 and comes at
-    # the lens. Their paths cross at about fifty degrees. Two things moving
-    # the same way in one picture read as one event; two things crossing read
-    # as two, which is the whole reason for having both.
-    #
-    # Yaw is per view here too. From the stair the cat comes at the lens
-    # at +18 while the bird crosses off to the far flight at +10, so the
-    # two lines still open out from each other -- the crossing is between
-    # them, not between one of them and the camera.
-    borrowed("panther", (1.0, 13.6, 0.02), 9.0,
-             rotation=(0.0, 0.0, math.radians(18.0 if view == "stair" else -25.0)),
-             frame=247, name="Panther")
+    # Heading was meant to be the other half of it, and for a long time this
+    # file carried a careful argument about crossing trajectories and per-view
+    # yaws -- all of it describing rotations that were never reaching the
+    # model. It is gone rather than corrected: what these two renders have is
+    # both animals square on, and that is what was looked at and kept.
+    if cutaway:
+        # As big as the building allows, and the building is what decides.
+        # Measured off the model, span 25 puts its back at 9.04 m against
+        # ceiling beams whose undersides are at 10.07 -- so it clears by a
+        # metre, and span 28 does not clear at all. 26.8 m nose to tail.
+        #
+        # Yaw 120, which puts the head along (+0.87, +0.50): into the room,
+        # and 21 degrees off square to the stair lens -- near enough
+        # broadside to read the whole animal, far enough off it to be a
+        # three-quarter view rather than a diagram.
+        #
+        # Twice I decided this number was wrong from looking at a render,
+        # and twice the render was showing a cat whose rotation had been
+        # dropped on the floor by the quaternion bug in `borrowed`. The
+        # heading was right from the start; nothing was applying it. What
+        # settles it is not a picture but the rig: `Bip001 Head` lands at
+        # (1.4, 19.1) and `Bip001 Pelvis` at (-11.9, 11.4), so the animal is
+        # walking in.
+        #
+        # The root sits where it does because the midpoint of nose and tail
+        # was solved onto the wall plane at x -10 -- which is what "half in,
+        # half out" means for something that is not a cylinder. Head,
+        # shoulders and forelegs in the room; hindquarters and tail still in
+        # the white.
+        borrowed("panther", (-10.59, 13.00, 0.91), 25.0,
+                 rotation=(0.0, 0.0, math.radians(120.0)),
+                 frame=247, name="Panther")
+    else:
+        # Unrotated, for the same reason as the bird above: this is the
+        # heading the approved renders actually have.
+        borrowed("panther", (1.0, 13.6, 0.02), 9.0,
+                 rotation=(0.0, 0.0, 0.0), frame=247, name="Panther")
 
     # A black cat in a dim room is a hole in the floor. Two lamps, neither of
     # them visible: one behind and above it, which is what puts an edge on
@@ -2552,10 +2684,57 @@ def painted_hall(path, mood="noon", view="balcony"):
     # these two was that they do their work without being seen. Tucked
     # in behind the bird as well, so what glow it puts in the room's air
     # is behind something rather than hanging on the wall by itself.
-    look.point_light((-2.6, 18.4, 4.60), energy=980, radius=0.30,
-                     color=(1.0, 0.760, 0.480))
-    look.point_light((-6.8, 9.6, 2.40), energy=300, radius=0.60,
-                     color=(0.600, 0.730, 1.000))
+    rim = look.point_light((-2.6, 18.4, 4.60), energy=980, radius=0.30,
+                           color=(1.0, 0.760, 0.480))
+    fill = look.point_light((-6.8, 9.6, 2.40), energy=300, radius=0.60,
+                            color=(0.600, 0.730, 1.000))
+    if cutaway:
+        # Out of the reflections as well as out of the frame. Traced, the
+        # white bead on the chequer at (1.35, 11.17) was the mirror image of
+        # the warm one -- the reflected ray leaves the tile within five and a
+        # half degrees of it. Hiding a lamp from the camera does nothing
+        # about that, because a glossy ray is not a camera ray. This variant
+        # is going on something printed, where a stray white dot on a black
+        # tile reads as a fault in the printing rather than as a light.
+        for lamp in (rim, fill):
+            look.unseen(lamp, in_mirrors=False)
+
+    if cutaway:
+        # The wall is a perfect barn door, which is the problem as well as
+        # the point: it holds the room's light off the half of the cat that
+        # is still outside, and that half would go to flat black against
+        # flat white. So it gets a source of its own, and the source has to
+        # live outside with it.
+        #
+        # Low in y and high in z, because that is the only place it can do
+        # any good. Anything outside the wall is on the far side of the cat
+        # from the lens, so it can only ever backlight -- except in y, where
+        # the camera is at -1.9 looking up the room and so reads the cat's
+        # -Y flank. A lamp at y -12 rakes exactly that flank and the top of
+        # the back, which is the part of the animal the picture is made of.
+        #
+        # Nearly neutral, and much weaker than the first guess. Measured off
+        # the render, 14000 W of cold light put the rump at luma 207 and the
+        # tail at 228 against an inside flank at 141 -- half a black cat
+        # coming out near white, with a hard vertical seam down the middle of
+        # it where the wall cuts the light. Worse still for what this is for:
+        # the pale half is the half that will be printed against white
+        # fabric, so the brighter it is the less of the animal survives.
+        #
+        # 5200 W, and that number means something now the shed is there.
+        # Swept against the two halves of the animal measured the same way:
+        # 900 W leaves the outside at 0.89 of the room side, 3600 at 1.02,
+        # 7200 at 1.11 and 30000 at 1.37. The room side does not move by a
+        # point across the whole range, which is the proof the box is tight.
+        #
+        # 5200 sits at about 1.07. Enough that the far half reads as standing
+        # in daylight, little enough that the wall's shadow line across the
+        # body is a change of light rather than a join between two different
+        # cats -- and the far half is the half that gets printed against
+        # white, so every stop it gains is contrast the shirt loses.
+        look.unseen(look.area_light((-20.0, -12.0, 14.0), (-16.0, 9.0, 4.5),
+                                    energy=5200, size=18,
+                                    color=(1.000, 0.975, 0.940)))
 
     # --- light -----------------------------------------------------------
     #
@@ -2608,8 +2787,14 @@ def painted_hall(path, mood="noon", view="balcony"):
     # cannot bead: it casts one beam and one life-size shadow, which is what
     # the lamp was standing in for.
 
+    # Narrow enough to stay inside the room when the room has a wall
+    # missing. At size 36 the box reaches x -18, which is nine metres past
+    # the wall and straight across everything the cutaway is meant to show:
+    # the white would be veiled and the cat's outer half would be standing
+    # in a fog that logically belongs to a hall it is not in yet.
     look.haze(size=36, density=lit["air"][0], colour=lit["air"][1],
-              origin=(0, 5.0, 5.0), height=13.0)
+              origin=(0, 5.0, 5.0), height=13.0,
+              width=20.0 if cutaway else None)
 
     # Air outside, which is the whole of what makes a landscape read as
     # far rather than merely small. A hill at 250 m and a range at a
@@ -2649,12 +2834,22 @@ def painted_hall(path, mood="noon", view="balcony"):
         # Higher again, and tipped further down: the runner in the near
         # foreground was taking a quarter of the frame to say something
         # the balusters already say better.
-        look.camera((8.70, -1.90, 6.60), (-3.2, 12.8, 1.70), lens=26)
+        #
+        # 23mm for the cutaway, and only for the cutaway. A 26.8 m cat
+        # broadside at twenty-odd metres subtends more than a 26mm lens
+        # holds -- measured, its tail ran to u -0.03, off the left edge --
+        # and the brief was the whole animal, tail to head, from this
+        # camera. At 23 it lands at u 0.04..0.74 with the frame's right
+        # quarter still free for the picture and the bird.
+        look.camera((8.70, -1.90, 6.60), (-3.2, 12.8, 1.70),
+                    lens=23 if cutaway else 26)
     else:
         look.camera((0.0, -7.6, 6.55), (0.0, DEEP, 3.55), lens=30)
     look.view_transform("AgX", look="High Contrast",
                         exposure=lit["exposure"])
     stem = "painted_hall" if mood == "noon" else f"painted_hall_{mood}"
+    if cutaway:
+        stem += "_cutaway"
     _finish(path, stem if view == "balcony" else f"{stem}_{view}")
 
 
@@ -2687,6 +2882,9 @@ def main():
             jobs[f"painted_hall_{mood}"] = (
                 lambda p, mood=mood: painted_hall(p, mood=mood))
     jobs["painted_hall_stair"] = lambda p: painted_hall(p, view="stair")
+    jobs["painted_hall_cutaway"] = lambda p: painted_hall(p, cutaway=True)
+    jobs["painted_hall_cutaway_stair"] = (
+        lambda p: painted_hall(p, view="stair", cutaway=True))
     wanted = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 
     # `export` writes an OBJ instead of a PNG. Its own word rather than a
