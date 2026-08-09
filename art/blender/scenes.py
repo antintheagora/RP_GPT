@@ -775,105 +775,48 @@ def jungle_tree(x, y, trunk_material, leaf_material, height=14.0, girth=0.72,
     return made
 
 
-def wing(shoulder, span_dir, fore_dir, span, chord, material, sweep=0.34,
-         dihedral=0.30, droop=0.55, ribs=10, name="Wing"):
-    """One wing, as a planform rather than a shape.
+#: Models that live outside this repository. Kept as a mapping rather than
+#: inline paths so a missing one is a named thing that did not arrive, and so
+#: anybody reading the scene can see what it depends on.
+BORROWED = {
+    "pigeon": (r"C:/Users/antho/Documents/Projects/ALU Shirt/References"
+               r"/Pigeon/pigeon.blend"),
+}
 
-    Chord widest at the shoulder and tapering out, swept back along the way,
-    lifting then falling toward the tip. All four of those are what makes a
-    bird silhouette read as a bird -- a flat triangle stuck on a body reads
-    as a paper aeroplane, and a wing is only ever seen as a silhouette
-    anyway.
+
+def borrowed(key, location, span, rotation=(0, 0, 0), name=None):
+    """Append an object from another .blend and put it where it goes.
+
+    `span` is the width you want it to end up, in metres, because that is the
+    measurement anybody has an instinct for -- the model arrives normalised to
+    one unit on its longest axis and this scales from that.
+
+    Missing files are a warning, not a crash. A backdrop that will not render
+    because somebody else's asset folder moved is worse than a backdrop with
+    one thing absent from it.
     """
-    across = Vector(span_dir).normalized()
-    fore = Vector(fore_dir).normalized()
-    up = across.cross(fore).normalized()
-    verts, faces = [], []
-    for index in range(ribs + 1):
-        travel = index / ribs
-        lift = dihedral * span * travel - droop * span * travel ** 2.2
-        lead = (Vector(shoulder) + across * (span * travel)
-                - fore * (sweep * span * travel) + up * lift)
-        wide = chord * (1.0 - 0.66 * travel ** 1.15)
-        verts.append(tuple(lead))
-        verts.append(tuple(lead - fore * wide))
-        if index:
-            back = (index - 1) * 2
-            here = index * 2
-            faces.append((back, back + 1, here + 1, here))
-    mesh = bpy.data.meshes.new(name)
-    mesh.from_pydata(verts, [], faces)
-    mesh.update()
-    obj = bpy.data.objects.new(name, mesh)
-    bpy.context.collection.objects.link(obj)
-    obj.data.materials.append(material)
-    for polygon in obj.data.polygons:
-        polygon.use_smooth = True
-    return obj
-
-
-def pigeon(location, facing, scale, body_material, wing_material,
-           beak_material=None, pitch=0.16, bank=0.0, name="Pigeon"):
-    """A pigeon in flight, at whatever size you like.
-
-    `scale` is the wingspan, because that is the measurement anybody has an
-    instinct for. Everything else is a fraction of it, so a six-metre bird is
-    the same bird as a thirty-centimetre one and not a differently-shaped
-    animal that happens to be large.
-    """
+    path = BORROWED.get(key)
+    if not path or not os.path.exists(path):
+        print(f"[scene] no model for '{key}' at {path}; leaving it out")
+        return []
+    with bpy.data.libraries.load(path, link=False) as (source, arrived):
+        arrived.objects = list(source.objects)
     made = []
-    fore = Vector((math.cos(facing), math.sin(facing), 0.0)).normalized()
-    fore = (fore + Vector((0, 0, pitch))).normalized()
-    side = fore.cross(Vector((0, 0, 1))).normalized()
-    up = side.cross(fore).normalized()
-    if bank:
-        side = (side + up * bank).normalized()
-        up = side.cross(fore).normalized()
-    here = Vector(location)
-
-    body_len = scale * 0.42
-    bpy.ops.mesh.primitive_uv_sphere_add(radius=1.0, segments=28, ring_count=16,
-                                         location=tuple(here))
-    body = bpy.context.active_object
-    body.name = name
-    body.rotation_mode = "QUATERNION"
-    body.rotation_quaternion = fore.to_track_quat("Y", "Z")
-    body.scale = (scale * 0.115, body_len / 2, scale * 0.125)
-    body.data.materials.append(body_material)
-    for polygon in body.data.polygons:
-        polygon.use_smooth = True
-    made.append(body)
-
-    neck = here + fore * body_len * 0.46 + up * scale * 0.045
-    head = neck + fore * scale * 0.075 + up * scale * 0.028
-    made.append(look.sphere(tuple(neck), scale * 0.072, body_material,
-                            segments=20, rings=12, name=name))
-    made.append(look.sphere(tuple(head), scale * 0.058, body_material,
-                            segments=20, rings=12, name=name))
-    bpy.ops.mesh.primitive_cone_add(
-        vertices=10, radius1=scale * 0.021, radius2=scale * 0.004,
-        depth=scale * 0.062,
-        location=tuple(head + fore * scale * 0.055 - up * scale * 0.006))
-    beak = bpy.context.active_object
-    beak.name = name
-    beak.rotation_mode = "QUATERNION"
-    beak.rotation_quaternion = fore.to_track_quat("Z", "Y")
-    beak.data.materials.append(beak_material or body_material)
-    for polygon in beak.data.polygons:
-        polygon.use_smooth = True
-    made.append(beak)
-
-    for hand in (-1, 1):
-        shoulder = here + side * hand * scale * 0.085 + up * scale * 0.055
-        made.append(wing(tuple(shoulder), side * hand, fore,
-                         scale * 0.46, scale * 0.34, wing_material,
-                         sweep=0.13, dihedral=0.34, droop=0.20,
-                         name=f"{name}Wing"))
-    # Tail: the same planform, short and wide, run out the back.
-    made.append(wing(tuple(here - fore * body_len * 0.44 - up * scale * 0.012),
-                     -fore, side, scale * 0.20, scale * 0.19, wing_material,
-                     sweep=-0.30, dihedral=0.04, droop=0.10, ribs=6,
-                     name=f"{name}Tail"))
+    for obj in arrived.objects:
+        if obj is None:
+            continue
+        bpy.context.collection.objects.link(obj)
+        if name:
+            obj.name = f"{name}_{obj.name}"
+        made.append(obj)
+    if not made:
+        return []
+    root = next((o for o in made if o.parent is None), made[0])
+    root.location = location
+    root.rotation_euler = rotation
+    root.scale = tuple(axis * span for axis in root.scale)
+    bpy.context.view_layer.update()
+    print(f"[scene] '{key}': {len(made)} objects at {span:.1f} m across")
     return made
 
 
@@ -2067,7 +2010,14 @@ def painted_hall(path):
                    seed=44, mortar=0.45, relief=0.9,
                    dark=(0.010, 0.009, 0.008, 1.0),
                    tint=(0.055, 0.046, 0.036, 1.0))
-    carpet = look.heavy_cloth("Carpet", colour=(0.062, 0.0055, 0.0050, 1.0),
+    # Deep, but a red you can see. `heavy_cloth` fades its weave down to 45
+    # per cent of the tint in the hollows, so a colour dark enough to look
+    # right on paper spends most of its area near black -- at 0.062 the
+    # landing read as brown board and the stair runners did not read at all.
+    # The sconces are amber besides, and amber light on a dark red is brown:
+    # the carpet has to be brighter than it looks like it should be, and the
+    # lamps a little less orange, for it to arrive red.
+    carpet = look.heavy_cloth("Carpet", colour=(0.255, 0.0230, 0.0175, 1.0),
                               seed=6)
     tiles = look.checker("Chequer", square=0.95, roughness=0.055,
                          dark=(0.009, 0.009, 0.011, 1.0),
@@ -2110,11 +2060,21 @@ def painted_hall(path):
     # Stairs down either side, hugging the walls.
     for side in (-1, 1):
         staircase(side * 7.0, 5.4, 1.0, 9.6, LANDING, FLOOR, 13, pale)
+        # A runner, not a mat per tread. Ray-tested from this camera, only
+        # the top two or three treads are visible at all -- the sight line
+        # grazes the nose of the step in front and everything below that is
+        # occluded -- so 60mm of carpet lying flat on each one showed
+        # essentially nothing and the flight read as bare stone. Over the
+        # nose and down the riser is both what a stair runner actually is and
+        # the only part of a stair you can see from above it.
+        run, drop = 8.6 / 13, (LANDING - FLOOR) / 13
         for index in range(13):
-            top = LANDING - (LANDING - FLOOR) * index / 13
-            y = 1.0 + (8.6 / 13) * (index + 0.5)
-            look.block((side * 7.0, y, top + 0.04), (4.0, 8.6 / 13 * 1.02, 0.06),
+            top = LANDING - drop * index
+            y = 1.0 + run * (index + 0.5)
+            look.block((side * 7.0, y, top + 0.03), (4.6, run * 1.02, 0.06),
                        carpet, name="StairCarpet")
+            look.block((side * 7.0, y - run / 2 - 0.02, top - drop / 2),
+                       (4.6, 0.07, drop * 1.04), carpet, name="StairCarpet")
         balustrade(-2.2, 2.2, side * 0.0, LANDING, pale, posts=9,
                    name="RailSide") if False else None
 
@@ -2153,28 +2113,17 @@ def painted_hall(path):
 
     # --- and something that just came through -------------------------
     #
-    # Six metres across, banking out of the picture and down the hall. It is
-    # lit almost entirely from behind by the thing it came out of, which is
-    # the point: a silhouette with a rim on it says "arrived from there"
-    # where a well-lit bird would just be a bird standing in a room.
-    slate = dressed("Pigeon", block_scale=3.0, wetness=0.34, mossy=False,
-                    seed=131, mortar=0.0, relief=0.45,
-                    dark=(0.028, 0.030, 0.040, 1.0),
-                    tint=(0.150, 0.163, 0.196, 1.0))
-    quill = dressed("Flight feather", block_scale=2.2, wetness=0.28,
-                    mossy=False, seed=137, mortar=0.0, relief=0.55,
-                    dark=(0.017, 0.018, 0.024, 1.0),
-                    tint=(0.098, 0.106, 0.130, 1.0))
-    horn = dressed("Beak", block_scale=4.0, wetness=0.30, mossy=False,
-                   seed=139, mortar=0.0, relief=0.4,
-                   dark=(0.060, 0.045, 0.040, 1.0),
-                   tint=(0.230, 0.180, 0.165, 1.0))
-    # Three-quarter, not head-on. A wing is a sheet: pointed at the lens it
-    # is a wire, and the first pass had the bird flying straight down the
-    # hall with two hairlines where its wings should be. Turned across the
-    # room it presents both of them.
-    pigeon((-1.1, 13.4, 5.30), math.radians(212.0), 6.1, slate, quill,
-           beak_material=horn, pitch=0.11, bank=0.26)
+    # restore50's "Pigeon in Flight", CC-BY. Five metres across, out of the
+    # picture and banking away up the left of the hall.
+    #
+    # The model faces -Y with its wings on X, so the yaw is measured from
+    # there: -25 degrees turns it across the room rather than straight down
+    # it, which matters because a wing aimed at the lens has no width. The
+    # position is not a guess -- a ray through the middle of the mark, taken
+    # out to twelve metres, lands at (-6.6, 5.5).
+    borrowed("pigeon", (-6.6, 12.0, 5.50), 5.0,
+             rotation=(math.radians(-9.0), math.radians(-19.0),
+                       math.radians(-25.0)), name="Pigeon")
 
     # --- light -----------------------------------------------------------
     # Two sconces, warm and weak, only there to keep the corners from being
@@ -2185,7 +2134,7 @@ def painted_hall(path):
     # they do is left.
     for side in (-1, 1):
         look.point_light((side * 8.4, 7.0, 6.4), energy=1700,
-                         radius=0.45, color=(1.0, 0.545, 0.185))
+                         radius=0.45, color=(1.0, 0.615, 0.290))
 
     # Air, so the picture throws a shaft rather than just a pool.
     # Enough to carry a shaft, not enough to fill the room. At 0.010 the far

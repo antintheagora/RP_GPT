@@ -154,3 +154,17 @@ a two-centimetre frame block and turned it into camouflage. Scenes pass
 against the new API rendered black. It is not needed: volumetric haze around
 a point light *is* a halo, physically, which is what the crypt's candles are
 doing.
+
+## Borrowed models
+
+`painted_hall` uses one model that is not ours. It lives outside this
+repository -- see `BORROWED` in `blender/scenes.py` -- and the scene renders
+without it if the path is wrong, minus the bird.
+
+**Pigeon in Flight** — by **restore50**, licensed **CC-BY 4.0**
+(https://creativecommons.org/licenses/by/4.0/), from
+https://sketchfab.com/3d-models/none-d135106ba138411fbe8d779b2fb90599
+
+CC-BY is not CC0: the credit has to travel with anything published that
+contains it. If `painted_hall.png` ships in the game, restore50 is named in
+whatever credits the game has.
