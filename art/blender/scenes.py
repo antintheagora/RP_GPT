@@ -2298,6 +2298,12 @@ FLATS_SUN = 0.9
 FLATS_CLOUD = 0.20
 FLATS_CLOUD_COLOUR = (0.72, 0.42, 0.46)
 FLATS_HAZE = 0.00004
+#: How bright the painted view burns. Same rule as the sky: bright is white.
+#: Swept 3.4 down to 0.6 -- the hills went 155 luma at saturation 0.19 to 120
+#: at 0.27, and the room floor did not move by two points across the whole
+#: range, so this is a decision about the picture alone and not about the
+#: light in the hall. 1.2 keeps the green readable without bleaching it.
+FLATS_VIEW = 1.2
 
 FLATS_SKY = [(0.00, (0.980, 0.400, 0.255)),
              (0.09, (0.760, 0.255, 0.330)),
@@ -2648,6 +2654,10 @@ def painted_hall(path, mood="noon", view="balcony", cutaway=False,
         # rain. The far rock is darker than the plain it stands behind, so a
         # range arrives as a shape rather than as a brighter patch of the
         # same dirt.
+        turf = dressed("Hillside", block_scale=0.34, wetness=0.22,
+                       mossy=True, seed=53, mortar=0.0, relief=0.45,
+                       specular=0.10, dark=(0.005, 0.078, 0.003, 1.0),
+                       tint=(0.038, 0.480, 0.016, 1.0))
         hardpan = dressed("Hardpan", block_scale=0.30, wetness=0.03,
                           mossy=False, seed=41, mortar=0.42, cracks=1.05,
                           displace=0.024, tint=(0.238, 0.170, 0.104, 1.0))
@@ -2699,6 +2709,45 @@ def painted_hall(path, mood="noon", view="balcony", cutaway=False,
                 (-70.0, 40.0, 9.0, 0.55), (-150.0, 130.0, 17.0, 0.48),
                 (-270.0, 280.0, 32.0, 0.52), (-46.0, -30.0, 7.0, 0.62))):
             outcrop(x, y, size, sandstone, seed=index * 7 + 3, squat=squat)
+
+        # The picture keeps its green hills and its blue sky, and in this
+        # variant it keeps them by being a picture again.
+        #
+        # It is worth writing down why, because two goes at real geometry
+        # both failed the same way. The frame looks +Y and the missing wall
+        # looks -X and +Y, so from any one lens they are working the same
+        # half of the world. One world sky cannot be blue through the frame
+        # and violet through the wall; and worse, the plain is at z 0, so
+        # the frame's own sight line -- which used to fall for three hundred
+        # metres before it met a hillside at -17.5 -- now meets dirt at
+        # ninety. Ray-swept with a hill raised onto the plain and a sky panel
+        # behind it, the panel took no rays at all: the plain had already
+        # buried both.
+        #
+        # The ways out were a hole in the plain, which a fractal grid does
+        # not have, or standing the building on a mesa with the flats
+        # dropping away below it, which is a different picture from the one
+        # asked for. So: the opening is filled again, with the emissive view
+        # this file has always had a helper for. Green below, blue above,
+        # cloud, and the horizon at half height where it was put. It still
+        # lights the room through the frame, which is the part that mattered
+        # -- a painting lit by the room is a painting, and a painting
+        # lighting the room is a way out of it.
+        look.block((0, DEEP + 0.92, VIEW_Z + VIEW_H / 2),
+                   (VIEW_W - 0.04, 0.4, VIEW_H - 0.04),
+                   look.window_light("Painted view",
+                                     # Darker than a sky "is", because at
+                                     # strength 1.2 the old 0.945 blue came
+                                     # out past 1.0 in radiance and clipped
+                                     # to white -- measured 226 luma at
+                                     # saturation 0.06, which is a cloud.
+                                     # A third of that stays blue.
+                                     sky=(0.028, 0.115, 0.330),
+                                     ground=(0.050, 0.340, 0.028),
+                                     strength=FLATS_VIEW, horizon=0.50,
+                                     base=VIEW_Z, height=VIEW_H,
+                                     cloud=0.55, seed=11.0),
+                   bevel=0.0, name="PaintedView")
     else:
         turf = dressed("Hillside", block_scale=0.34, wetness=0.22,
                        mossy=True, seed=53, mortar=0.0, relief=0.45,
