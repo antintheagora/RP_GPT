@@ -312,8 +312,14 @@ def _crack_field(tree, coords, scale, width, seed_offset, location):
 
 def damp_stone(name="Damp stone", block_scale=7.0, wetness=0.55, coursed=False,
                mossy=True, seed=0, tint=None, mortar=1.0, world_space=False,
-               cracks=0.0, puddling=0.0, grain_axis=None, grain=5.0):
+               cracks=0.0, puddling=0.0, grain_axis=None, grain=5.0,
+               relief=1.0):
     """Dark stone that has been underground a long time.
+
+    `relief` scales all three bump layers together, for the surfaces that
+    want the colour of this stone without its texture -- a dressed core
+    behind rough blocks, say, where pitting on both reads as one melted mass
+    instead of as two different stones.
 
     Three things make it read as *damp* rather than merely dark. Roughness
     varies in patches, so parts of it catch the light wet and parts do not --
@@ -444,7 +450,7 @@ def damp_stone(name="Damp stone", block_scale=7.0, wetness=0.55, coursed=False,
     # --- relief ---------------------------------------------------------
     bump_fine = tree.nodes.new("ShaderNodeBump")
     bump_fine.location = (300, -400)
-    sock(bump_fine, "Strength", 0.28)
+    sock(bump_fine, "Strength", 0.28 * relief)
     sock(bump_fine, "Distance", 0.02)
     tree.links.new(out(grit, ("Fac", "Color")), bump_fine.inputs["Height"])
 
@@ -460,14 +466,14 @@ def damp_stone(name="Damp stone", block_scale=7.0, wetness=0.55, coursed=False,
     tree.links.new(out(chips, ("Fac", "Color")), chip_relief.inputs["Fac"])
     bump_chips = tree.nodes.new("ShaderNodeBump")
     bump_chips.location = (380, -500)
-    sock(bump_chips, "Strength", 0.42)
+    sock(bump_chips, "Strength", 0.42 * relief)
     sock(bump_chips, "Distance", 0.035)
     tree.links.new(out(chip_relief, "Color"), bump_chips.inputs["Height"])
     tree.links.new(bump_fine.outputs["Normal"], bump_chips.inputs["Normal"])
 
     bump_blocks = tree.nodes.new("ShaderNodeBump")
     bump_blocks.location = (450, -600)
-    sock(bump_blocks, "Strength", 0.75 * mortar)
+    sock(bump_blocks, "Strength", 0.75 * mortar * relief)
     sock(bump_blocks, "Distance", 0.06 * mortar)
     tree.links.new(out(joints, "Color"), bump_blocks.inputs["Height"])
     tree.links.new(bump_chips.outputs["Normal"], bump_blocks.inputs["Normal"])

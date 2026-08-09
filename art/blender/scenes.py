@@ -120,7 +120,8 @@ def pier(x, y, material, height=3.4, width=0.72):
 
 
 def arch(x_from, x_to, y, springing, material, stones=13, thickness=0.34,
-         depth=0.66, axis="X", fitted=False):
+         depth=0.66, axis="X", fitted=False, core_material=None,
+         joint=0.028):
     """A semicircular arch built out of real voussoirs.
 
     A torus would be one smooth ring. The joints between wedge stones are the
@@ -134,7 +135,8 @@ def arch(x_from, x_to, y, springing, material, stones=13, thickness=0.34,
     if fitted:
         # The band the stones sit on. Without it they are thirteen objects
         # holding a shape by coincidence.
-        made.append(arch_core(x_from, x_to, y, springing, material,
+        made.append(arch_core(x_from, x_to, y, springing,
+                              core_material or material,
                               thickness=thickness, depth=depth, axis=axis))
     for index in range(stones):
         angle = math.pi * (index + 0.5) / stones
@@ -149,7 +151,14 @@ def arch(x_from, x_to, y, springing, material, stones=13, thickness=0.34,
             # outer face is the one you see, and two stones touching by two
             # tenths of a millimetre -- each with a 50mm rolled edge -- draw a
             # hundred-millimetre dark band between them.
-            half = math.pi / stones / 2
+            # Leave a joint. Thirteen wedges of exactly pi/13 tile the
+            # semicircle with their side faces flush against each other, and
+            # since every stone carries a 50mm rolled arris, two of them
+            # meeting draw one wide soft valley in the same stone they are
+            # made of -- which is the whole of why the ring read as melted.
+            # Open the joint by `joint` metres and the core shows through it
+            # instead, darker and flat, and the stones separate.
+            half = math.pi / stones / 2 - joint / (2 * radius)
             if axis == "X":
                 made.append(look.wedge(
                     (px, y, pz), half, radius, thickness, depth, material,
@@ -313,31 +322,36 @@ def arch_core(x_from, x_to, y, springing, material, thickness=0.34,
     centre = (x_from + x_to) / 2
     r_in = radius - thickness / 2 + inset
     r_out = radius + thickness / 2 - inset
-    half_depth = depth / 2 - inset
+    half = depth / 2 - inset
 
-    verts = []
-    for index in range(segments + 1):
-        angle = math.pi * index / segments
-        cos_a, sin_a = math.cos(angle), math.sin(angle)
-        for r in (r_in, r_out):
-            along = centre - r * cos_a
-            z = springing + r * sin_a
-            for side in (-half_depth, half_depth):
-                if axis == "X":
-                    verts.append((along, y + side, z))
-                else:
-                    verts.append((y + side, along, z))
+    def at(radius_at, side, angle):
+        along = centre - radius_at * math.cos(angle)
+        z = springing + radius_at * math.sin(angle)
+        return (along, y + side, z) if axis == "X" else (y + side, along, z)
 
-    faces = []
-    for index in range(segments):
-        a, b = index * 4, (index + 1) * 4
-        faces.append((a + 0, a + 1, b + 1, b + 0))      # intrados
-        faces.append((a + 2, b + 2, b + 3, a + 3))      # extrados
-        faces.append((a + 0, b + 0, b + 2, a + 2))      # one cheek
-        faces.append((a + 1, a + 3, b + 3, b + 1))      # the other
-    last = segments * 4
-    faces.append((0, 2, 3, 1))                          # springing, one end
-    faces.append((last + 0, last + 1, last + 3, last + 2))
+    angles = [math.pi * i / segments for i in range(segments + 1)]
+    corners = [[at(r, s, a) for a in angles]
+               for r, s in ((r_in, -half), (r_in, half),
+                            (r_out, half), (r_out, -half))]
+
+    # Four strips, each with its own vertices. Sharing them and smoothing the
+    # lot averages the normal across the arris, which rounds the band's edges
+    # off into the stones and is half of why the ring read as melted.
+    verts, faces, smooth = [], [], []
+    for first, second in ((0, 1), (1, 2), (2, 3), (3, 0)):
+        base = len(verts)
+        for index in range(len(angles)):
+            verts.append(corners[first][index])
+            verts.append(corners[second][index])
+        for index in range(segments):
+            k = base + index * 2
+            faces.append((k, k + 1, k + 3, k + 2))
+            smooth.append(True)
+    for index, order in ((0, (0, 1, 2, 3)), (segments, (3, 2, 1, 0))):
+        base = len(verts)
+        verts.extend(corners[c][index] for c in order)
+        faces.append((base, base + 1, base + 2, base + 3))
+        smooth.append(False)
 
     mesh = bpy.data.meshes.new(name)
     mesh.from_pydata(verts, [], faces)
@@ -345,8 +359,8 @@ def arch_core(x_from, x_to, y, springing, material, thickness=0.34,
     obj = bpy.data.objects.new(name, mesh)
     bpy.context.collection.objects.link(obj)
     obj.data.materials.append(material)
-    for polygon in obj.data.polygons:
-        polygon.use_smooth = True
+    for polygon, curved in zip(obj.data.polygons, smooth):
+        polygon.use_smooth = curved
     return obj
 
 
@@ -462,6 +476,13 @@ def undercroft(path, floor=True, render=True, groups=None,
 
     stone = dressed("Crypt stone", block_scale=1.6, wetness=0.78,
                             mossy=True, seed=2, mortar=0.85, coursed=fitted)
+    # The band inside every arch. Its job is to be visible between the
+    # voussoirs and to not be mistaken for them: same family, darker, and
+    # dressed rather than pitted, so the stones read as rough blocks sitting
+    # on a smooth core instead of the whole ring reading as one melted mass.
+    core = dressed("Arch core", block_scale=1.6, wetness=0.42, mossy=False,
+                   seed=17, mortar=0.0, relief=0.10,
+                   tint=(0.0300, 0.0268, 0.0208, 1.0))
     floor_stone = dressed("Flagstone", block_scale=1.1, wetness=0.92,
                                   mossy=False, seed=8, mortar=0.35)
     wax = dressed("Tallow", block_scale=1.0, wetness=0.2, mossy=False,
@@ -484,12 +505,13 @@ def undercroft(path, floor=True, render=True, groups=None,
         for x in (-3.0, 3.0):
             keep("Arcade_West" if x < 0 else "Arcade_East",
                  arch(y0, y1, x, 3.62, stone, stones=13, thickness=0.36,
-                      depth=0.70, axis="Y", fitted=fitted))
+                      depth=0.70, axis="Y", fitted=fitted,
+                      core_material=core))
     # Transverse arches across the nave, which is what says "vault".
     for y in bays:
         keep("Vault_Arches",
              arch(-3.0, 3.0, y, 3.62, stone, stones=17, thickness=0.34,
-                  depth=0.62, fitted=fitted))
+                  depth=0.62, fitted=fitted, core_material=core))
 
     if fitted:
         # Just inside the ribs' extrados (3.0 + 0.34/2 = 3.17), so the ribs
@@ -541,7 +563,8 @@ def undercroft(path, floor=True, render=True, groups=None,
         for x in (-1.5, 1.5):
             keep("Niche", jamb(x, 17.05, 2.05, stone, width=RIM, depth=0.60))
         keep("Niche", arch(-1.5, 1.5, 17.05, SPRING, stone, stones=13,
-                           thickness=RIM, depth=0.60, fitted=True))
+                           thickness=RIM, depth=0.60, fitted=True,
+                           core_material=core))
     else:
         keep("Wall_End",
              look.block((0, 17.6, 2.6), (9.0, 0.7, 5.6), stone,
