@@ -120,7 +120,7 @@ def pier(x, y, material, height=3.4, width=0.72):
 
 
 def arch(x_from, x_to, y, springing, material, stones=13, thickness=0.34,
-         depth=0.66, axis="X"):
+         depth=0.66, axis="X", fitted=False):
     """A semicircular arch built out of real voussoirs.
 
     A torus would be one smooth ring. The joints between wedge stones are the
@@ -135,6 +135,28 @@ def arch(x_from, x_to, y, springing, material, stones=13, thickness=0.34,
         angle = math.pi * (index + 0.5) / stones
         px = centre - radius * math.cos(angle)
         pz = springing + radius * math.sin(angle)
+        if fitted:
+            # A real wedge. Its side faces are radial planes, so the joint is
+            # flush from the intrados to the extrados. The boxes below touch
+            # at exactly one radius and are wrong at every other: measured on
+            # the nave arch, 0.2mm of contact at the outer face and 63mm of
+            # interpenetration at the inner one, from the same stone. The
+            # outer face is the one you see, and two stones touching by two
+            # tenths of a millimetre -- each with a 50mm rolled edge -- draw a
+            # hundred-millimetre dark band between them.
+            half = math.pi / stones / 2
+            if axis == "X":
+                made.append(look.wedge(
+                    (px, y, pz), half, radius, thickness, depth, material,
+                    rotation=(0, -angle + math.pi / 2, 0),
+                    name=f"Voussoir{index}"))
+            else:
+                made.append(look.wedge(
+                    (y, px, pz), half, radius, thickness, depth, material,
+                    rotation=(angle - math.pi / 2, 0, 0), along="Y",
+                    name=f"Voussoir{index}"))
+            continue
+
         # Wedge width along the curve, plus a hair so the joints close.
         arc = math.pi * radius / stones * 1.06
         if axis == "X":
@@ -236,7 +258,8 @@ def _finish(path, name, samples=420):
 # --------- THE CRYPT ---------
 # =============================
 
-def undercroft(path, floor=True, render=True, groups=None):
+def undercroft(path, floor=True, render=True, groups=None,
+               fitted=False, name="undercroft"):
     """A vaulted undercroft. The room the game already opens in.
 
     Nothing above the capitals is lit, which is deliberate and is what the
@@ -284,12 +307,12 @@ def undercroft(path, floor=True, render=True, groups=None):
         for x in (-3.0, 3.0):
             keep("Arcade_West" if x < 0 else "Arcade_East",
                  arch(y0, y1, x, 3.62, stone, stones=13, thickness=0.36,
-                      depth=0.70, axis="Y"))
+                      depth=0.70, axis="Y", fitted=fitted))
     # Transverse arches across the nave, which is what says "vault".
     for y in bays:
         keep("Vault_Arches",
              arch(-3.0, 3.0, y, 3.62, stone, stones=17, thickness=0.34,
-                  depth=0.62))
+                  depth=0.62, fitted=fitted))
 
     # Side walls, well back, so the arcade has something to be in front of.
     for x in (-7.4, 7.4):
@@ -300,7 +323,7 @@ def undercroft(path, floor=True, render=True, groups=None):
     keep("Wall_End",
          look.block((0, 17.6, 2.6), (9.0, 0.7, 5.6), stone, name="EastWall"))
     keep("Niche", arch(-1.5, 1.5, 17.2, 2.05, stone, stones=13,
-                       thickness=0.30, depth=0.55))
+                       thickness=0.30, depth=0.55, fitted=fitted))
     keep("Niche", look.block((0, 17.2, 1.0), (3.0, 0.55, 2.1), stone,
                              name="NicheBack"))
     keep("Altar", look.block((0, 16.2, 0.62), (3.4, 1.2, 1.15), stone,
@@ -345,7 +368,7 @@ def undercroft(path, floor=True, render=True, groups=None):
     # is the architecture, and none of it was arriving.
     look.view_transform("AgX", look="Medium High Contrast", exposure=1.85)
     if render:
-        _finish(path, "undercroft")
+        _finish(path, name)
 
 
 # =============================
@@ -554,7 +577,8 @@ def hollow_king(path):
 # -------- LEAVING HERE -------
 # =============================
 
-def export_obj(path, name="undercroft", segments=None, floor=True):
+def export_obj(path, name="undercroft", segments=None, floor=True,
+               fitted=False):
     """Write the architecture as OBJ, in pieces a person can pick up.
 
     Deliberately not the whole scene. Nothing in a Blender scene except the
@@ -585,7 +609,8 @@ def export_obj(path, name="undercroft", segments=None, floor=True):
     # `render=False`: building the scene and rendering it are two things,
     # and they were one -- so the first run of this export quietly wrote a
     # floorless undercroft over the finished PNG.
-    undercroft(path, floor=floor, render=False, groups=groups)
+    undercroft(path, floor=floor, render=False, groups=groups,
+               fitted=fitted)
 
     # The subdivision goes first. It is SIMPLE subdivision on an already
     # bevelled cube, which adds faces and moves no vertex: free in Cycles,
@@ -661,6 +686,11 @@ def main():
     # shipping a black PNG; the idea is recorded as a task.
     jobs = {
         "undercroft": undercroft,
+        # The same room with true voussoirs. Beside the original rather than
+        # replacing it: every render so far is built on the box version, and
+        # this changes how an arch is made.
+        "undercroft_fitted": lambda p: undercroft(
+            p, fitted=True, name="undercroft_fitted"),
         "drowned_steps": drowned_steps,
         "glass_waste": glass_waste,
         "hollow_king": hollow_king,
@@ -675,6 +705,8 @@ def main():
         export_obj(out, "undercroft")
         look.wipe()
         export_obj(out, "undercroft_light", segments=2)
+        look.wipe()
+        export_obj(out, "undercroft_fitted_light", segments=2, fitted=True)
         return
     for key, job in jobs.items():
         if wanted and key not in wanted:

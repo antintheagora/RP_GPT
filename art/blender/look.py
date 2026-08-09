@@ -869,6 +869,77 @@ def block(location, size, material, rotation=(0, 0, 0), bevel=None,
     return obj
 
 
+def wedge(location, half_angle, radius, thickness, depth, material,
+          rotation=(0, 0, 0), bevel=None, along="X", name="Wedge"):
+    """A voussoir: a real wedge, not a box pretending to be one.
+
+    An arch built from boxes cannot close. A box has one width top to bottom,
+    and a stone in a curve needs to be narrower at the intrados than at the
+    extrados -- the two side faces are radial planes through the centre of
+    the circle, and only a wedge has those. Measured on the nave arch as
+    built: 0.2mm of contact at the outer face and 63mm of interpenetration at
+    the inner one, from the same stone.
+
+    The outer face is what you see. Two stones touching by 0.2mm, each with a
+    50mm rolled edge, draw a hundred-millimetre dark band between them -- so
+    the arches read as a row of separate blocks curving through the air,
+    which is exactly what the piers did before their courses were closed up.
+
+    Half-width at radius r is r*tan(half_angle), so the sides are radial and
+    the joint is flush for its whole depth.
+    """
+    inner = (radius - thickness / 2) * math.tan(half_angle)
+    outer = (radius + thickness / 2) * math.tan(half_angle)
+    half_depth = depth / 2
+    half_thick = thickness / 2
+
+    # Which local axis the taper runs along.
+    #
+    # Built on X and then rotated into place with an extra Z turn is the
+    # obvious way and it is wrong: Blender composes Euler angles in order, so
+    # the added turn does not commute with the one that aims the stone at the
+    # centre of the arch, and one voussoir per arch came out square to the
+    # rest. Building the taper on the axis it is wanted on needs no extra
+    # rotation at all, so there is nothing to compose.
+    if along == "Y":
+        verts = [
+            (-half_depth, -inner, -half_thick), (-half_depth, inner, -half_thick),
+            (half_depth, inner, -half_thick), (half_depth, -inner, -half_thick),
+            (-half_depth, -outer, half_thick), (-half_depth, outer, half_thick),
+            (half_depth, outer, half_thick), (half_depth, -outer, half_thick),
+        ]
+    else:
+        verts = [
+            (-inner, -half_depth, -half_thick), (inner, -half_depth, -half_thick),
+            (inner, half_depth, -half_thick), (-inner, half_depth, -half_thick),
+            (-outer, -half_depth, half_thick), (outer, -half_depth, half_thick),
+            (outer, half_depth, half_thick), (-outer, half_depth, half_thick),
+        ]
+    faces = [(0, 3, 2, 1), (4, 5, 6, 7), (0, 1, 5, 4),
+             (3, 7, 6, 2), (0, 4, 7, 3), (1, 2, 6, 5)]
+
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(verts, [], faces)
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    obj.location = location
+    obj.rotation_euler = rotation
+
+    modifier = obj.modifiers.new("Bevel", "BEVEL")
+    modifier.width = (worn_edge((inner * 2, depth, thickness))
+                      if bevel is None else bevel)
+    modifier.segments = BEVEL_SEGMENTS
+    modifier.limit_method = "ANGLE"
+    modifier.angle_limit = math.radians(30)
+    modifier.harden_normals = True
+
+    obj.data.materials.append(material)
+    for polygon in obj.data.polygons:
+        polygon.use_smooth = True
+    return obj
+
+
 def roughen(obj, amount=0.006, seed=0):
     """Push every vertex about a little so no two blocks are the same block."""
     rng = random.Random(seed)
@@ -1166,7 +1237,7 @@ def bryce_sky(bands=None, strength=1.0, bend=3.0,
 
 
 __all__ = [
-    "WEAR", "worn_edge", "bryce_sky",
+    "WEAR", "worn_edge", "bryce_sky", "wedge",
     "wipe", "use_cycles", "view_transform", "render_to", "camera",
     "area_light", "point_light", "sun", "sock", "out",
     "damp_stone", "rusted_iron", "heavy_cloth", "glowing", "still_water",
