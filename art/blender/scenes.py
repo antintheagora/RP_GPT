@@ -2417,40 +2417,87 @@ def painted_hall(path, mood="noon", view="balcony", cutaway=False):
         # the picture that gets this far crosses at 75.4. So the panel ends
         # at 71, which is four metres clear on each side of a gap that is
         # nine metres wide and would not have been found by looking.
-        look.backdrop((-24.0, 32.5, 3.0), (34.0, 77.0),
+        look.backdrop((-24.0, 32.5, 16.0), (60.0, 77.0),
                       rotation=(0.0, math.radians(90.0), 0.0),
                       strength=320.0, name="WhiteVoid")
 
-        # And the roof over that corner goes too, which is the same idea
-        # turned on its side. A lid rather than a hole: a white panel slung
-        # under the beams at 10.03, just below their 10.07 soffit, so from
-        # any lens in the room it covers the coffers instead of them.
+        # And a ceiling on the whole arrangement, because a hole in a roof
+        # is a hole upward and a vertical panel cannot catch what goes
+        # straight up through it. Swept, 3.8% of the balcony frame was
+        # escaping to open sky at up to 13 degrees of elevation -- rays that
+        # leave through the sawn roof and travel far enough in y to pass the
+        # end of the white panel before they reach it.
         #
-        # A lid and not another `unseen` because taking the roof out would
-        # not give white -- ray-swept with it gone, the sight lines carry on
-        # up past the top of the wall and out into the sky, and the sky is
-        # not what the shirt wants. It has to be replaced, not removed.
-        #
-        # It stops at x -2.71, which is the near face of the beam standing at
-        # -2.5. Ending a ceiling in mid-air draws a line across nothing;
-        # ending it against a beam reads as the corner of the building being
-        # cut away, which is what the whole variant is. Measured, the beams
-        # in the marked band run from x -9.8 to -4.1, so that edge clears
-        # them all and takes the roof out to about two thirds across frame.
-        look.backdrop((-7.855, 9.0, 10.03), (10.29, 32.4),
-                      strength=320.0, name="WhiteRoof")
+        # At z 20, above the roof, so from anywhere in the room with a roof
+        # over it this is hidden by the roof. And bounded at y 95, which the
+        # picture's own sight lines cannot reach: they leave at about a
+        # degree above horizontal, so they need nine hundred metres to climb
+        # this high and the panel has stopped long before.
+        look.backdrop((-29.5, 30.0, 20.0), (61.0, 130.0),
+                      strength=320.0, name="WhiteAbove")
+
+        # Nothing hangs under the beams any more -- the roof is cut above,
+        # and what the cut opens onto is this same white field, which is why
+        # it had to grow. Sight lines out through a missing roof leave at up
+        # to 13 degrees above horizontal and cross this plane 33 m away, so
+        # a panel that stopped at z 20 would have let the steepest of them
+        # off the top and into the sky.
 
     # A coffered roof: beams both ways with dark panels behind them, which is
     # the one part of the room the light never reaches and so has to be shape
     # rather than colour.
-    look.block((0, DEEP / 2 - 3.0, CEILING + 0.55), (HALL * 2, DEEP + 8.0, 0.7),
-               beam, name="CeilingPanel")
+    #
+    # In the cutaway it is sawn through on a plane rather than hidden behind
+    # one. The first attempt slung a white panel under the beams, and a
+    # horizontal panel does not cut anything: what you see is not its edge but
+    # the line where your own sight line stops crossing it, which moves with
+    # the lens and reads as a soft diagonal wash. Projected, the lid's own
+    # edge at x -2.71 belongs at picture x 1242 and the boundary it actually
+    # drew sat at 720. Half the roof it appeared to remove, it did not.
+    #
+    # So the pieces themselves are cut at x -0.21 -- the near face of the
+    # beam standing at 0, which therefore survives as the last member and
+    # shows its cut side, the way a sawn joist does. Anything wholly beyond
+    # the cut is built and then `unseen`: still stopping light, still
+    # bouncing into the room, just not drawn. Same trick as the wall, so the
+    # lighting does not move at all.
+    #
+    # -0.21 rather than anything further out because of where a cut *lands*,
+    # which is not where it is. Sight lines through the top of this frame
+    # reach the beam soffit about seventeen metres off, so a cut at -5.21
+    # draws its edge at picture x 443 and one at -2.71 at 732 -- both far
+    # left of the chandelier at 1020. -0.21 puts it at 1021, right against
+    # the chandelier, and leaves the roof above the chandelier's own pole
+    # standing so the thing still hangs from something.
+    #
+    # The other reason for that beam: the panel and the cross members are cut
+    # in the same plane, so the last x-beam ends up as the edge member with
+    # its side showing. A ceiling that stops in open air between beams looks
+    # like a mistake; one that stops at a beam looks sawn.
+    CUT = -0.21 if cutaway else None
+
+    def roof_piece(location, size, **kw):
+        """One piece of roof, sawn at `CUT`, the far half present but unseen."""
+        x0, x1 = location[0] - size[0] / 2, location[0] + size[0] / 2
+        if CUT is None or x0 >= CUT - 1e-6:
+            return look.block(location, size, beam, **kw)
+        if x1 <= CUT + 1e-6:
+            return look.unseen(look.block(location, size, beam, **kw))
+        for lo, hi, gone in ((x0, CUT, True), (CUT, x1, False)):
+            piece = look.block(((lo + hi) / 2, location[1], location[2]),
+                               (hi - lo, size[1], size[2]), beam, **kw)
+            if gone:
+                look.unseen(piece)
+        return None
+
+    roof_piece((0, DEEP / 2 - 3.0, CEILING + 0.55),
+               (HALL * 2, DEEP + 8.0, 0.7), name="CeilingPanel")
     for index in range(-4, 5):
-        look.block((index * 2.5, DEEP / 2 - 3.0, CEILING - 0.02),
-                   (0.42, DEEP + 8.0, 0.62), beam, bevel=0.04, name="Beam")
+        roof_piece((index * 2.5, DEEP / 2 - 3.0, CEILING - 0.02),
+                   (0.42, DEEP + 8.0, 0.62), bevel=0.04, name="Beam")
     for step in range(-4, 12):
-        look.block((0, step * 2.4, CEILING - 0.02),
-                   (HALL * 2, 0.42, 0.62), beam, bevel=0.04, name="Beam")
+        roof_piece((0, step * 2.4, CEILING - 0.02),
+                   (HALL * 2, 0.42, 0.62), bevel=0.04, name="Beam")
 
     # --- the balcony the camera stands on --------------------------------
     # Out to y=1.55, which is past the rail rather than short of it. The
