@@ -660,6 +660,121 @@ def palm(x, y, trunk_material, leaf_material, height=8.0, lean=0.30,
     return made
 
 
+def broad_leaf(base, aim, length, width, material, curl=0.55, ribs=11,
+               seed=0, name="Leaf"):
+    """One big flat leaf, built as a blade rather than a card.
+
+    Fat a third of the way out and pointed at both ends, drooping as it goes,
+    and with a fold along the spine -- which is the part that matters. A flat
+    leaf catches all its light at once and reads as painted cardboard; a
+    folded one has a lit half and a shaded half, and that is what makes a
+    wall of them look like foliage instead of like wallpaper.
+    """
+    rng = random.Random(seed)
+    heading = Vector(aim).normalized()
+    sideways = heading.cross(Vector((0, 0, 1)))
+    if sideways.length < 0.05:
+        sideways = Vector((1, 0, 0))
+    sideways.normalize()
+    spine = Vector(base)
+    verts, faces = [], []
+    for index in range(ribs + 1):
+        travel = index / ribs
+        span = width * math.sin(math.pi * min(1.0, travel ** 0.62)) * 0.5
+        lift = -curl * length * travel ** 2      # droops, increasingly
+        centre = (Vector(base) + heading * (length * travel)
+                  + Vector((0, 0, lift)))
+        fold = Vector((0, 0, 1)) * span * 0.30   # the crease down the middle
+        verts.append(tuple(centre + fold))
+        verts.append(tuple(centre - sideways * span))
+        verts.append(tuple(centre + sideways * span))
+        if index:
+            back = (index - 1) * 3
+            here = index * 3
+            faces.append((back + 0, back + 1, here + 1, here + 0))
+            faces.append((back + 2, back + 0, here + 0, here + 2))
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(verts, [], faces)
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    obj.data.materials.append(material)
+    for polygon in obj.data.polygons:
+        polygon.use_smooth = True
+    return obj
+
+
+def fan_plant(x, y, material, size=1.6, leaves=8, seed=0, z=0.0, lift=0.35):
+    """Undergrowth: a crown of broad leaves out of one point on the floor."""
+    rng = random.Random(seed)
+    made = []
+    for index in range(leaves):
+        angle = math.tau * index / leaves + rng.uniform(-0.30, 0.30)
+        rise = rng.uniform(0.30, 0.95)
+        made.append(broad_leaf(
+            (x, y, z + lift * size),
+            (math.cos(angle), math.sin(angle), rise),
+            size * rng.uniform(0.75, 1.25), size * rng.uniform(0.34, 0.52),
+            material, curl=rng.uniform(0.30, 0.60),
+            seed=seed * 17 + index, name="Frondage"))
+    return made
+
+
+def jungle_tree(x, y, trunk_material, leaf_material, height=14.0, girth=0.72,
+                seed=0, z=0.0, buttress=5, crowns=8):
+    """A big tree: a trunk that flares into the ground, and leaves at the top.
+
+    The flare is what says *jungle*. A rainforest tree spreads into buttress
+    roots because the soil is too thin to anchor it any other way, and a
+    cylinder pushed into the floor reads as scaffolding instead.
+    """
+    rng = random.Random(seed)
+    made = []
+    point = Vector((x, y, z - 0.3))
+    segments = 8
+    lean = Vector((rng.uniform(-0.05, 0.05), rng.uniform(-0.05, 0.05), 0.0))
+    for index in range(segments):
+        travel = index / segments
+        direction = (Vector((0, 0, 1)) + lean * travel).normalized()
+        step = height / segments
+        end = point + direction * step
+        wide = girth * (1.0 - 0.52 * travel) * (1.0 + 0.9 * max(0.0, 0.22 - travel) / 0.22)
+        bpy.ops.mesh.primitive_cone_add(
+            vertices=12, radius1=wide, radius2=wide * 0.9, depth=step * 1.05,
+            location=tuple((point + end) / 2))
+        drum = bpy.context.active_object
+        drum.name = "Bole"
+        drum.rotation_mode = "QUATERNION"
+        drum.rotation_quaternion = direction.to_track_quat("Z", "Y")
+        drum.data.materials.append(trunk_material)
+        for polygon in drum.data.polygons:
+            polygon.use_smooth = True
+        made.append(drum)
+        point = end
+    crown = point
+
+    for index in range(buttress):
+        angle = math.tau * index / buttress + rng.uniform(-0.3, 0.3)
+        out = Vector((math.cos(angle), math.sin(angle), 0.0))
+        made.append(look.block(
+            tuple(Vector((x, y, z)) + out * girth * 1.15
+                  + Vector((0, 0, girth * 0.65))),
+            (girth * 0.22, girth * 2.3, girth * 2.7), trunk_material,
+            rotation=(0, 0, angle + math.pi / 2), bevel=girth * 0.18,
+            name="Buttress"))
+
+    for index in range(crowns):
+        angle = math.tau * index / crowns + rng.uniform(-0.4, 0.4)
+        spread = rng.uniform(0.55, 1.25)
+        made += fan_plant(
+            x + math.cos(angle) * height * 0.11 * spread,
+            y + math.sin(angle) * height * 0.11 * spread,
+            leaf_material, size=height * 0.34, leaves=9,
+            seed=seed * 23 + index, z=crown.z - rng.uniform(0.0, height * 0.14),
+            lift=0.0)
+    return made
+
+
 def outcrop(x, y, size, material, seed=0, squat=0.55, z=0.0):
     """A weathered knob of rock, half buried.
 
@@ -1629,6 +1744,134 @@ def bright_shore(path):
     _finish(path, "bright_shore")
 
 
+def green_deep(path):
+    """Jungle floor: big boles, broad leaves, vines, and light coming down
+    through a canopy that mostly does not let it.
+
+    Built for the platform-game read rather than the botanical one -- chunky
+    trunks, leaves big enough to stand on, saturated green, and depth done in
+    flat layers with light between them. The forest is dark and the gaps are
+    bright, which is the whole composition: everything is a silhouette
+    against something further away and lit.
+    """
+    look.wipe()
+    look.use_cycles(samples=520, volume_bounces=2)
+    look.view_transform("AgX", look="Medium High Contrast")
+
+    earth = dressed("Forest floor", block_scale=0.55, wetness=0.72,
+                    mossy=True, seed=37, mortar=0.30, cracks=0.25,
+                    dark=(0.020, 0.024, 0.012, 1.0),
+                    tint=(0.085, 0.095, 0.045, 1.0))
+    bole = dressed("Bark", block_scale=1.4, wetness=0.55, mossy=True,
+                   seed=61, mortar=0.55, relief=1.2, grain_axis=2, grain=6.0,
+                   dark=(0.014, 0.016, 0.011, 1.0),
+                   tint=(0.105, 0.098, 0.070, 1.0))
+    canopy = look.foliage("Canopy", colour=(0.020, 0.080, 0.014, 1.0),
+                          under=(0.075, 0.185, 0.030, 1.0), veins=0.5)
+    under = look.foliage("Undergrowth", colour=(0.030, 0.115, 0.020, 1.0),
+                         under=(0.115, 0.260, 0.045, 1.0), veins=0.45)
+    creeper = look.foliage("Creeper", colour=(0.040, 0.090, 0.022, 1.0),
+                           under=(0.090, 0.150, 0.035, 1.0), veins=0.3)
+
+    terrain(size=420, resolution=340, kind="hetero", height=0.55, seed=12.7,
+            offset=0.85, origin=(0, 60, -0.35), material=earth,
+            keep_clear=14.0)
+
+    # Boles in three ranks. The near ones are cut by the frame, which is what
+    # puts the camera inside the wood rather than looking at a picture of it.
+    for index, (x, y, height, girth) in enumerate((
+            (-6.2, 3.0, 17.0, 0.86), (7.4, 8.0, 15.0, 0.70),
+            (-11.0, 17.0, 19.0, 0.95), (13.5, 22.0, 16.0, 0.66),
+            (-3.0, 31.0, 14.0, 0.58), (9.0, 40.0, 15.5, 0.52),
+            (-15.0, 47.0, 13.0, 0.48))):
+        jungle_tree(x, y, bole, canopy, height=height, girth=girth,
+                    seed=index * 13 + 7)
+
+    # Undergrowth, thickest near the lens.
+    floor = random.Random(311)
+    for index in range(46):
+        y = -5.0 + index * 1.25 + floor.uniform(-0.8, 0.8)
+        x = floor.uniform(-1.0, 1.0) * (2.5 + y * 0.42)
+        fan_plant(x, y, under, size=floor.uniform(0.9, 2.3),
+                  leaves=floor.randint(6, 10), seed=index * 7 + 3)
+
+    # Vines, hung off nothing in particular the way they are.
+    hang = random.Random(88)
+    for index in range(18):
+        x = hang.uniform(-14.0, 14.0)
+        y = hang.uniform(2.0, 44.0)
+        top = hang.uniform(7.0, 14.0)
+        parts, tip, _ = _twig(
+            (x, y, top), Vector((hang.uniform(-0.25, 0.25),
+                                 hang.uniform(-0.25, 0.25), -1.0)),
+            hang.uniform(3.0, 9.0), 0.055, 5, creeper, hang,
+            droop=-0.05, wander=0.18, name="Vine")
+        for leafy in range(hang.randint(1, 3)):
+            angle = hang.uniform(0, math.tau)
+            broad_leaf(tuple(tip + Vector((0, 0, hang.uniform(0.2, 2.0)))),
+                       (math.cos(angle), math.sin(angle),
+                        hang.uniform(-0.4, 0.2)),
+                       hang.uniform(0.5, 1.1), hang.uniform(0.25, 0.45),
+                       creeper, curl=0.5, seed=index * 5 + leafy,
+                       name="VineLeaf")
+
+    # The canopy proper: a layer of big leaves overhead, belonging to no
+    # tree in particular. Without it the sky shows through everywhere between
+    # the boles and the whole thing reads as a plantation on a foggy morning
+    # -- a jungle is dark because something is over your head, and what is
+    # over your head is nowhere near the trunk you can see.
+    roof = random.Random(404)
+    for index in range(520):
+        x = roof.uniform(-30.0, 30.0)
+        y = roof.uniform(-8.0, 62.0)
+        angle = roof.uniform(0, math.tau)
+        broad_leaf((x, y, roof.uniform(6.0, 18.5)),
+                   (math.cos(angle), math.sin(angle), roof.uniform(-0.55, 0.10)),
+                   roof.uniform(2.2, 5.2), roof.uniform(1.1, 2.4),
+                   canopy, curl=roof.uniform(0.25, 0.55),
+                   seed=index * 3 + 1, name="Canopy")
+
+    # And a wall of it at the back. A jungle has no distance in it: whatever
+    # you can see ends in more leaves about thirty metres away, and an open
+    # horizon behind the trunks is the one thing that would say "these are
+    # some trees in a field".
+    back = random.Random(717)
+    for index in range(150):
+        x = back.uniform(-34.0, 34.0)
+        y = back.uniform(44.0, 66.0)
+        fan_plant(x, y, canopy, size=back.uniform(2.0, 4.6),
+                  leaves=back.randint(6, 9), seed=index * 11 + 5,
+                  z=back.uniform(0.0, 6.5), lift=0.0)
+
+    # A hot sky the canopy is mostly hiding, so the gaps read as gaps.
+    # Warm and bright, because the only sky in this picture is the bits of
+    # it between leaves, and those want to read as daylight getting in rather
+    # than as holes in the roof.
+    look.bryce_sky(bands=[(0.00, (0.780, 0.760, 0.560)),
+                          (0.18, (0.880, 0.870, 0.680)),
+                          (1.00, (0.960, 0.960, 0.840))],
+                   strength=1.25, bend=1.6,
+                   cloud_colour=(0.95, 0.95, 0.88), cloud_amount=0.25,
+                   cloud_scale=3.0, cloud_sharpness=(0.5, 0.8), seed=4.0)
+    # Steep and warm: light that comes down through the leaves rather than in
+    # under them, because a jungle floor is lit from directly above or not at
+    # all.
+    look.sun((math.radians(19.0), 0, math.radians(-24.0)), energy=7.5,
+             angle=0.010, color=(1.0, 0.905, 0.700))
+    # Enough air to catch the shafts. This is the one scene where the haze is
+    # supposed to be *seen* rather than to sit in front of things.
+    # 0.011 with the bounces on turned the whole wood into milk -- the haze
+    # was the brightest thing in the frame and every trunk behind ten metres
+    # went to paper. Shafts want just enough air to catch the light, not
+    # enough to replace it.
+    look.haze(size=180, density=0.0022, colour=(0.62, 0.72, 0.48),
+              origin=(0, 40, 9), height=34)
+
+    look.camera((0.0, -9.0, 2.05), (1.2, 40.0, 2.6), lens=32)
+    look.view_transform("AgX", look="Medium High Contrast", exposure=1.05)
+    _finish(path, "green_deep")
+
+
 def main():
     out = os.path.abspath(OUT)
     os.makedirs(out, exist_ok=True)
@@ -1650,6 +1893,7 @@ def main():
         "hollow_king": hollow_king,
         "bone_flats": bone_flats,
         "bright_shore": bright_shore,
+        "green_deep": green_deep,
     }
     wanted = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 
