@@ -798,13 +798,20 @@ def rusted_iron(name="Rusted iron", rustiness=0.55, seed=0):
     return mat
 
 
-def heavy_cloth(name="Heavy cloth", colour=CLOTH_OXBLOOD, seed=0):
+def heavy_cloth(name="Heavy cloth", colour=CLOTH_OXBLOOD, seed=0,
+                fade=0.45):
     """Coarse woven wool, hung and dusty.
 
     The weave is two crossed wave textures rather than a noise, because a
     fabric's threads run in two directions and noise reads as leather. Sheen
     is what makes the difference at a grazing angle -- without it, cloth in a
     dark scene is indistinguishable from painted board.
+
+    `fade` is how dark the worn part goes, and the worn part is most of
+    the surface. At the 0.45 this started with, over half of any cloth
+    sits below half its own colour -- right for a hanging that has been
+    underground a century, wrong for a carpet somebody hoovers. A deep
+    red at 0.45 arrives brown, because a dark red is brown.
     """
     mat, tree, bsdf, _ = _new_material(name)
     coord = tree.nodes.new("ShaderNodeTexCoord")
@@ -837,7 +844,7 @@ def heavy_cloth(name="Heavy cloth", colour=CLOTH_OXBLOOD, seed=0):
     # Wear, so the folds and edges go pale like a real hanging.
     wear = _noise(tree, 3.0, detail=8.0, roughness=0.65, location=(-1000, -300))
     tree.links.new(mapping.outputs["Vector"], wear.inputs["Vector"])
-    faded = _ramp(tree, [(0.35, tuple(c * 0.45 for c in colour[:3]) + (1.0,)),
+    faded = _ramp(tree, [(0.35, tuple(c * fade for c in colour[:3]) + (1.0,)),
                          (0.75, colour)],
                   location=(-750, -300))
     tree.links.new(out(wear, ("Fac", "Color")), faded.inputs["Fac"])
