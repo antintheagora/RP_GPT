@@ -258,6 +258,13 @@ def unseen(obj, in_mirrors=True):
     obj.visible_camera = False
     if not in_mirrors:
         obj.visible_glossy = False
+    # And drawn as wire in a solid viewport. `display_type` is a viewport
+    # setting only -- Cycles has never looked at it -- so this changes what a
+    # person sees while dragging things about and nothing at all about the
+    # render. Without it, opening one of these files by hand shows two grey
+    # slabs and no room, because the wall and its shed are perfectly solid to
+    # every part of Blender except the one that draws the picture.
+    obj.display_type = "WIRE"
     return obj
 
 
@@ -298,6 +305,7 @@ def backdrop(location, size, rotation=(0, 0, 0), colour=(1.0, 1.0, 1.0),
     for ray in ("diffuse", "glossy", "transmission", "volume_scatter",
                 "shadow"):
         setattr(obj, f"visible_{ray}", False)
+    obj.display_type = "WIRE"          # see past it in a solid viewport
     return obj
 
 

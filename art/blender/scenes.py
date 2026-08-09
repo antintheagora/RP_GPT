@@ -1104,6 +1104,47 @@ def _save_instead(path, name, samples=420):
     will not know about it -- the way to keep a change is to read the numbers
     off Blender's N panel and put them in the scene's own code.
     """
+    scene = bpy.context.scene
+
+    # Open it looking through the lens, in Rendered shading.
+    #
+    # Solid shading is the wrong view of this scene and not by a little: the
+    # wall the whole variant is built around is still solid to everything
+    # except a camera ray, and so is the box round the outside, so Solid
+    # draws two enormous grey slabs across the room and nothing else. Only
+    # Cycles knows they are not there. Material Preview is no better -- it
+    # runs EEVEE, which has its own visibility flags and ignores these.
+    #
+    # Preview samples down to 32 so it resolves in a second or two rather
+    # than grinding through the 560 the still is rendered at.
+    scene.cycles.preview_samples = 32
+    for screen in bpy.data.screens:
+        for area in screen.areas:
+            if area.type != "VIEW_3D":
+                continue
+            for space in area.spaces:
+                if space.type != "VIEW_3D":
+                    continue
+                space.shading.type = "RENDERED"
+                space.clip_start = 0.05
+                # Same reason the cameras carry a far clip: there is terrain
+                # out past a kilometre and the viewport default is 1000.
+                space.clip_end = 24000.0
+                if space.region_3d:
+                    space.region_3d.view_perspective = "CAMERA"
+
+    # And the rig drawn as sticks with its custom shapes off. The panther
+    # arrives with sphere-and-spike widgets sized for a model a hundred units
+    # long, which at this scale fill the screen and hide the animal they
+    # belong to.
+    for obj in scene.objects:
+        obj.select_set(False)
+        if obj.type == "ARMATURE":
+            obj.data.display_type = "STICK"
+            obj.data.show_bone_custom_shapes = False
+            obj.show_in_front = False
+    scene.cursor.location = (0.0, 0.0, 0.0)
+
     out = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                        "..", "blend", f"{name}.blend"))
     os.makedirs(os.path.dirname(out), exist_ok=True)
