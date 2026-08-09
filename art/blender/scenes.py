@@ -820,6 +820,63 @@ def borrowed(key, location, span, rotation=(0, 0, 0), name=None):
     return made
 
 
+def hoop_chandelier(x, y, ceiling, material, flame_material, drop=1.15,
+                    radius=1.05, candles=8, energy=1500, name="Hoop"):
+    """A ring of candles on a chain. Nothing else.
+
+    It is here to be a known size. A very large bird a long way off and a
+    normal bird close up project to the same shape, and nothing in an empty
+    room tells the two apart -- so the room needs one object whose size is
+    not in question, hung at the same depth, for the eye to measure against.
+    A chandelier is about a metre across in everybody's head, which is the
+    whole reason to use one.
+    """
+    made = []
+    hang = ceiling - drop
+    bpy.ops.mesh.primitive_cylinder_add(vertices=6, radius=0.035, depth=drop,
+                                        location=(x, y, ceiling - drop / 2))
+    chain = bpy.context.active_object
+    chain.name = name
+    chain.data.materials.append(material)
+    made.append(chain)
+
+    bpy.ops.mesh.primitive_torus_add(major_radius=radius, minor_radius=0.052,
+                                     major_segments=44, minor_segments=8,
+                                     location=(x, y, hang))
+    ring = bpy.context.active_object
+    ring.name = name
+    ring.data.materials.append(material)
+    made.append(ring)
+
+    for index in range(3):
+        angle = math.tau * index / 3
+        made.append(look.block(
+            (x + math.cos(angle) * radius * 0.5,
+             y + math.sin(angle) * radius * 0.5, hang + drop * 0.32),
+            (0.045, 0.045, drop * 0.64), material,
+            rotation=(math.cos(angle) * 0.34, math.sin(angle) * 0.34, 0),
+            bevel=0.01, name=name))
+
+    for index in range(candles):
+        angle = math.tau * index / candles
+        spot = (x + math.cos(angle) * radius, y + math.sin(angle) * radius)
+        bpy.ops.mesh.primitive_cylinder_add(
+            vertices=10, radius=0.055, depth=0.34,
+            location=(spot[0], spot[1], hang + 0.20))
+        candle = bpy.context.active_object
+        candle.name = name
+        candle.data.materials.append(material)
+        for polygon in candle.data.polygons:
+            polygon.use_smooth = True
+        made.append(candle)
+        made.append(look.sphere((spot[0], spot[1], hang + 0.42), 0.055,
+                                flame_material, segments=12, rings=8,
+                                name=name))
+    look.point_light((x, y, hang + 0.32), energy=energy, radius=radius * 0.9,
+                     color=(1.0, 0.615, 0.290))
+    return made
+
+
 def column(x, y, base, top, radius, material, sides=16, name="Column"):
     """A column with a foot and a head, because a bare cylinder is a pipe."""
     made = []
@@ -2062,6 +2119,12 @@ def painted_hall(path):
     # Stairs down either side, hugging the walls.
     for side in (-1, 1):
         staircase(side * 7.0, 5.4, 1.0, 9.6, LANDING, FLOOR, 13, pale)
+        # 3.7 m wide on a 5.4 m flight, and set out at 7.05 rather than
+        # 7.0, because the newel stands at 4.75 and takes up to 5.03. A
+        # runner at 4.6 reached 4.75 and ran straight under the post,
+        # which is carpet laid before the joinery arrived. It stops 70mm
+        # short of it now.
+        #
         # A runner, not a mat per tread. Ray-tested from this camera, only
         # the top two or three treads are visible at all -- the sight line
         # grazes the nose of the step in front and everything below that is
@@ -2073,16 +2136,16 @@ def painted_hall(path):
         for index in range(13):
             top = LANDING - drop * index
             y = 1.0 + run * (index + 0.5)
-            look.block((side * 7.0, y, top + 0.03), (4.6, run * 1.02, 0.06),
+            look.block((side * 7.05, y, top + 0.03), (3.7, run * 1.02, 0.06),
                        carpet, name="StairCarpet")
-            look.block((side * 7.0, y - run / 2 - 0.02, top - drop / 2),
-                       (4.6, 0.07, drop * 1.04), carpet, name="StairCarpet")
+            look.block((side * 7.05, y - run / 2 - 0.02, top - drop / 2),
+                       (3.7, 0.07, drop * 1.04), carpet, name="StairCarpet")
         balustrade(-2.2, 2.2, side * 0.0, LANDING, pale, posts=9,
                    name="RailSide") if False else None
 
     balustrade(-4.6, 4.6, 1.30, LANDING, pale, posts=20)
     for side in (-1, 1):
-        look.block((side * 5.05, 1.30, LANDING + 0.6), (0.55, 0.55, 1.35),
+        look.block((side * 4.75, 1.30, LANDING + 0.6), (0.55, 0.55, 1.35),
                    pale, bevel=0.05, name="NewelPost")
 
     # --- columns in the far corners --------------------------------------
@@ -2118,6 +2181,22 @@ def painted_hall(path):
                          (-VIEW_W / 2 - 0.28, 0, 0.56, VIEW_H + 1.12)):
         look.block((dx, DEEP - 0.20, VIEW_Z + VIEW_H / 2 + dz), (w, 0.42, h),
                    gilt, bevel=0.07, name="Frame")
+
+    # --- something the size of a chandelier, being a chandelier --------
+    #
+    # Hung to the right of the bird and at much the same depth, because
+    # that is the only place it does any work. An eleven-metre pigeon
+    # fifteen metres off and an ordinary one three metres off project to
+    # the same shape; what separates them is having something nearby
+    # whose size nobody has to be told.
+    brass = dressed("Brass", block_scale=2.0, wetness=0.35, mossy=False,
+                    seed=97, mortar=0.0, relief=0.5, specular=1.2,
+                    dark=(0.055, 0.036, 0.012, 1.0),
+                    tint=(0.310, 0.205, 0.062, 1.0))
+    hoop_chandelier(3.9, 13.0, CEILING, brass,
+                    look.glowing("Candle", colour=(1.0, 0.660, 0.300, 1.0),
+                                 strength=26.0),
+                    drop=1.30, radius=1.05, candles=8, energy=1500)
 
     # --- and something that just came through -------------------------
     #
