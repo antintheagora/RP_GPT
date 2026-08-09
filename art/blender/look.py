@@ -174,9 +174,21 @@ def render_to(path, width, height, samples=256, transparent=False):
     bpy.ops.render.render(write_still=True)
 
 
-def camera(location, look_at=(0, 0, 0), lens=50, ortho_scale=None, shift=(0, 0)):
+def camera(location, look_at=(0, 0, 0), lens=50, ortho_scale=None, shift=(0, 0),
+           far=24000.0):
+    """A camera, and one setting that is not a default worth keeping.
+
+    `clip_end` starts at 1000 metres. Every landscape in this file has
+    terrain past that, and geometry outside the clip is not drawn -- silently,
+    with no warning and nothing in the render to say what happened. It cost
+    four rounds on one scene: a range pushed from 1.7 km to 2.4 km vanished,
+    and `ray_cast` kept reporting it present at 1239 m because ray casting
+    ignores camera clipping entirely. Two tools disagreeing, and the one I
+    trusted was the one that could not see the problem.
+    """
     cam_data = bpy.data.cameras.new("Camera")
     cam_data.lens = lens
+    cam_data.clip_end = far
     if ortho_scale is not None:
         cam_data.type = "ORTHO"
         cam_data.ortho_scale = ortho_scale
@@ -328,8 +340,16 @@ def _crack_field(tree, coords, scale, width, seed_offset, location):
 def damp_stone(name="Damp stone", block_scale=7.0, wetness=0.55, coursed=False,
                mossy=True, seed=0, tint=None, mortar=1.0, world_space=False,
                cracks=0.0, puddling=0.0, grain_axis=None, grain=5.0,
-               relief=1.0, shade=1.0):
+               relief=1.0, shade=1.0, displace=0.0):
     """Dark stone that has been underground a long time.
+
+    `displace` cuts the cracks into the mesh instead of shading them, for
+    anything the camera gets close to. A bump map has no parallax: the groove
+    slides across the surface as the camera moves rather than staying put in
+    it, and at grazing angles -- which is every angle in a scene shot from
+    knee height -- the whole pattern reads as printed on. Needs geometry to
+    move, so it does nothing at all unless the object is subdivided; see
+    `subdivide_adaptively`.
 
     `shade` scales the whole base ramp toward black. Both ends of it, which
     is the point: dropping only the light end leaves the crevices where they
@@ -348,7 +368,7 @@ def damp_stone(name="Damp stone", block_scale=7.0, wetness=0.55, coursed=False,
     mortar lines, which is what says "blocks" rather than "rock". And the
     crevices go nearly black, because in a real crypt they do.
     """
-    mat, tree, bsdf, _ = _new_material(name)
+    mat, tree, bsdf, surface_out = _new_material(name)
     mapping = tree.nodes.new("ShaderNodeMapping")
     mapping.location = (-1400, 0)
     sock(mapping, "Location", (seed * 3.7, seed * 1.9, seed * 5.1))
@@ -520,6 +540,22 @@ def damp_stone(name="Damp stone", block_scale=7.0, wetness=0.55, coursed=False,
         tree.links.new(colour_source, _mix_in(darkened, 0))
         tree.links.new(_mix_out(together), _mix_in(darkened, 1))
         colour_source = _mix_out(darkened)
+
+        if displace:
+            # Height 1 outside a crack and 0 inside it, so against a midlevel
+            # of 1 the surface only ever moves downward -- the ground stays
+            # where it was and the cracks go into it.
+            cut = tree.nodes.new("ShaderNodeDisplacement")
+            cut.location = (620, 980)
+            sock(cut, "Midlevel", 1.0)
+            sock(cut, "Scale", displace)
+            tree.links.new(_mix_out(together), cut.inputs["Height"])
+            tree.links.new(cut.outputs["Displacement"],
+                           surface_out.inputs["Displacement"])
+            if hasattr(mat, "displacement_method"):
+                mat.displacement_method = "DISPLACEMENT"
+            elif hasattr(mat, "cycles"):
+                mat.cycles.displacement_method = "DISPLACEMENT"
 
         # And cut them into the surface, or they are lines drawn on stone.
         crack_bump = tree.nodes.new("ShaderNodeBump")
@@ -1136,6 +1172,39 @@ def wedge(location, half_angle, radius, thickness, depth, material,
     return obj
 
 
+def subdivide_adaptively(obj, dicing=3.0):
+    """Let Cycles dice this object to pixel size while it renders.
+
+    True displacement needs vertices to move, and a 30mm crack across a plain
+    a hundred metres wide cannot be modelled: it would want a vertex every
+    centimetre, which is ten billion of them. Adaptive subdivision builds that
+    geometry only where the camera is actually looking, at whatever the frame
+    resolves, and discards it again -- so the cost is set by the size of the
+    picture rather than by the size of the ground.
+    """
+    scene = bpy.context.scene
+    # Blender 5 dropped the experimental feature set -- adaptive subdivision
+    # is simply available -- and moved the switch itself off the object and
+    # onto the modifier. Both spellings, because neither is guaranteed.
+    if hasattr(scene.cycles, "feature_set"):
+        scene.cycles.feature_set = "EXPERIMENTAL"
+    if hasattr(scene.cycles, "dicing_rate"):
+        scene.cycles.dicing_rate = dicing
+    modifier = obj.modifiers.new("Subdivision", "SUBSURF")
+    modifier.subdivision_type = "SIMPLE"
+    modifier.levels = 0
+    modifier.render_levels = 1
+    if hasattr(modifier, "adaptive_pixel_size"):
+        modifier.adaptive_pixel_size = dicing
+    if hasattr(modifier, "use_adaptive_subdivision"):
+        modifier.use_adaptive_subdivision = True
+    elif hasattr(getattr(obj, "cycles", None), "use_adaptive_subdivision"):
+        obj.cycles.use_adaptive_subdivision = True
+    else:
+        print("[look] no adaptive subdivision on this build; cracks stay flat")
+    return obj
+
+
 def roughen(obj, amount=0.006, seed=0):
     """Push every vertex about a little so no two blocks are the same block."""
     rng = random.Random(seed)
@@ -1436,7 +1505,7 @@ __all__ = [
     "WEAR", "worn_edge", "bryce_sky", "wedge",
     "wipe", "use_cycles", "view_transform", "render_to", "camera",
     "area_light", "point_light", "sun", "sock", "out",
-    "damp_stone", "rusted_iron", "heavy_cloth", "glowing", "scrying_glass", "sphere", "inp", "still_water",
+    "damp_stone", "rusted_iron", "heavy_cloth", "glowing", "scrying_glass", "sphere", "inp", "subdivide_adaptively", "still_water",
     "block", "roughen", "weather", "fog", "haze", "sky_gradient",
     "PITCH", "SOOT", "STONE_DARK", "STONE_LIGHT", "MOSS_DEEP", "MOSS_LIT",
     "RUST", "RUST_DEEP", "IRON", "BRASS", "CLOTH_OXBLOOD", "CANDLE",

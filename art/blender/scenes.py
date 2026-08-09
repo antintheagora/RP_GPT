@@ -565,6 +565,57 @@ def outcrop(x, y, size, material, seed=0, squat=0.55, z=0.0):
     return obj
 
 
+def ruined_road(start, end, material, width=5.8, slab=3.6, gap=0.35,
+                seed=0, sink=0.10):
+    """A road that has stopped being one.
+
+    Laid as separate slabs rather than a ribbon, because everything that says
+    "ruined" here happens at the joints: a slab drops, another lifts against
+    it, a third is missing altogether and the dust has taken the hole. A
+    single mesh with a crack texture on it stays a road with a crack texture
+    on it.
+
+    Slabs sit slightly proud of the ground and are sunk by `sink` at most, so
+    the surface it was built on reads as having moved rather than the road
+    as having been dropped on top.
+    """
+    rng = random.Random(seed)
+    origin = Vector((start[0], start[1], 0.0))
+    finish = Vector((end[0], end[1], 0.0))
+    run = finish - origin
+    length = run.length
+    heading = run.normalized()
+    across = Vector((-heading.y, heading.x, 0.0))
+    made = []
+    travelled = 0.0
+    while travelled < length:
+        step = slab * rng.uniform(0.82, 1.18)
+        centre = origin + heading * (travelled + step / 2)
+        for side in (-1, 1):
+            if rng.random() < 0.16:
+                continue                     # a slab that is simply gone
+            offset = width / 4 * side + rng.uniform(-0.10, 0.10)
+            # Nearly flush. The slab is 220mm thick and the lens is 620mm
+            # up, so a slab standing 150mm proud two metres away is a black
+            # plinth across the bottom of the frame -- which is exactly what
+            # the first pass built. What should show is the top face and a
+            # lip, not the side.
+            drop = -0.19 + rng.uniform(0.0, sink) - 0.02
+            if rng.random() < 0.14:
+                drop -= rng.uniform(0.06, 0.20)   # one slab well under
+            spot = centre + across * offset
+            made.append(look.block(
+                (spot.x, spot.y, drop),
+                (width / 2 - 0.06, step - gap, 0.22), material,
+                rotation=(rng.uniform(-0.035, 0.035),
+                          rng.uniform(-0.035, 0.035),
+                          math.atan2(heading.y, heading.x) - math.pi / 2
+                          + rng.uniform(-0.03, 0.03)),
+                bevel=0.03, name="Slab"))
+        travelled += step + rng.uniform(0.0, 0.5)
+    return made
+
+
 def _finish(path, name, samples=420):
     look.render_to(os.path.join(path, f"{name}.png"), WIDTH, HEIGHT,
                    samples=samples)
@@ -1091,14 +1142,16 @@ def bone_flats(path):
     # joints between blocks cuts polygons into dried mud, and it is the one
     # pattern everybody recognises as "this ground has not seen rain".
     hardpan = dressed("Hardpan", block_scale=0.30, wetness=0.03, mossy=False,
-                      seed=41, mortar=0.42, cracks=1.05,
+                      seed=41, mortar=0.42, cracks=1.05, displace=0.024,
                       tint=(0.238, 0.170, 0.104, 1.0))
     sandstone = dressed("Sandstone", block_scale=0.09, wetness=0.05,
                         mossy=False, seed=13, mortar=0.22, cracks=0.45,
                         tint=(0.255, 0.176, 0.112, 1.0))
+    # Darker than the plain it stands behind, so a range reads as a shape
+    # rather than as a brighter patch of the same ground.
     far_rock = dressed("Far rock", block_scale=0.02, wetness=0.04,
                        mossy=False, seed=29, mortar=0.10,
-                       tint=(0.205, 0.152, 0.116, 1.0))
+                       tint=(0.148, 0.110, 0.084, 1.0))
     # Sun-bleached rather than brown. Dead wood outdoors goes grey, and wood
     # that has stayed brown reads as wet.
     deadwood = dressed("Deadwood", block_scale=2.2, wetness=0.04, mossy=False,
@@ -1121,8 +1174,8 @@ def bone_flats(path):
     # behind it. The clearing runs to eighty metres and what relief is left
     # never reaches the height of the lens, which is the difference between a
     # plain that undulates and a plain with a wall on it.
-    terrain(size=2800, resolution=620, kind="hetero", height=0.85, seed=9.4,
-            offset=0.92, origin=(0, 350, -0.4), material=hardpan,
+    terrain(size=5200, resolution=700, kind="hetero", height=0.85, seed=9.4,
+            offset=0.92, origin=(0, 700, -0.4), material=hardpan,
             keep_clear=80.0)
 
     # Two ranges rather than one, at different distances, because a single
@@ -1134,10 +1187,23 @@ def bone_flats(path):
     # around the camera at exactly the clearing radius -- surveyed at 360 to
     # 400 m, and it was the hard wall across the middle of the frame. These
     # simply begin past the plain's edge and rise out of it.
-    terrain(size=1800, resolution=320, kind="ridged", height=95.0, seed=4.7,
-            offset=0.88, origin=(-260, 1650, -34), material=far_rock)
-    terrain(size=3000, resolution=300, kind="ridged", height=240.0, seed=2.3,
-            offset=0.95, origin=(320, 2600, -70), material=far_rock)
+    # Both eroded, neither ridged.
+    #
+    # `ridged` makes knife edges, which is the right landform for the glass
+    # waste and the wrong one at two kilometres: the grid is too coarse to
+    # give a spire any flanks, so a thousand of them across the horizon read
+    # as a comb rather than as country. `hetero` erodes -- flat valleys with
+    # ridges rising out of them -- and that is what a range looks like from
+    # far enough away to see all of it at once.
+    # `height` is not the height. Both fractals return well over 1.0 --
+    # measured, `hetero` at offset 0.72 goes past 3.4 -- so it is a multiplier
+    # on a number nobody has looked at, and 260 put peaks 880 m up: a wall of
+    # spires from the top of the frame down to a third. Sized instead by what
+    # they should subtend from 2.4 and 4.4 km, which is a few degrees each.
+    terrain(size=2400, resolution=240, kind="hetero", height=50.0, seed=4.7,
+            offset=0.80, origin=(-260, 2400, -34), material=far_rock)
+    terrain(size=3600, resolution=190, kind="hetero", height=110.0, seed=2.3,
+            offset=0.72, origin=(320, 4400, -70), material=far_rock)
 
     # Middle-distance rocks, so there is something between the weeds at your
     # feet and the mountains an hour's walk away.
@@ -1147,15 +1213,50 @@ def bone_flats(path):
             (-20.0, 320.0, 30.0, 0.45), (78.0, 400.0, 38.0, 0.50))):
         outcrop(x, y, size, sandstone, seed=index * 7 + 3, squat=squat)
 
+    # The near ground again, densely enough that the cracks can be cut into
+    # it rather than drawn on it. Same material as the plain, so there is no
+    # colour seam to hide -- the only difference is that this one has the
+    # geometry for the displacement to happen in. Its rim dives under the
+    # plain rather than ending on it.
+    bpy.ops.mesh.primitive_grid_add(x_subdivisions=150, y_subdivisions=150,
+                                    size=190, location=(0, 26, 0))
+    bed = bpy.context.active_object
+    bed.name = "CrackBed"
+    for vertex in bed.data.vertices:
+        span = math.hypot(vertex.co.x, vertex.co.y + 26.0)
+        # The plain's own cleared profile, so the two lie together.
+        vertex.co.z = -0.4 * min(1.0, span / 80.0) ** 2 + 0.012
+        if span > 72.0:
+            vertex.co.z -= 0.06 * (span - 72.0)
+    bed.data.materials.append(hardpan)
+    bed.data.polygons.foreach_set("use_smooth", [True] * len(bed.data.polygons))
+    look.subdivide_adaptively(bed, dicing=3.5)
+
+    # A road, or the idea of one. It runs from under the lens out past the
+    # rocks, which is the one line in the picture that says somebody used to
+    # come here.
+    roadbed = dressed("Roadbed", block_scale=0.55, wetness=0.05, mossy=False,
+                      seed=63, mortar=0.70, cracks=1.5, relief=0.75,
+                      tint=(0.196, 0.178, 0.156, 1.0))
+    ruined_road((-3.4, -24.0), (11.5, 300.0), roadbed, seed=91)
+
     # Stones, close in. Everything else here starts twelve metres out, and a
     # plain with nothing inside twelve metres has no near edge -- the ground
     # arrives already middle-distance and the frame loses its depth at the
     # bottom rather than at the top.
     grit = random.Random(77)
     for index in range(18):
-        outcrop(grit.uniform(-15.0, 15.0), grit.uniform(-14.5, 26.0),
-                grit.uniform(0.10, 0.55), sandstone,
-                seed=index * 5 + 61, squat=grit.uniform(0.45, 0.85))
+        x = grit.uniform(-15.0, 15.0)
+        y = grit.uniform(-14.5, 26.0)
+        size = grit.uniform(0.10, 0.55)
+        squat = grit.uniform(0.45, 0.85)
+        # Nothing inside seven metres. A 600mm stone at five metres is two
+        # thirds of a metre of rock across the middle of the frame, and reads
+        # as a boulder rather than as the grit it is -- the lens is 620mm off
+        # the ground, so anything this close is enormous.
+        if math.hypot(x - 0.0, y + 18.0) < 7.0:
+            continue
+        outcrop(x, y, size, sandstone, seed=index * 5 + 61, squat=squat)
 
     # Dead things, thinning out with distance the way a dry plain does.
     for index, (x, y, height) in enumerate((
@@ -1176,16 +1277,24 @@ def bone_flats(path):
     # A hot sky is mostly empty. Bands go from bleached dust at the horizon
     # to a blue that only arrives well up the dome, and the cloud is thin and
     # high rather than the weather in the other three scenes.
-    look.bryce_sky(bands=[(0.00, (0.620, 0.470, 0.320)),
-                          (0.09, (0.430, 0.352, 0.276)),
-                          (0.30, (0.196, 0.222, 0.298)),
-                          (1.00, (0.052, 0.086, 0.186))],
+    # The dust band has to reach higher than the mountains do.
+    #
+    # The four holes in the range were not holes. Ray-sampled they came back
+    # as near-range rock at 1072 to 1266 m: vertical faces turned away from a
+    # 25-degree sun, lit by nothing but a blue dome and then hazed, which
+    # lands them on the sky's own colour. Rock the colour of sky is a hole in
+    # the mountain. Keeping the lower sky dusty rather than blue leaves
+    # nowhere for a shadowed face to hide.
+    look.bryce_sky(bands=[(0.00, (0.665, 0.505, 0.330)),
+                          (0.17, (0.480, 0.392, 0.292)),
+                          (0.46, (0.232, 0.246, 0.302)),
+                          (1.00, (0.060, 0.095, 0.195))],
                    # 1.75 lit the shadows back in: sampled across the tree's
                    # own shadow the ground read 0.367 against 0.468 beside
                    # it, a fifth of a stop, on a plain whose only scale is
                    # the length of its shadows. The sun is doing more of the
                    # work and the dome less.
-                   strength=1.10, bend=3.2,
+                   strength=1.10, bend=2.5,
                    cloud_colour=(0.82, 0.74, 0.62), cloud_amount=0.30,
                    cloud_scale=3.6, cloud_sharpness=(0.55, 0.82), seed=6.0)
 
@@ -1202,8 +1311,11 @@ def bone_flats(path):
     # value the sky is already at -- the range was rendering, and surveying
     # found it at z +248, but there was nothing to see. Distance has to be
     # readable as well as present.
-    look.haze(size=7000, density=0.00055, colour=(0.56, 0.42, 0.29),
-              origin=(0, 1400, 30), height=460)
+    # Thin enough to read through, low enough that a ray to the sky is not
+    # as deep in it as a ray to the rock -- a 700 m slab was, and both
+    # saturated to the same lit wash.
+    look.haze(size=9000, density=0.00026, colour=(0.56, 0.42, 0.29),
+              origin=(0, 1800, 20), height=420)
 
     # Knee height, aimed four degrees down, which puts the horizon at two
     # fifths and gives the ground the other three.
