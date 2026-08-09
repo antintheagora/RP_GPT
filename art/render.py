@@ -73,8 +73,10 @@ def run(script: str, arguments: list) -> int:
                                stderr=subprocess.STDOUT, text=True)
     for line in completed.stdout.splitlines():
         # Blender is extremely chatty and almost none of it is for us.
+        # `[export]` was missing, so the one command whose entire output is
+        # a report printed nothing at all.
         if any(word in line for word in
-               ("Saved:", "Error", "error", "[look]", "==="  )):
+               ("Saved:", "Error", "error", "[look]", "[export]", "==="  )):
             print("   ", line.strip())
     return completed.returncode
 

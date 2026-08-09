@@ -170,7 +170,10 @@ def candle(x, y, z, material, wax, height=0.26, energy=45):
         polygon.use_smooth = True
     look.point_light((x, y, z + height + 0.07), energy=energy, radius=0.045,
                      color=(1.0, 0.52, 0.18))
-    return stick
+    # Both halves. The flame was dropped on the floor here, which is fine for
+    # a render -- it is in the scene either way -- and wrong for an export,
+    # where a candle has to arrive as one thing you can pick up and move.
+    return [stick, flame]
 
 
 def terrain(size=400.0, resolution=340, kind="hetero", height=34.0,
@@ -233,14 +236,26 @@ def _finish(path, name, samples=420):
 # --------- THE CRYPT ---------
 # =============================
 
-def undercroft(path, floor=True, render=True):
+def undercroft(path, floor=True, render=True, groups=None):
     """A vaulted undercroft. The room the game already opens in.
 
     Nothing above the capitals is lit, which is deliberate and is what the
     existing backdrop does too: the vault is *implied* by where the arches
     stop being visible, and implying it costs nothing and reads as bigger
     than a modelled ceiling ever does.
+
+    Pass a dict as `groups` and it is filled with name -> [objects]. Cycles
+    does not care how the meshes are divided up, but anything that has to be
+    *edited* does: 398 loose blocks in an object list is not a room, it is a
+    pile. The grouping is by the thing a person would want to select -- a
+    colonnade, a wall, one candle -- rather than by how it happened to be
+    built.
     """
+    def keep(name, made):
+        if groups is not None:
+            groups.setdefault(name, []).extend(
+                made if isinstance(made, list) else [made])
+        return made
     look.wipe()
     look.use_cycles(samples=420)
     look.view_transform("AgX", look="Medium High Contrast")
@@ -255,49 +270,66 @@ def undercroft(path, floor=True, render=True):
     flame = look.glowing("Flame", colour=(1.0, 0.55, 0.20, 1.0), strength=95.0)
 
     if floor:
-        flagstones(floor_stone, extent=30, step=1.15, y_from=-7.0)
+        keep("Floor", flagstones(floor_stone, extent=30, step=1.15, y_from=-7.0))
 
     # Two arcades running away from the camera. The far bays are swallowed by
     # fog rather than by a wall, which is what makes the room feel long.
     bays = [-3.4, 0.4, 4.2, 8.0, 11.8, 15.6]
     for y in bays:
         for x in (-3.0, 3.0):
-            pier(x, y, stone, height=3.5, width=0.78)
+            keep("Arcade_West" if x < 0 else "Arcade_East",
+                 pier(x, y, stone, height=3.5, width=0.78))
     for index in range(len(bays) - 1):
         y0, y1 = bays[index], bays[index + 1]
         for x in (-3.0, 3.0):
-            arch(y0, y1, x, 3.62, stone, stones=13, thickness=0.36,
-                 depth=0.70, axis="Y")
+            keep("Arcade_West" if x < 0 else "Arcade_East",
+                 arch(y0, y1, x, 3.62, stone, stones=13, thickness=0.36,
+                      depth=0.70, axis="Y"))
     # Transverse arches across the nave, which is what says "vault".
     for y in bays:
-        arch(-3.0, 3.0, y, 3.62, stone, stones=17, thickness=0.34, depth=0.62)
+        keep("Vault_Arches",
+             arch(-3.0, 3.0, y, 3.62, stone, stones=17, thickness=0.34,
+                  depth=0.62))
 
     # Side walls, well back, so the arcade has something to be in front of.
     for x in (-7.4, 7.4):
-        look.block((x, 6.0, 3.0), (0.6, 34.0, 6.4), stone, name="SideWall")
+        keep("Wall_West" if x < 0 else "Wall_East",
+             look.block((x, 6.0, 3.0), (0.6, 34.0, 6.4), stone, name="SideWall"))
 
     # The altar at the end of the nave and its niche.
-    look.block((0, 17.6, 2.6), (9.0, 0.7, 5.6), stone, name="EastWall")
-    arch(-1.5, 1.5, 17.2, 2.05, stone, stones=13, thickness=0.30, depth=0.55)
-    look.block((0, 17.2, 1.0), (3.0, 0.55, 2.1), stone, name="NicheBack")
-    look.block((0, 16.2, 0.62), (3.4, 1.2, 1.15), stone, name="Altar")
-    look.block((0, 16.2, 1.26), (3.9, 1.5, 0.16), stone, name="AltarTop")
+    keep("Wall_End",
+         look.block((0, 17.6, 2.6), (9.0, 0.7, 5.6), stone, name="EastWall"))
+    keep("Niche", arch(-1.5, 1.5, 17.2, 2.05, stone, stones=13,
+                       thickness=0.30, depth=0.55))
+    keep("Niche", look.block((0, 17.2, 1.0), (3.0, 0.55, 2.1), stone,
+                             name="NicheBack"))
+    keep("Altar", look.block((0, 16.2, 0.62), (3.4, 1.2, 1.15), stone,
+                             name="Altar"))
+    keep("Altar", look.block((0, 16.2, 1.26), (3.9, 1.5, 0.16), stone,
+                             name="AltarTop"))
 
+    lit = 0
     for x, y, z, energy in ((-0.85, 16.2, 1.34, 60), (0.75, 16.2, 1.34, 55),
                             (1.15, 16.1, 1.34, 40)):
-        candle(x, y, z, flame, wax, energy=energy)
+        lit += 1
+        keep(f"Candle_{lit:02d}", candle(x, y, z, flame, wax, energy=energy))
 
     # Sconces down the arcade. Falling off with distance is the depth cue.
     for index, y in enumerate(bays[:-1]):
         for x in (-3.55, 3.55):
-            look.block((x, y, 1.35), (0.34, 0.34, 0.20), stone, name="Corbel")
-            candle(x + (0.06 if x < 0 else -0.06), y, 1.46, flame, wax,
-                   energy=max(16, 58 - index * 7))
+            keep("Corbels", look.block((x, y, 1.35), (0.34, 0.34, 0.20),
+                                       stone, name="Corbel"))
+            lit += 1
+            keep(f"Candle_{lit:02d}",
+                 candle(x + (0.06 if x < 0 else -0.06), y, 1.46, flame, wax,
+                        energy=max(16, 58 - index * 7)))
 
     # One near candle on a fallen block, close enough to light the floor and
     # give the foreground somewhere to be bright.
-    look.block((-2.1, -4.2, 0.28), (1.0, 0.8, 0.5), stone, name="FallenBlock")
-    candle(-2.1, -4.2, 0.54, flame, wax, energy=90)
+    keep("Fallen_Block", look.block((-2.1, -4.2, 0.28), (1.0, 0.8, 0.5),
+                                    stone, name="FallenBlock"))
+    lit += 1
+    keep(f"Candle_{lit:02d}", candle(-2.1, -4.2, 0.54, flame, wax, energy=90))
 
     look.fog(strength=0.011, colour=(0.44, 0.34, 0.22))
     # A whisper of cold sky leaking in from somewhere off-frame. Without it
@@ -522,18 +554,24 @@ def hollow_king(path):
 # -------- LEAVING HERE -------
 # =============================
 
-def export_obj(path, name="undercroft", segments=None):
-    """Write the architecture as OBJ, for something that is not Blender.
+def export_obj(path, name="undercroft", segments=None, floor=True):
+    """Write the architecture as OBJ, in pieces a person can pick up.
 
     Deliberately not the whole scene. Nothing in a Blender scene except the
     meshes survives an OBJ: no lights, no camera, no volumetrics, and
     materials only as a diffuse colour in the MTL. Everything this render
     actually looks like stays behind.
 
-    So this exports the part worth carrying -- the piers, the arches, the
-    vaulting -- and leaves the floor out. Eight hundred and fifty separate
-    bevelled, subdivided slabs is half a million faces for a surface that any
-    landscape package will do better with one plane and its own material.
+    What it does carry is the division. The first version of this exported
+    every block as its own object -- 398 of them -- which is correct and
+    useless: a room arrives as a pile of numbered stones and selecting an
+    arch means finding thirteen voussoirs by hand. Cycles does not care how
+    the meshes are split; anything that has to be *edited* cares about
+    nothing else.
+
+    So each logical piece is joined into one mesh: a colonnade, a wall, the
+    floor, the altar. Candles stay one object each, because a candle is a
+    thing you move, and each keeps its flame with it.
 
     Modifiers are applied on the way out, or the bevels that took all the
     work stay behind as unevaluated modifier stacks.
@@ -541,48 +579,74 @@ def export_obj(path, name="undercroft", segments=None):
     Y up and -Z forward: the OBJ convention, and what most packages expect.
     Blender is Z-up and almost nothing else is.
     """
+    if segments is not None:
+        look.BEVEL_SEGMENTS = segments
+    groups = {}
     # `render=False`: building the scene and rendering it are two things,
     # and they were one -- so the first run of this export quietly wrote a
     # floorless undercroft over the finished PNG.
-    if segments is not None:
-        look.BEVEL_SEGMENTS = segments
-    undercroft(path, floor=False, render=False)
+    undercroft(path, floor=floor, render=False, groups=groups)
 
-    # Drop the subdivision before applying anything. It is SIMPLE subdivision
-    # on an already-bevelled cube, which adds faces and moves no vertex: it
-    # costs nothing in Cycles and it multiplied the export sixteenfold. The
-    # first attempt was 874,000 faces and 85MB, which no 32-bit application
-    # from 2010 is going to enjoy.
-    for obj in bpy.data.objects:
-        obj.select_set(obj.type == "MESH")
-        if obj.type != "MESH":
-            continue
+    # The subdivision goes first. It is SIMPLE subdivision on an already
+    # bevelled cube, which adds faces and moves no vertex: free in Cycles,
+    # and it multiplied the first export sixteenfold to 874,000 faces.
+    everything = [o for o in bpy.data.objects if o.type == "MESH"]
+    for obj in everything:
         for modifier in list(obj.modifiers):
             if modifier.type == "SUBSURF":
                 obj.modifiers.remove(modifier)
 
-    # Not into the web static directory the PNGs go to. A 20MB mesh is not a
-    # web asset, Flask would happily serve it, and it has no business in the
-    # folder the game loads its backdrops from.
-    where = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                         "..", "export")
-    where = os.path.abspath(where)
+    # Then bake what is left, before joining anything.
+    #
+    # `join` keeps the *active* object's modifier stack and throws the rest
+    # away -- so joining thirteen voussoirs and then applying modifiers gives
+    # every stone in the arch whatever bevel the first one happened to have,
+    # and `worn_edge` sizes the bevel per stone. Baking first means the join
+    # is a merge of finished geometry and cannot lose anything.
+    bpy.ops.object.select_all(action="DESELECT")
+    for obj in everything:
+        obj.select_set(True)
+    if everything:
+        bpy.context.view_layer.objects.active = everything[0]
+        bpy.ops.object.convert(target="MESH")
+
+    made = []
+    for group, objects in groups.items():
+        meshes = [o for o in objects if o and o.type == "MESH"]
+        if not meshes:
+            continue
+        bpy.ops.object.select_all(action="DESELECT")
+        for obj in meshes:
+            obj.select_set(True)
+        bpy.context.view_layer.objects.active = meshes[0]
+        if len(meshes) > 1:
+            bpy.ops.object.join()
+        joined = bpy.context.view_layer.objects.active
+        joined.name = group
+        made.append(joined)
+
+    bpy.ops.object.select_all(action="DESELECT")
+    for obj in made:
+        obj.select_set(True)
+
+    where = os.path.abspath(os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "..", "export"))
     os.makedirs(where, exist_ok=True)
     out = os.path.join(where, f"{name}.obj")
     bpy.ops.wm.obj_export(
         filepath=out,
         export_selected_objects=True,
-        apply_modifiers=True,
+        apply_modifiers=False,   # already baked, above
         export_materials=True,
         export_triangulated_mesh=True,
         forward_axis="NEGATIVE_Z",
         up_axis="Y",
     )
-    faces = sum(len(o.data.polygons) for o in bpy.data.objects
-                if o.type == "MESH" and o.select_get())
+    faces = sum(len(o.data.polygons) for o in made)
     print(f"[export] {out}")
-    print(f"[export] {len([o for o in bpy.data.objects if o.type == 'MESH'])} "
-          f"objects, about {faces:,} faces before triangulation")
+    print(f"[export] {len(made)} objects, about {faces:,} faces")
+    for obj in made:
+        print(f"[export]   {obj.name:<16} {len(obj.data.polygons):>8,}")
     return out
 
 
