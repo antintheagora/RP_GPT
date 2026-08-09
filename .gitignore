@@ -48,3 +48,5 @@ node_modules/
 Characters/
 art/style_review/
 art/export/
+# .blend snapshots for opening by hand; the code is the source
+art/blend/

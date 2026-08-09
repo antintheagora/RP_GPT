@@ -1089,6 +1089,28 @@ def _finish(path, name, samples=420):
                    samples=samples)
 
 
+def _save_instead(path, name, samples=420):
+    """Write the built scene to a .blend instead of rendering it.
+
+    There is no .blend behind any of these scenes -- every one is assembled
+    from nothing by this file each time it runs, and the PNG is the only
+    thing that comes out. Which is right for a backdrop that has to be
+    reproducible, and useless the moment somebody wants to drag a camera
+    around and see what happens.
+
+    So: `-- save <scene>` builds exactly what `<scene>` would have rendered
+    and saves it to art/blend/ for opening by hand. It is a snapshot, not a
+    source. Nothing done to it comes back here, and re-rendering the scene
+    will not know about it -- the way to keep a change is to read the numbers
+    off Blender's N panel and put them in the scene's own code.
+    """
+    out = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                       "..", "blend", f"{name}.blend"))
+    os.makedirs(os.path.dirname(out), exist_ok=True)
+    bpy.ops.wm.save_as_mainfile(filepath=out)
+    print(f"[scene] saved {out}")
+
+
 # =============================
 # --------- THE CRYPT ---------
 # =============================
@@ -2904,6 +2926,11 @@ def main():
     jobs["painted_hall_cutaway_stair"] = (
         lambda p: painted_hall(p, view="stair", cutaway=True))
     wanted = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
+
+    # `save` writes .blend files instead of PNGs, for the named scenes.
+    if "save" in wanted:
+        wanted = [name for name in wanted if name != "save"] or list(jobs)
+        globals()["_finish"] = _save_instead
 
     # `export` writes an OBJ instead of a PNG. Its own word rather than a
     # flag, so it cannot be confused with a scene name.
