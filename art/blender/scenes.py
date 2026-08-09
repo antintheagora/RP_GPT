@@ -2421,6 +2421,25 @@ def painted_hall(path, mood="noon", view="balcony", cutaway=False):
                       rotation=(0.0, math.radians(90.0), 0.0),
                       strength=320.0, name="WhiteVoid")
 
+        # And the roof over that corner goes too, which is the same idea
+        # turned on its side. A lid rather than a hole: a white panel slung
+        # under the beams at 10.03, just below their 10.07 soffit, so from
+        # any lens in the room it covers the coffers instead of them.
+        #
+        # A lid and not another `unseen` because taking the roof out would
+        # not give white -- ray-swept with it gone, the sight lines carry on
+        # up past the top of the wall and out into the sky, and the sky is
+        # not what the shirt wants. It has to be replaced, not removed.
+        #
+        # It stops at x -2.71, which is the near face of the beam standing at
+        # -2.5. Ending a ceiling in mid-air draws a line across nothing;
+        # ending it against a beam reads as the corner of the building being
+        # cut away, which is what the whole variant is. Measured, the beams
+        # in the marked band run from x -9.8 to -4.1, so that edge clears
+        # them all and takes the roof out to about two thirds across frame.
+        look.backdrop((-7.855, 9.0, 10.03), (10.29, 32.4),
+                      strength=320.0, name="WhiteRoof")
+
     # A coffered roof: beams both ways with dark panels behind them, which is
     # the one part of the room the light never reaches and so has to be shape
     # rather than colour.
@@ -2654,7 +2673,18 @@ def painted_hall(path, mood="noon", view="balcony", cutaway=False):
     # 6 m across the bird stands 5.1 m off the cat, clear of the rail, the
     # landing and both flights, and crosses low and near while the cat comes
     # on behind it.
-    perch, wingspan = (((2.0, 4.0, 5.0), 6.0) if cutaway
+    #
+    # Moved by hand as well, to (4.32, 8.59, 6.78). That number is not the
+    # one the N panel showed: the drag landed on the pigeon's mesh rather
+    # than its node, and that mesh already carried an offset of its own from
+    # the import, so the panel read a position relative to something that was
+    # never at the origin. This is the node position that puts the bird where
+    # the render put it.
+    #
+    # It crops -- about a quarter of the bird is off the top and right of
+    # frame. Kept, because it reads as a swoop into the corner, and because
+    # the artwork has a hard edge along that side regardless.
+    perch, wingspan = (((4.32, 8.59, 6.78), 6.0) if cutaway
                        else ((-3.3, 15.2, 6.10), 11.2))
     # Square on, outside the cutaway, and that is a decision rather than the
     # old code with the numbers taken out.
@@ -2754,8 +2784,21 @@ def painted_hall(path, mood="noon", view="balcony", cutaway=False):
         # half out" means for something that is not a cylinder. Head,
         # shoulders and forelegs in the room; hindquarters and tail still in
         # the white, and the tail tip stopping 0.97 m in front of the panel.
-        borrowed("panther", (-10.24, 16.00, 0.91), 25.0,
-                 rotation=(0.0, 0.0, math.radians(78.0)),
+        #
+        # Posed by hand in the end, and the hand won. Dragged in Blender to
+        # yaw 70.8 at y 14.05, it reads 30 degrees off the bearing to the
+        # right flight against the 48 this arrived at -- and still shows 55%
+        # of its body across the lens, a shade more than the 78/16 solve did
+        # at a worse angle. Coming forward bought the turn for nothing, which
+        # is not a thing the search was set up to find because it was holding
+        # depth fixed while it swept heading.
+        #
+        # One known cost, left in on purpose: about 260 points of cat sit
+        # inside the far staircase at this depth. Seven of them are visible
+        # to the lens; the rest are behind the foreground. Backing off 1.5 m
+        # in y clears it and gives up a couple of degrees of turn.
+        borrowed("panther", (-10.39, 14.05, 0.91), 25.0,
+                 rotation=(0.0, 0.0, math.radians(70.8)),
                  frame=247, name="Panther")
     else:
         # Unrotated, for the same reason as the bird above: this is the
