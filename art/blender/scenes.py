@@ -2279,9 +2279,14 @@ def painted_hall(path, mood="noon", view="balcony"):
                    (HALL * 2, 0.42, 0.62), beam, bevel=0.04, name="Beam")
 
     # --- the balcony the camera stands on --------------------------------
-    look.block((0, -4.6, LANDING - 0.25), (HALL * 2, 10.0, 0.5), pale,
+    # Out to y=1.55, which is past the rail rather than short of it. The
+    # balustrade stands at 1.30 and the landing used to stop at 0.40, so for
+    # nine hundred millimetres the whole rail was standing on nothing --
+    # invisible head-on, because the rail hides its own feet from there, and
+    # the first thing you see from the side.
+    look.block((0, -4.03, LANDING - 0.25), (HALL * 2, 11.15, 0.5), pale,
                bevel=0.03, name="Landing")
-    look.block((0, -4.6, LANDING + 0.03), (HALL * 2 - 1.2, 9.4, 0.06),
+    look.block((0, -4.15, LANDING + 0.03), (HALL * 2 - 1.2, 10.3, 0.06),
                carpet, name="LandingCarpet")
 
     # Stairs down either side, hugging the walls.
@@ -2469,10 +2474,13 @@ def painted_hall(path, mood="noon", view="balcony"):
     # model faces -Y, so -25 brings it at the balcony lens and +27 brings it
     # at the one on the stair -- the same bird in the same place, turned to
     # meet whoever is looking. A backdrop is a picture, not a simulation, and
-    # nothing in either frame can tell you the other exists.
+    # nothing in either frame can tell you the other exists. +10 rather
+    # than +27 on the stair one: still toward the lens, but angled off
+    # toward the far flight so the bird is going somewhere rather than
+    # posing.
     borrowed("pigeon", (-3.3, 15.2, 6.10), 11.2,
              rotation=(math.radians(-9.0), math.radians(-19.0),
-                       math.radians(27.0 if view == "stair" else -25.0)),
+                       math.radians(10.0 if view == "stair" else -25.0)),
              name="Pigeon")
 
     # A membrane across the opening, so it stops being a window.
@@ -2523,9 +2531,14 @@ def painted_hall(path, mood="noon", view="balcony"):
     # the lens. Their paths cross at about fifty degrees. Two things moving
     # the same way in one picture read as one event; two things crossing read
     # as two, which is the whole reason for having both.
+    #
+    # Yaw is per view here too. From the stair the cat comes at the lens
+    # at +18 while the bird crosses off to the far flight at +10, so the
+    # two lines still open out from each other -- the crossing is between
+    # them, not between one of them and the camera.
     borrowed("panther", (1.0, 13.6, 0.02), 9.0,
-             rotation=(0.0, 0.0, math.radians(-25.0)), frame=247,
-             name="Panther")
+             rotation=(0.0, 0.0, math.radians(18.0 if view == "stair" else -25.0)),
+             frame=247, name="Panther")
 
     # A black cat in a dim room is a hole in the floor. Two lamps, neither of
     # them visible: one behind and above it, which is what puts an edge on
@@ -2632,7 +2645,11 @@ def painted_hall(path, mood="noon", view="balcony"):
         # that shows is the end post; from 700mm above it the balusters
         # run across the bottom of the frame and the flight is still
         # below them.
-        look.camera((8.70, -1.90, 5.35), (-3.2, 12.8, 2.90), lens=26)
+        #
+        # Higher again, and tipped further down: the runner in the near
+        # foreground was taking a quarter of the frame to say something
+        # the balusters already say better.
+        look.camera((8.70, -1.90, 6.60), (-3.2, 12.8, 1.70), lens=26)
     else:
         look.camera((0.0, -7.6, 6.55), (0.0, DEEP, 3.55), lens=30)
     look.view_transform("AgX", look="High Contrast",
