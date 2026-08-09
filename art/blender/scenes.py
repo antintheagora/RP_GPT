@@ -2232,7 +2232,7 @@ def painted_hall(path):
                    mossy=True, seed=53, mortar=0.0, relief=0.45,
                    specular=0.10,
                    dark=(0.010, 0.062, 0.005, 1.0),
-                   tint=(0.050, 0.340, 0.028, 1.0))
+                   tint=(0.062, 0.390, 0.030, 1.0))
     # Origin -9.3, not -3, and height 5 rather than 8. Measured, the
     # first pass put the hill's median surface at z +14.3 while the
     # sight line through the opening is at -1.9 by the time it gets
@@ -2273,6 +2273,14 @@ def painted_hall(path):
                 drift.uniform(11.0, 23.0), vapour,
                 seed=index * 4 + 9, squat=drift.uniform(0.20, 0.32),
                 z=drift.uniform(-13.0, 4.0))
+
+    # A second range, a kilometre out, and only its tops break the
+    # skyline -- a fifth of a degree of it. Depth is not one thing at a
+    # distance, it is two things at different distances with air in
+    # between, and until there was something behind the near hill there
+    # was nothing for the eye to measure that hill against.
+    terrain(size=1400, resolution=170, kind="hetero", height=6.0, seed=5.1,
+            offset=0.80, origin=(60, 1000, -65.0), material=turf)
 
     # One range, and it ends. The second one stood on the horizon and filled
     # the top half of the opening with rock, where the whole point of cutting
@@ -2347,11 +2355,17 @@ def painted_hall(path):
     # with a rippled normal the offset varied enough across the panel to
     # shuffle the horizon around -- ground appearing above sky. Thin
     # enough and the swim is a swim rather than a rearrangement.
+    #
+    # And then all of it down again by half or more. Every one of these
+    # is an effect over a view, and the view was losing: the refraction
+    # was carrying sky down into the bottom of the frame where the
+    # ground belongs, which is what a lens does and not what a film
+    # does. Clarity 0.89 and spread 0.020 -- present, not in charge.
     look.block((0, DEEP + 0.42, VIEW_Z + VIEW_H / 2),
                (VIEW_W - 0.04, 0.012, VIEW_H - 0.04),
-               look.oil_film("Skin", ripple=0.016, swirl=1.4, spread=0.055,
-                             thickness=(260.0, 940.0), roughness=0.012,
-                             blend=0.26, clarity=0.76, seed=7.0),
+               look.oil_film("Skin", ripple=0.008, swirl=1.3, spread=0.020,
+                             thickness=(300.0, 880.0), roughness=0.010,
+                             blend=0.13, clarity=0.89, seed=7.0),
                bevel=0.0, name="Skin")
 
     # --- light -----------------------------------------------------------
@@ -2405,6 +2419,21 @@ def painted_hall(path):
 
     look.haze(size=36, density=0.0040, colour=(0.55, 0.62, 0.72),
               origin=(0, 5.0, 5.0), height=13.0)
+
+    # Air outside, which is the whole of what makes a landscape read as
+    # far rather than merely small. A hill at 250 m and a range at a
+    # kilometre are the same green until something between them takes
+    # the contrast out of the further one; that is the cue the eye
+    # actually uses for distance, and no amount of light does it.
+    # Starts at 40 m so none of it is in the room.
+    #
+    # 0.0003 and no more. Aerial perspective is a *difference* between
+    # near and far -- at 0.00085 it reached the near hill as well and
+    # took the green out of everything equally, which is not distance,
+    # it is weather. The near hill has to keep its colour for the far
+    # one losing its to mean anything.
+    look.haze(size=1520, density=0.00030, colour=(0.60, 0.71, 0.86),
+              origin=(0, 800, 40.0), height=300.0)
 
     look.camera((0.0, -7.6, 6.55), (0.0, DEEP, 3.55), lens=30)
     look.view_transform("AgX", look="High Contrast", exposure=0.72)
