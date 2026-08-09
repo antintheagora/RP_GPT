@@ -248,6 +248,45 @@ def terrain(size=400.0, resolution=340, kind="hetero", height=34.0,
     return ground
 
 
+def arched_head(x_from, x_to, y, thickness, springing, radius, top,
+                material, segments=48, name="ArchedHead"):
+    """The wall above an arched opening, spandrels and all.
+
+    A rectangular block above the crown leaves two holes at the haunches,
+    where the wall has to come down to meet the curve. Filling those with
+    more blocks means stepping a curve with squares. This is the wall's own
+    shape instead: swept from the soffit up, so the underside of the wall IS
+    the top of the opening, and the opening is genuinely a hole.
+    """
+    verts, half = [], thickness / 2
+    for index in range(segments + 1):
+        x = x_from + (x_to - x_from) * index / segments
+        offset = x - (x_from + x_to) / 2
+        low = springing + math.sqrt(max(0.0, radius ** 2 - offset ** 2))
+        for z in (low, top):
+            verts.append((x, y - half, z))
+            verts.append((x, y + half, z))
+
+    faces = []
+    for index in range(segments):
+        a, b = index * 4, (index + 1) * 4
+        faces.append((a + 0, a + 1, b + 1, b + 0))      # soffit
+        faces.append((a + 2, b + 2, b + 3, a + 3))      # wall top
+        faces.append((a + 0, b + 0, b + 2, a + 2))      # nave face
+        faces.append((a + 1, a + 3, b + 3, b + 1))      # back face
+    last = segments * 4
+    faces.append((0, 2, 3, 1))
+    faces.append((last + 0, last + 1, last + 3, last + 2))
+
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(verts, [], faces)
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    obj.data.materials.append(material)
+    return obj
+
+
 def arch_core(x_from, x_to, y, springing, material, thickness=0.34,
               depth=0.66, axis="X", inset=0.045, segments=64,
               name="ArchCore"):
@@ -463,20 +502,50 @@ def undercroft(path, floor=True, render=True, groups=None,
              look.block((x, 6.0, 3.0), (0.6, 34.0, 6.4), stone, name="SideWall"))
 
     # The altar at the end of the nave and its niche.
-    keep("Wall_End",
-         look.block((0, 17.6, 2.6), (9.0, 0.7, 5.6), stone, name="EastWall"))
     if fitted:
-        # A portal, not a shape on a wall. Two uprights carrying the ring
-        # down to the floor, the arch springing off their imposts, and the
-        # back of the niche pushed behind them so there is a recess for the
-        # candles to sit in rather than a slab flush with the stonework.
+        # An opening, not a shape drawn on a wall.
+        #
+        # Every previous attempt at this arch failed for the same reason and
+        # I kept missing it: the wall ran straight across behind the ring and
+        # straight on above it, so there was nothing for the arch to be the
+        # top OF. Casting rays back at it from the camera showed the wall
+        # filling the middle of the ring, the sides of it, and the space
+        # above -- and an arch with masonry on both sides of it is not an
+        # arch, it is a moulding. That is why closing the joints and adding
+        # jambs and filling the ring all read as no change: the ring was
+        # never the thing that was missing.
+        #
+        # So the wall is built AROUND a void now: two panels either side, a
+        # swept head carrying the wall down onto the curve, and a back set
+        # 550mm behind the face. The order sits in front of that, and the
+        # arch is the top of a real hole.
+        OPENING, SPRING, TOP = 1.38, 2.23, 5.4
+        FACE, THICK, RECESS = 17.25, 1.00, 0.55
+        middle = FACE + THICK / 2
+        for x in (-1, 1):
+            keep("Wall_End", look.block(
+                (x * (OPENING + 4.5) / 2, middle, 2.6),
+                (4.5 - OPENING, THICK, 5.6), stone, name="EastWall"))
+        keep("Wall_End", arched_head(-OPENING, OPENING, middle, THICK,
+                                     SPRING, OPENING, TOP, stone))
+        # The back of the recess. Wider and taller than the hole so its edges
+        # finish behind the panels rather than showing a seam in the corner.
+        keep("Wall_End", look.block((0, FACE + RECESS + 0.225, 1.8),
+                                    (4.0, 0.45, 4.0), stone, name="NicheBack"))
+
+        # The order: uprights to the floor, imposts, and the ring springing
+        # off them. Set 50mm proud of the opening on every side and standing
+        # 500mm out from the face, so it reads as applied stonework rather
+        # than as an edge of the hole.
+        RIM = 0.44
         for x in (-1.5, 1.5):
-            keep("Niche", jamb(x, 17.20, 2.05, stone, width=0.34, depth=0.60))
-        keep("Niche", arch(-1.5, 1.5, 17.20, 2.23, stone, stones=13,
-                           thickness=0.34, depth=0.60, fitted=True))
-        keep("Niche", look.block((0, 17.44, 1.15), (2.9, 0.16, 2.3), stone,
-                                 name="NicheBack"))
+            keep("Niche", jamb(x, 17.05, 2.05, stone, width=RIM, depth=0.60))
+        keep("Niche", arch(-1.5, 1.5, 17.05, SPRING, stone, stones=13,
+                           thickness=RIM, depth=0.60, fitted=True))
     else:
+        keep("Wall_End",
+             look.block((0, 17.6, 2.6), (9.0, 0.7, 5.6), stone,
+                        name="EastWall"))
         keep("Niche", arch(-1.5, 1.5, 17.2, 2.05, stone, stones=13,
                            thickness=0.30, depth=0.55, fitted=fitted))
         keep("Niche", look.block((0, 17.2, 1.0), (3.0, 0.55, 2.1), stone,
