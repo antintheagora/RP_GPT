@@ -2917,6 +2917,28 @@ def painted_hall(path, mood="noon", view="balcony", cutaway=False):
                                     energy=5200, size=18,
                                     color=(1.000, 0.975, 0.940)))
 
+        # And a fill on the near corner, which was the one part of this frame
+        # nothing reached. Warm, soft, out of frame and out of the floor's
+        # reflections -- a lamp on a mirror-polished chequer leaves a bead of
+        # itself otherwise, and this one sits where the chequer can see it.
+        #
+        # Forward of the camera rather than beside it, and that is the whole
+        # of the placement. Level with the lens at (8.0, -5.5) the stair
+        # runner is six metres off and the bird sixteen, so inverse square
+        # gives the foreground eight times the light: swept, the runner went
+        # 80 to 220 while the bird crawled 108 to 161 and the cat's face
+        # moved four points. At (7.5, 3.0, 9.4) the distances are 9.7, 6.9
+        # and 11.2, near enough level that one lamp serves all three.
+        #
+        # 450 W. The runner lifts from 82 to about 140 and the bird from 113
+        # to 146, which leaves both a little under the far chequer at 149 --
+        # the corner stops being a hole without the foreground becoming the
+        # brightest thing in the picture and flattening the depth.
+        look.unseen(look.area_light((7.5, 3.0, 9.4), (-1.0, 10.0, 3.5),
+                                    energy=450, size=5,
+                                    color=(1.000, 0.780, 0.520)),
+                    in_mirrors=False)
+
     # --- light -----------------------------------------------------------
     #
     # Two sources for the whole picture: the wheel of candles, and the sun
