@@ -2318,7 +2318,19 @@ def painted_hall(path, mood="noon", view="balcony", cutaway=False):
     # and at 0.45 most of a deep red is a dark red, which is brown.
     carpet = look.heavy_cloth("Carpet", colour=(0.690, 0.0570, 0.0350, 1.0),
                               fade=0.80, seed=6)
-    tiles = look.checker("Chequer", square=0.95, roughness=0.021,
+    # Wetter in the cutaway, and only there -- the other nine renders of
+    # this hall were signed off on the floor as it is. Swept: specular alone
+    # is worth two points of luma on the dark tiles because what a floor
+    # reflects arrives at grazing angles that are already near total, and it
+    # is the coat that does the work, 103 to 111. Roughness down to 0.011
+    # with the dull patches only twice as rough is the other half of it --
+    # that does not change how much is reflected, it changes whether what is
+    # reflected has edges.
+    tiles = look.checker("Chequer", square=0.95,
+                         roughness=0.011 if cutaway else 0.021,
+                         specular=1.0 if cutaway else 0.5,
+                         unevenness=2.2 if cutaway else 4.5,
+                         coat=1.0 if cutaway else 0.0, coat_roughness=0.02,
                          dark=(0.009, 0.009, 0.011, 1.0),
                          pale=(0.520, 0.505, 0.480, 1.0))
     # Oak, and the grain runs along one axis rather than mottling in all
@@ -2867,8 +2879,18 @@ def painted_hall(path, mood="noon", view="balcony", cutaway=False):
     # is behind something rather than hanging on the wall by itself.
     rim = look.point_light((-2.6, 18.4, 4.60), energy=980, radius=0.30,
                            color=(1.0, 0.760, 0.480))
-    fill = look.point_light((-6.8, 9.6, 2.40), energy=300, radius=0.60,
-                            color=(0.600, 0.730, 1.000))
+    # The cold one only outside the cutaway. It was put at (-6.8, 9.6) to
+    # keep the near side of a 9 m cat off black, and the cat that stands
+    # there now is 27 m long with its hindquarters right beside it -- so it
+    # was lighting one haunch and nothing else, cold, against a body lit
+    # warm. Measured: with it burning the hindquarters read 123/123/125 and
+    # the flank 120/117/116, a hindquarter both brighter and bluer than the
+    # animal it belongs to. With it out they read 116/114/113 and 117/114/111
+    # -- the same colour, which is what was wanted. The near fill added since
+    # does the job it was there for.
+    fill = None if cutaway else look.point_light(
+        (-6.8, 9.6, 2.40), energy=300, radius=0.60,
+        color=(0.600, 0.730, 1.000))
     if cutaway:
         # Out of the reflections as well as out of the frame. Traced, the
         # white bead on the chequer at (1.35, 11.17) was the mirror image of
@@ -2877,8 +2899,7 @@ def painted_hall(path, mood="noon", view="balcony", cutaway=False):
         # about that, because a glossy ray is not a camera ray. This variant
         # is going on something printed, where a stray white dot on a black
         # tile reads as a fault in the printing rather than as a light.
-        for lamp in (rim, fill):
-            look.unseen(lamp, in_mirrors=False)
+        look.unseen(rim, in_mirrors=False)
 
     if cutaway:
         # The wall is a perfect barn door, which is the problem as well as

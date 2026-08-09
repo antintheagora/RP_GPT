@@ -1234,7 +1234,8 @@ def metal(name="Steel", colour=(0.400, 0.425, 0.455, 1.0), roughness=0.30,
 
 
 def checker(name="Checker", square=0.9, dark=(0.010, 0.010, 0.012, 1.0),
-            pale=(0.560, 0.545, 0.520, 1.0), roughness=0.07, seed=0.0):
+            pale=(0.560, 0.545, 0.520, 1.0), roughness=0.07, specular=0.5,
+            unevenness=4.5, coat=0.0, coat_roughness=0.02, seed=0.0):
     """Polished chequer, measured in metres rather than in object widths.
 
     World position, not object coordinates. A floor built as one big plane
@@ -1245,6 +1246,19 @@ def checker(name="Checker", square=0.9, dark=(0.010, 0.010, 0.012, 1.0),
     The polish is uneven on purpose. A single roughness across a whole floor
     gives one perfect mirror and reads as a rendering, where a real waxed
     floor has patches that catch the light and patches that do not.
+    `unevenness` is how much rougher those patches get -- the dull end of the
+    ramp is `roughness * unevenness`.
+
+    `coat` is the lever that actually makes a floor look wet, and it is worth
+    knowing why the obvious one does not. Raising `specular` from 0.5 to 1.0
+    takes a dielectric's face-on reflectance from 4 per cent to 8, which
+    sounds like doubling and measures, on this floor, as two points of luma:
+    almost everything you see reflected in a floor arrives at a grazing angle
+    where Fresnel is near total already, and no specular setting changes
+    that. A coat is a second dielectric layer over the first, so it adds a
+    whole extra lobe rather than scaling one -- measured, it takes the dark
+    tiles from 103 to 111 where every specular and roughness setting between
+    them moved nothing at all.
     """
     mat, tree, bsdf, _ = _new_material(name)
     where = tree.nodes.new("ShaderNodeNewGeometry")
@@ -1265,12 +1279,16 @@ def checker(name="Checker", square=0.9, dark=(0.010, 0.010, 0.012, 1.0),
     wear = _noise(tree, 0.7, detail=5.0, roughness=0.55, location=(-780, -260))
     tree.links.new(where.outputs["Position"], wear.inputs["Vector"])
     polish = _ramp(tree, [(0.35, (roughness,) * 3 + (1.0,)),
-                          (0.68, (min(1.0, roughness * 4.5),) * 3 + (1.0,))],
+                          (0.68, (min(1.0, roughness * unevenness),) * 3
+                           + (1.0,))],
                    location=(-520, -260))
     tree.links.new(out(wear, ("Fac", "Color")), polish.inputs["Fac"])
     tree.links.new(out(polish, "Color"), bsdf.inputs["Roughness"])
     sock(bsdf, "Metallic", 0.0)
-    sock(bsdf, ("Specular IOR Level", "Specular"), 0.5)
+    sock(bsdf, ("Specular IOR Level", "Specular"), specular)
+    if coat:
+        sock(bsdf, "Coat Weight", coat)
+        sock(bsdf, "Coat Roughness", coat_roughness)
     return mat
 
 
