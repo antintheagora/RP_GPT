@@ -2560,20 +2560,28 @@ def painted_hall(path, mood="noon", view="balcony", cutaway=False):
     # than +27 on the stair one: still toward the lens, but angled off
     # toward the far flight so the bird is going somewhere rather than
     # posing.
-    # In the cutaway it moves forward and down and comes in to 7.5 m, and
-    # all three are the cat's doing. Searched over four hundred positions
-    # and three sizes: at 11.2 m there is nowhere left in the room that
-    # clears the animal by even a metre, and at any real height the wings
-    # run into a back that is nine metres off the floor. The clear air is in
-    # front of it. At (4.0, 11.0, 4.2) the bird stands 4.2 m off the nearest
-    # point of the cat and crosses the frame right by its face -- which is a
-    # better picture than the one I was aiming for anyway, because a bird
-    # that has not noticed is worth more than a bird that has.
+    # In the cutaway it flies at the far staircase, and everything else
+    # about it follows from that plus the cat.
     #
-    # And the smaller bird is not a loss. The point of this variant is how
-    # big the cat is, and nothing says that like a seven-metre pigeon
-    # looking ordinary next to it.
-    perch, wingspan = (((4.0, 11.0, 4.2), 7.5) if cutaway
+    # It flies at the foot of the far flight rather than the head of it,
+    # and that is the difference between a bird and a blade.
+    #
+    # Aim at the top of those stairs and the bird crosses the frame square
+    # on -- which means its wings point straight down the lens axis and
+    # collapse to nothing, leaving only the nineteen degrees of bank
+    # standing up in the projection. The first render of it looked like a
+    # dark blade with a tail. Aiming at the bottom of the same staircase is
+    # the same instruction to a viewer and a completely different picture to
+    # a camera: the bird goes left *and away*, and 99% of the wingspan comes
+    # back across the frame instead of 56%.
+    #
+    # Position and size are what is left once the cat has taken its room.
+    # After the turn the animal occupies y 11.5 to 18.6 across the whole
+    # width, so the clear air is all in front of it. At (2.0, 4.0, 5.0) and
+    # 6 m across the bird stands 5.1 m off the cat, clear of the rail, the
+    # landing and both flights, and crosses low and near while the cat comes
+    # on behind it.
+    perch, wingspan = (((2.0, 4.0, 5.0), 6.0) if cutaway
                        else ((-3.3, 15.2, 6.10), 11.2))
     # Square on, outside the cutaway, and that is a decision rather than the
     # old code with the numbers taken out.
@@ -2587,8 +2595,11 @@ def painted_hall(path, mood="noon", view="balcony", cutaway=False):
     # side-on, silently changing nine renders nobody asked to change. So the
     # approved framing is written down as what it actually is. The headings
     # are one number away whenever they are wanted.
-    tilt = ((math.radians(-9.0), math.radians(-19.0),
-             math.radians(10.0 if view == "stair" else -25.0))
+    # One heading, not one per camera. Where the bird is going is a fact
+    # about the room rather than about the lens, and both cameras are
+    # looking at the same moment of it. -121.9 is the bearing from where it
+    # is to the bottom of the far staircase.
+    tilt = ((math.radians(-9.0), math.radians(-19.0), math.radians(-121.9))
             if cutaway else (0.0, 0.0, 0.0))
     borrowed("pigeon", perch, wingspan, rotation=tilt, name="Pigeon")
 
@@ -2645,26 +2656,33 @@ def painted_hall(path, mood="noon", view="balcony", cutaway=False):
         # ceiling beams whose undersides are at 10.07 -- so it clears by a
         # metre, and span 28 does not clear at all. 26.8 m nose to tail.
         #
-        # Yaw 120, which puts the head along (+0.87, +0.50): into the room,
-        # and 21 degrees off square to the stair lens -- near enough
-        # broadside to read the whole animal, far enough off it to be a
-        # three-quarter view rather than a diagram.
+        # Yaw 78, head along (+0.98, -0.21): into the room and turned down
+        # toward the right-hand flight, which is where the stair lens is
+        # standing.
         #
-        # Twice I decided this number was wrong from looking at a render,
-        # and twice the render was showing a cat whose rotation had been
-        # dropped on the floor by the quaternion bug in `borrowed`. The
-        # heading was right from the start; nothing was applying it. What
-        # settles it is not a picture but the rig: `Bip001 Head` lands at
-        # (1.4, 19.1) and `Bip001 Pelvis` at (-11.9, 11.4), so the animal is
-        # walking in.
+        # It cannot point straight at the stairs, and it is worth writing
+        # down why rather than trying again. Turning the animal toward the
+        # camera costs its length: measured off the rig, the head bone at
+        # yaw 120 sat 94 degrees off the bearing to the top of the right
+        # flight with 93 per cent of the body across the lens, and every ten
+        # degrees of turn buys about ten degrees of bearing and spends about
+        # eight per cent of the length. Pointing it properly at the stairs
+        # means around yaw 30, where a quarter of the cat is visible and the
+        # rest is behind its own shoulders.
+        #
+        # 78 is the trade: 48 degrees off the flight instead of 94, with 53
+        # per cent of the body still reading. And the depth had to come back
+        # with it -- at y 16 rather than 13, because turning the body toward
+        # the camera swings the far half down into the left staircase, and a
+        # paw through a stair tread is worse than a few degrees of heading.
         #
         # The root sits where it does because the midpoint of nose and tail
         # was solved onto the wall plane at x -10 -- which is what "half in,
         # half out" means for something that is not a cylinder. Head,
         # shoulders and forelegs in the room; hindquarters and tail still in
-        # the white.
-        borrowed("panther", (-10.59, 13.00, 0.91), 25.0,
-                 rotation=(0.0, 0.0, math.radians(120.0)),
+        # the white, and the tail tip stopping 0.97 m in front of the panel.
+        borrowed("panther", (-10.24, 16.00, 0.91), 25.0,
+                 rotation=(0.0, 0.0, math.radians(78.0)),
                  frame=247, name="Panther")
     else:
         # Unrotated, for the same reason as the bird above: this is the
