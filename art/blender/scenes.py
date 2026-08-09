@@ -2244,6 +2244,36 @@ def painted_hall(path):
     # opening's upper sight line and shut the sky out entirely -- the
     # window has to show a horizon, not a hillside, and a horizon needs
     # the ground to stay under the line for the whole run out to it.
+    # Clouds as objects, because the procedural ones cannot reach here.
+    #
+    # `bryce_sky` samples its cloud field at X/Z and Y/Z with Z floored at
+    # 0.045 -- that floor is what stops the cells stretching to infinity at
+    # the horizon, and it is also why there is nothing to see through this
+    # window: every ray out of it leaves at under a degree, where Z is 0.010
+    # and the floor is already holding, so the field has no variation left to
+    # show. A sky that is mostly below its own floor needs real geometry.
+    #
+    # Small and far, per the brief: 11 to 23 m across at 480 to 1150 m,
+    # which is around a degree each -- a handful scattered over the
+    # opening rather than a lid across it. Twenty-four of them at 17 to
+    # 38 m closed the sky into an overcast, which is a different weather
+    # from the one asked for.
+    vapour = dressed("Cloud", block_scale=0.02, wetness=0.0, mossy=False,
+                     seed=61, mortar=0.0, relief=0.12, specular=0.04,
+                     dark=(0.880, 0.905, 0.955, 1.0),
+                     tint=(1.000, 1.000, 1.000, 1.0))
+    # And in the band the window can actually see. The opening's upper sight
+    # line is only +0.011 in slope, so at 500 m it has climbed to z +12 while
+    # the horizon ray has fallen to -24: everything above +12 out there is
+    # behind the head of the frame. The first pass put them at 6 to 34 and
+    # two thirds of them were hidden by masonry.
+    drift = random.Random(303)
+    for index in range(13):
+        outcrop(drift.uniform(-260.0, 260.0), drift.uniform(480.0, 1150.0),
+                drift.uniform(11.0, 23.0), vapour,
+                seed=index * 4 + 9, squat=drift.uniform(0.20, 0.32),
+                z=drift.uniform(-13.0, 4.0))
+
     # One range, and it ends. The second one stood on the horizon and filled
     # the top half of the opening with rock, where the whole point of cutting
     # a hole in a wall is that there is sky through it. Nothing past 295 m
@@ -2318,13 +2348,26 @@ def painted_hall(path):
 
     # The sky the opening looks at. Nothing else can see it: the room is
     # closed, so this reaches the inside only through the hole in the wall.
-    look.bryce_sky(bands=[(0.00, (0.640, 0.760, 0.880)),
-                          (0.12, (0.330, 0.545, 0.860)),
-                          (0.45, (0.120, 0.320, 0.760)),
-                          (1.00, (0.035, 0.130, 0.480))],
+    # Blue at the first band, not pale.
+    #
+    # The bands are indexed by sin(elevation) raised to 1/bend, and the
+    # opening only shows about six tenths of a degree of sky above its
+    # horizon -- which lands between ramp positions 0.00 and 0.13. Every band
+    # above that is unreachable through this window, so the first one has to
+    # already be the colour the sky is meant to be. It was 0.64/0.76/0.88,
+    # which is what a sky fades to at the horizon and not what one looks like.
+    look.bryce_sky(bands=[(0.00, (0.400, 0.585, 0.880)),
+                          (0.07, (0.255, 0.455, 0.860)),
+                          (0.32, (0.115, 0.310, 0.770)),
+                          (1.00, (0.030, 0.120, 0.470))],
                    strength=1.20, bend=2.2,
-                   cloud_colour=(0.97, 0.97, 0.98), cloud_amount=0.42,
-                   cloud_scale=2.2, cloud_sharpness=(0.50, 0.72), seed=11.0)
+                   # Cloud sits on a plane rather than on the dome, so near
+                   # the horizon the cells crowd and foreshorten on their own
+                   # -- about eight of them across this opening at scale 2.8,
+                   # which is small enough to read as distance without
+                   # dissolving into noise at the size the window is.
+                   cloud_colour=(0.98, 0.98, 0.99), cloud_amount=0.66,
+                   cloud_scale=2.8, cloud_sharpness=(0.44, 0.60), seed=11.0)
 
     # And a lamp immediately behind the opening, which is the tidiest way
     # to get a beam: the wall is the barn door. Everything it throws at
