@@ -2105,7 +2105,7 @@ def painted_hall(path):
     # and at 0.45 most of a deep red is a dark red, which is brown.
     carpet = look.heavy_cloth("Carpet", colour=(0.690, 0.0570, 0.0350, 1.0),
                               fade=0.80, seed=6)
-    tiles = look.checker("Chequer", square=0.95, roughness=0.055,
+    tiles = look.checker("Chequer", square=0.95, roughness=0.038,
                          dark=(0.009, 0.009, 0.011, 1.0),
                          pale=(0.520, 0.505, 0.480, 1.0))
     # Oak, and the grain runs along one axis rather than mottling in all
@@ -2248,8 +2248,13 @@ def painted_hall(path):
     # the top half of the opening with rock, where the whole point of cutting
     # a hole in a wall is that there is sky through it. Nothing past 295 m
     # now, so above the near hill's own skyline there is only the dome.
+    # Down another eleven metres. Ray-sampled, the skyline sat 20% down
+    # the opening and the ask was half and half -- and the horizon in a
+    # window is set by how far *below* the sill the ground is, not by
+    # how far away it is. Push it further off and the horizon only
+    # climbs toward eye level; drop it and it falls where you want it.
     terrain(size=260, resolution=220, kind="hetero", height=2.6, seed=17.3,
-            offset=0.86, origin=(0, 165, -6.6), material=turf)
+            offset=0.86, origin=(0, 165, -17.5), material=turf)
     # The frame, four members rather than a slab with a hole in it.
     for dx, dz, w, h in ((0, VIEW_H / 2 + 0.28, VIEW_W + 1.12, 0.56),
                          (0, -VIEW_H / 2 - 0.28, VIEW_W + 1.12, 0.56),
@@ -2271,7 +2276,7 @@ def painted_hall(path):
                     look.glowing("Candle", colour=(1.0, 0.660, 0.300, 1.0),
                                  strength=26.0),
                     drop=1.30, radius=1.05, candles=8, legs=6,
-                    energy=3200)
+                    energy=1150)
 
     # --- and something that just came through -------------------------
     #
@@ -2305,8 +2310,8 @@ def painted_hall(path):
     # life size rather than the two-and-a-half-times smear any lamp in this
     # room would make of it. Eleven metres of bird across a floor whose tiles
     # are just under two.
-    look.sun((math.radians(-41.8), 0, math.radians(-18.0)), energy=2.3,
-             angle=0.006, color=(1.0, 0.945, 0.845))
+    look.sun((math.radians(-41.8), 0, math.radians(-18.0)), energy=4.2,
+             angle=0.006, color=(1.0, 0.885, 0.680))
     # 3.4, not 4.6: the grass is translucent and backlit through this
     # opening, so it lights up rather than merely being lit, and at 4.6
     # the hill came back nearer white than green.
@@ -2317,7 +2322,7 @@ def painted_hall(path):
                           (0.12, (0.330, 0.545, 0.860)),
                           (0.45, (0.120, 0.320, 0.760)),
                           (1.00, (0.035, 0.130, 0.480))],
-                   strength=0.68, bend=2.2,
+                   strength=1.20, bend=2.2,
                    cloud_colour=(0.97, 0.97, 0.98), cloud_amount=0.42,
                    cloud_scale=2.2, cloud_sharpness=(0.50, 0.72), seed=11.0)
 
@@ -2327,8 +2332,8 @@ def painted_hall(path):
     # so the shape of the light is the shape of the frame without a spot
     # cone having to be aimed at anything. A hint of green in it, from the
     # field it is supposed to be coming off.
-    look.point_light((0.0, 24.62, VIEW_Z + VIEW_H * 0.45), energy=2400,
-                     radius=0.30, color=(0.735, 1.0, 0.790))
+    look.point_light((0.0, 24.62, VIEW_Z + VIEW_H * 0.45), energy=3400,
+                     radius=0.30, color=(1.0, 0.820, 0.560))
 
     # The air stops at the wall. Left running to y=32 it enclosed the beam
     # lamp, which then lit the volume around itself and hung a glowing ball
