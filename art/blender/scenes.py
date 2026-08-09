@@ -1106,6 +1106,16 @@ def _save_instead(path, name, samples=420):
     """
     scene = bpy.context.scene
 
+    # The frame the still is actually made at. `render_to` normally sets
+    # this, and `render_to` is exactly what a saved file never calls -- so
+    # the first two snapshots went out at Blender's factory 1920x1080 and
+    # the camera box in the viewport was a different shape from the picture.
+    # Composing against the wrong crop is worse than not composing at all.
+    scene.render.resolution_x = WIDTH
+    scene.render.resolution_y = HEIGHT
+    scene.render.resolution_percentage = 100
+    scene.cycles.samples = 420
+
     # Open it looking through the lens, in Rendered shading.
     #
     # Solid shading is the wrong view of this scene and not by a little: the
