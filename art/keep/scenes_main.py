@@ -821,8 +821,7 @@ def borrowed(key, location, span, rotation=(0, 0, 0), name=None):
 
 
 def hoop_chandelier(x, y, ceiling, material, flame_material, drop=1.15,
-                    radius=1.05, candles=8, legs=6, energy=1500,
-                    colour=(1.0, 0.615, 0.290), name="Hoop"):
+                    radius=1.05, candles=8, legs=6, energy=1500, name="Hoop"):
     """A wheel on a pole: one shaft down the middle, legs out to the rim.
 
     The first version hung the ring on three stays that leaned out from
@@ -894,12 +893,8 @@ def hoop_chandelier(x, y, ceiling, material, flame_material, drop=1.15,
         made.append(look.sphere((spot[0], spot[1], hang + 0.36), 0.050,
                                 flame_material, segments=12, rings=8,
                                 name=name))
-    # Energy 0 means the candles are out: no lamp at all rather than a
-    # lamp contributing nothing, so a mood can put the room in the dark
-    # without leaving a dead light in the scene.
-    if energy:
-        look.point_light((x, y, hang + 0.28), energy=energy,
-                         radius=radius * 0.85, color=colour)
+    look.point_light((x, y, hang + 0.28), energy=energy, radius=radius * 0.85,
+                     color=(1.0, 0.615, 0.290))
     return made
 
 
@@ -2066,104 +2061,7 @@ def green_deep(path):
     _finish(path, "green_deep")
 
 
-#: Lighting for `painted_hall`, one entry per variant.
-#:
-#: Everything here is light -- the room, the picture, the film and the bird do
-#: not move between them. That is the point: the same geometry lit eight ways
-#: says eight different things about the same place, and which of those a
-#: backdrop needs is a decision for the scene it is behind rather than one to
-#: bake into the model.
-#:
-#: `sun` is (elevation-euler, azimuth-euler, energy, rgb) -- the first two in
-#: degrees, and the first one negative for a sun on the far side of the wall,
-#: which is the only place one can be and still come through the opening.
-PAINTED_HALL_MOODS = {
-    # The daylight one. A bright afternoon on the other side, a dim hall on
-    # this side, and the contrast between them doing all the work.
-    "noon": dict(
-        sun=(-41.8, -18.0, 5.6, (1.00, 0.885, 0.680)),
-        sky=[(0.00, (0.075, 0.325, 0.945)), (0.07, (0.030, 0.205, 0.930)),
-             (0.32, (0.012, 0.120, 0.840)), (1.00, (0.005, 0.045, 0.480))],
-        sky_strength=1.20, lamp=1150, lamp_colour=(1.0, 0.615, 0.290),
-        film=(0.720, 0.190, 1.000, 1.000), exposure=0.72,
-        air=(0.0040, (0.55, 0.62, 0.72)), sconces=(),
-    ),
-    # Late, low and orange. The sun is nearly on the horizon out there, so it
-    # comes almost level through the opening and lies along the floor.
-    "vespers": dict(
-        sun=(-8.0, -26.0, 7.4, (1.00, 0.560, 0.235)),
-        sky=[(0.00, (0.940, 0.420, 0.130)), (0.07, (0.760, 0.290, 0.190)),
-             (0.32, (0.260, 0.150, 0.400)), (1.00, (0.045, 0.055, 0.320))],
-        sky_strength=1.45, lamp=1500, lamp_colour=(1.0, 0.520, 0.185),
-        film=(1.000, 0.330, 0.520, 1.000), exposure=0.66,
-        air=(0.0075, (0.62, 0.46, 0.42)), sconces=(),
-    ),
-    # Nothing warm anywhere. Moon through the portal, no chandelier, and the
-    # room lit by what gets past the frame.
-    "moonrise": dict(
-        sun=(-52.0, -14.0, 2.6, (0.640, 0.780, 1.000)),
-        sky=[(0.00, (0.070, 0.135, 0.330)), (0.07, (0.045, 0.100, 0.290)),
-             (0.32, (0.020, 0.050, 0.190)), (1.00, (0.006, 0.016, 0.085))],
-        sky_strength=1.05, lamp=0, lamp_colour=(0.72, 0.83, 1.0),
-        film=(0.420, 0.560, 1.000, 1.000), exposure=1.02,
-        air=(0.0090, (0.42, 0.54, 0.78)), sconces=(),
-    ),
-    # The inverse of noon: the hall is the bright thing and the world outside
-    # is a cold slot in the wall. Two sconces back, and hot.
-    "vigil": dict(
-        sun=(-38.0, -18.0, 1.1, (0.760, 0.860, 1.000)),
-        sky=[(0.00, (0.130, 0.240, 0.480)), (0.07, (0.090, 0.180, 0.430)),
-             (0.32, (0.040, 0.100, 0.320)), (1.00, (0.010, 0.035, 0.160))],
-        sky_strength=0.75, lamp=5200, lamp_colour=(1.0, 0.585, 0.245),
-        film=(0.560, 0.360, 1.000, 1.000), exposure=0.62,
-        air=(0.0060, (0.60, 0.50, 0.40)),
-        sconces=((-8.4, 7.0, 6.4, 1400, (1.0, 0.545, 0.200)),
-                 (8.4, 7.0, 6.4, 1400, (1.0, 0.545, 0.200))),
-    ),
-    # Something is wrong with the picture. Green light, no sun to speak of,
-    # and the only warmth in the room is one lamp a long way off.
-    "wormlight": dict(
-        sun=(-33.0, -18.0, 3.1, (0.420, 1.000, 0.520)),
-        sky=[(0.00, (0.180, 0.640, 0.330)), (0.07, (0.100, 0.480, 0.280)),
-             (0.32, (0.040, 0.260, 0.220)), (1.00, (0.010, 0.080, 0.110))],
-        sky_strength=1.30, lamp=420, lamp_colour=(1.0, 0.480, 0.160),
-        film=(0.250, 1.000, 0.560, 1.000), exposure=0.78,
-        air=(0.0120, (0.36, 0.62, 0.44)), sconces=(),
-    ),
-    # Overcast and flat outside, and a hall lit like a chapel: one hard lamp
-    # high on the right and nothing else.
-    "sacristy": dict(
-        sun=(-62.0, -6.0, 2.2, (0.900, 0.930, 1.000)),
-        sky=[(0.00, (0.420, 0.450, 0.500)), (0.07, (0.330, 0.360, 0.420)),
-             (0.32, (0.180, 0.210, 0.270)), (1.00, (0.060, 0.080, 0.130))],
-        sky_strength=0.95, lamp=260, lamp_colour=(1.0, 0.660, 0.360),
-        film=(0.640, 0.420, 0.980, 1.000), exposure=0.70,
-        air=(0.0050, (0.56, 0.60, 0.68)),
-        sconces=((6.3, 16.4, 9.3, 3000, (1.0, 0.780, 0.520)),),
-    ),
-    # Everything off but the picture. The hardest version, and the one that
-    # makes the chequer do the most work.
-    "threshold": dict(
-        sun=(-44.0, -20.0, 8.5, (1.00, 0.940, 0.820)),
-        sky=[(0.00, (0.140, 0.420, 0.980)), (0.07, (0.070, 0.290, 0.960)),
-             (0.32, (0.020, 0.160, 0.880)), (1.00, (0.006, 0.055, 0.520))],
-        sky_strength=1.55, lamp=0, lamp_colour=(1.0, 0.615, 0.290),
-        film=(0.780, 0.150, 1.000, 1.000), exposure=0.58,
-        air=(0.0032, (0.55, 0.62, 0.78)), sconces=(),
-    ),
-    # Under a red sky, with the hall drowned in it.
-    "ashfall": dict(
-        sun=(-19.0, -30.0, 5.0, (1.00, 0.330, 0.180)),
-        sky=[(0.00, (0.880, 0.210, 0.120)), (0.07, (0.620, 0.150, 0.140)),
-             (0.32, (0.280, 0.080, 0.170)), (1.00, (0.070, 0.020, 0.090))],
-        sky_strength=1.35, lamp=900, lamp_colour=(1.0, 0.420, 0.140),
-        film=(1.000, 0.200, 0.360, 1.000), exposure=0.68,
-        air=(0.0140, (0.66, 0.34, 0.28)), sconces=(),
-    ),
-}
-
-
-def painted_hall(path, mood="noon"):
+def painted_hall(path):
     """A hall with a way out of it hanging on the far wall.
 
     Everything here is arranged around one idea: the picture is the only
@@ -2175,7 +2073,6 @@ def painted_hall(path, mood="noon"):
     look.wipe()
     look.use_cycles(samples=560, volume_bounces=2)
     look.view_transform("AgX", look="Medium High Contrast")
-    lit = PAINTED_HALL_MOODS[mood]
 
     FLOOR, LANDING, CEILING = 0.0, 3.60, 10.4
     HALL, DEEP = 10.0, 24.0
@@ -2208,7 +2105,7 @@ def painted_hall(path, mood="noon"):
     # and at 0.45 most of a deep red is a dark red, which is brown.
     carpet = look.heavy_cloth("Carpet", colour=(0.690, 0.0570, 0.0350, 1.0),
                               fade=0.80, seed=6)
-    tiles = look.checker("Chequer", square=0.95, roughness=0.021,
+    tiles = look.checker("Chequer", square=0.95, roughness=0.038,
                          dark=(0.009, 0.009, 0.011, 1.0),
                          pale=(0.520, 0.505, 0.480, 1.0))
     # Oak, and the grain runs along one axis rather than mottling in all
@@ -2432,8 +2329,7 @@ def painted_hall(path, mood="noon"):
                     look.glowing("Candle", colour=(1.0, 0.660, 0.300, 1.0),
                                  strength=26.0),
                     drop=1.30, radius=1.05, candles=8, legs=6,
-                    energy=lit["lamp"],
-                    colour=lit["lamp_colour"])
+                    energy=1150)
 
     # --- and something that just came through -------------------------
     #
@@ -2482,7 +2378,7 @@ def painted_hall(path, mood="noon"):
     # does. Clarity 0.89 and spread 0.020 -- present, not in charge.
     look.block((0, DEEP + 0.42, VIEW_Z + VIEW_H / 2),
                (VIEW_W - 0.04, 0.012, VIEW_H - 0.04),
-               look.oil_film("Skin", tint=lit["film"],
+               look.oil_film("Skin", tint=(0.720, 0.190, 1.000, 1.000),
                              ripple=0.022, swirl=1.6, spread=0.052,
                              thickness=(280.0, 900.0), roughness=0.015,
                              blend=0.44, clarity=0.55,
@@ -2501,13 +2397,8 @@ def painted_hall(path, mood="noon"):
     # life size rather than the two-and-a-half-times smear any lamp in this
     # room would make of it. Eleven metres of bird across a floor whose tiles
     # are just under two.
-    look.sun((math.radians(lit["sun"][0]), 0, math.radians(lit["sun"][1])),
-             energy=lit["sun"][2], angle=0.006, color=lit["sun"][3])
-
-    # Whatever else this mood wants burning in the room.
-    for x, y, z, energy, colour in lit["sconces"]:
-        look.point_light((x, y, z), energy=energy, radius=0.45,
-                         color=colour)
+    look.sun((math.radians(-41.8), 0, math.radians(-18.0)), energy=5.6,
+             angle=0.006, color=(1.0, 0.885, 0.680))
     # 3.4, not 4.6: the grass is translucent and backlit through this
     # opening, so it lights up rather than merely being lit, and at 4.6
     # the hill came back nearer white than green.
@@ -2522,8 +2413,11 @@ def painted_hall(path, mood="noon"):
     # above that is unreachable through this window, so the first one has to
     # already be the colour the sky is meant to be. It was 0.64/0.76/0.88,
     # which is what a sky fades to at the horizon and not what one looks like.
-    look.bryce_sky(bands=lit["sky"],
-                   strength=lit["sky_strength"], bend=2.2,
+    look.bryce_sky(bands=[(0.00, (0.075, 0.325, 0.945)),
+                          (0.07, (0.030, 0.205, 0.930)),
+                          (0.32, (0.012, 0.120, 0.840)),
+                          (1.00, (0.005, 0.045, 0.480))],
+                   strength=1.20, bend=2.2,
                    # Cloud sits on a plane rather than on the dome, so near
                    # the horizon the cells crowd and foreshorten on their own
                    # -- about eight of them across this opening at scale 2.8,
@@ -2540,7 +2434,7 @@ def painted_hall(path, mood="noon"):
     # cannot bead: it casts one beam and one life-size shadow, which is what
     # the lamp was standing in for.
 
-    look.haze(size=36, density=lit["air"][0], colour=lit["air"][1],
+    look.haze(size=36, density=0.0040, colour=(0.55, 0.62, 0.72),
               origin=(0, 5.0, 5.0), height=13.0)
 
     # Air outside, which is the whole of what makes a landscape read as
@@ -2559,10 +2453,8 @@ def painted_hall(path, mood="noon"):
               origin=(0, 800, 40.0), height=300.0)
 
     look.camera((0.0, -7.6, 6.55), (0.0, DEEP, 3.55), lens=30)
-    look.view_transform("AgX", look="High Contrast",
-                        exposure=lit["exposure"])
-    _finish(path, "painted_hall" if mood == "noon"
-            else f"painted_hall_{mood}")
+    look.view_transform("AgX", look="High Contrast", exposure=0.72)
+    _finish(path, "painted_hall")
 
 
 def main():
@@ -2589,10 +2481,6 @@ def main():
         "green_deep": green_deep,
         "painted_hall": painted_hall,
     }
-    for mood in PAINTED_HALL_MOODS:
-        if mood != "noon":
-            jobs[f"painted_hall_{mood}"] = (
-                lambda p, mood=mood: painted_hall(p, mood=mood))
     wanted = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 
     # `export` writes an OBJ instead of a PNG. Its own word rather than a
