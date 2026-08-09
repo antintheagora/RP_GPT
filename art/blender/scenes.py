@@ -775,6 +775,71 @@ def jungle_tree(x, y, trunk_material, leaf_material, height=14.0, girth=0.72,
     return made
 
 
+def column(x, y, base, top, radius, material, sides=16, name="Column"):
+    """A column with a foot and a head, because a bare cylinder is a pipe."""
+    made = []
+    shaft = top - base - radius * 1.5
+    bpy.ops.mesh.primitive_cylinder_add(
+        vertices=sides, radius=radius, depth=shaft,
+        location=(x, y, base + radius * 0.75 + shaft / 2))
+    drum = bpy.context.active_object
+    drum.name = name
+    drum.data.materials.append(material)
+    for polygon in drum.data.polygons:
+        polygon.use_smooth = True
+    made.append(drum)
+    for z, size in ((base + radius * 0.34, radius * 2.7),
+                    (top - radius * 0.40, radius * 2.5)):
+        made.append(look.block((x, y, z), (size, size, radius * 0.7),
+                               material, bevel=radius * 0.10, name=name))
+    return made
+
+
+def balustrade(x_from, x_to, y, base, material, posts=20, height=1.05,
+               name="Rail"):
+    """Balusters and a rail. The rail is what you read; the posts are what
+    let the light through, and a solid parapet at this height would black out
+    the whole bottom of the frame."""
+    made = []
+    span = x_to - x_from
+    for index in range(posts + 1):
+        x = x_from + span * index / posts
+        bpy.ops.mesh.primitive_cone_add(
+            vertices=10, radius1=0.085, radius2=0.055,
+            depth=height - 0.26, location=(x, y, base + 0.13 + (height - 0.26) / 2))
+        post = bpy.context.active_object
+        post.name = name
+        post.data.materials.append(material)
+        for polygon in post.data.polygons:
+            polygon.use_smooth = True
+        made.append(post)
+        made.append(look.block((x, y, base + 0.09), (0.20, 0.20, 0.18),
+                               material, bevel=0.02, name=name))
+    made.append(look.block(((x_from + x_to) / 2, y, base + height - 0.06),
+                           (span + 0.24, 0.26, 0.14), material, bevel=0.03,
+                           name=name))
+    made.append(look.block(((x_from + x_to) / 2, y, base + 0.03),
+                           (span + 0.24, 0.30, 0.10), material, bevel=0.02,
+                           name=name))
+    return made
+
+
+def staircase(x, width, y_from, y_to, z_top, z_bottom, steps, material,
+              name="Step"):
+    """A solid flight. Each tread carries the whole wall below it, so the
+    stair reads as built out of the floor rather than as slabs in the air."""
+    made = []
+    run = (y_to - y_from) / steps
+    drop = (z_top - z_bottom) / steps
+    for index in range(steps):
+        top = z_top - drop * index
+        y = y_from + run * (index + 0.5)
+        made.append(look.block((x, y, (z_bottom - 0.4 + top) / 2),
+                               (width, run * 1.02, top - z_bottom + 0.4),
+                               material, bevel=0.025, name=name))
+    return made
+
+
 def outcrop(x, y, size, material, seed=0, squat=0.55, z=0.0):
     """A weathered knob of rock, half buried.
 
@@ -1872,6 +1937,140 @@ def green_deep(path):
     _finish(path, "green_deep")
 
 
+def painted_hall(path):
+    """A hall with a way out of it hanging on the far wall.
+
+    Everything here is arranged around one idea: the picture is the only
+    light worth having. The room is warm and dim and mostly shadow, the
+    chequer throws what reaches it back up at the ceiling, and the painting
+    burns a hole in the far wall with daylight from somewhere else on the
+    other side of it. Two sconces keep the corners from going to black.
+    """
+    look.wipe()
+    look.use_cycles(samples=560, volume_bounces=2)
+    look.view_transform("AgX", look="Medium High Contrast")
+
+    FLOOR, LANDING, CEILING = 0.0, 3.60, 10.4
+    HALL, DEEP = 10.0, 24.0
+
+    plaster = dressed("Ochre plaster", block_scale=0.30, wetness=0.10,
+                      mossy=False, seed=91, mortar=0.0, relief=0.55,
+                      dark=(0.105, 0.072, 0.026, 1.0),
+                      tint=(0.400, 0.290, 0.105, 1.0))
+    pale = dressed("Hall stone", block_scale=0.9, wetness=0.14, mossy=False,
+                   seed=23, mortar=0.28, relief=0.7,
+                   dark=(0.115, 0.110, 0.100, 1.0),
+                   tint=(0.395, 0.380, 0.355, 1.0))
+    beam = dressed("Dark beam", block_scale=1.1, wetness=0.16, mossy=False,
+                   seed=44, mortar=0.45, relief=0.9,
+                   dark=(0.010, 0.009, 0.008, 1.0),
+                   tint=(0.055, 0.046, 0.036, 1.0))
+    carpet = look.heavy_cloth("Carpet", colour=(0.155, 0.016, 0.014, 1.0),
+                              seed=6)
+    tiles = look.checker("Chequer", square=0.95, roughness=0.055,
+                         dark=(0.009, 0.009, 0.011, 1.0),
+                         pale=(0.520, 0.505, 0.480, 1.0))
+    gilt = dressed("Gilt", block_scale=1.6, wetness=0.30, mossy=False,
+                   seed=71, mortar=0.20, relief=0.6, specular=1.4,
+                   dark=(0.280, 0.190, 0.055, 1.0),
+                   tint=(0.880, 0.640, 0.190, 1.0))
+
+    # --- the shell -------------------------------------------------------
+    look.block((0, DEEP / 2, FLOOR - 0.3), (HALL * 2, DEEP, 0.6), tiles,
+               bevel=0.02, name="Floor")
+    for side in (-1, 1):
+        look.block((side * (HALL + 0.4), DEEP / 2 - 3.0, CEILING / 2),
+                   (0.8, DEEP + 8.0, CEILING + 1.0), plaster, bevel=0.05,
+                   name="SideWall")
+    look.block((0, DEEP + 0.4, CEILING / 2), (HALL * 2 + 1.6, 0.8,
+               CEILING + 1.0), plaster, bevel=0.05, name="EndWall")
+    look.block((0, -9.6, CEILING / 2), (HALL * 2 + 1.6, 0.8, CEILING + 1.0),
+               plaster, bevel=0.05, name="BackWall")
+
+    # A coffered roof: beams both ways with dark panels behind them, which is
+    # the one part of the room the light never reaches and so has to be shape
+    # rather than colour.
+    look.block((0, DEEP / 2 - 3.0, CEILING + 0.55), (HALL * 2, DEEP + 8.0, 0.7),
+               beam, name="CeilingPanel")
+    for index in range(-4, 5):
+        look.block((index * 2.5, DEEP / 2 - 3.0, CEILING - 0.02),
+                   (0.42, DEEP + 8.0, 0.62), beam, bevel=0.04, name="Beam")
+    for step in range(-4, 12):
+        look.block((0, step * 2.4, CEILING - 0.02),
+                   (HALL * 2, 0.42, 0.62), beam, bevel=0.04, name="Beam")
+
+    # --- the balcony the camera stands on --------------------------------
+    look.block((0, -4.6, LANDING - 0.25), (HALL * 2, 10.0, 0.5), pale,
+               bevel=0.03, name="Landing")
+    look.block((0, -4.6, LANDING + 0.03), (HALL * 2 - 1.2, 9.4, 0.06),
+               carpet, name="LandingCarpet")
+
+    # Stairs down either side, hugging the walls.
+    for side in (-1, 1):
+        staircase(side * 7.0, 5.4, 1.0, 9.6, LANDING, FLOOR, 13, pale)
+        for index in range(13):
+            top = LANDING - (LANDING - FLOOR) * index / 13
+            y = 1.0 + (8.6 / 13) * (index + 0.5)
+            look.block((side * 7.0, y, top + 0.04), (4.0, 8.6 / 13 * 1.02, 0.06),
+                       carpet, name="StairCarpet")
+        balustrade(-2.2, 2.2, side * 0.0, LANDING, pale, posts=9,
+                   name="RailSide") if False else None
+
+    balustrade(-4.6, 4.6, 1.30, LANDING, pale, posts=20)
+    for side in (-1, 1):
+        look.block((side * 5.05, 1.30, LANDING + 0.6), (0.55, 0.55, 1.35),
+                   pale, bevel=0.05, name="NewelPost")
+
+    # --- columns in the far corners --------------------------------------
+    for side in (-1, 1):
+        column(side * 8.2, DEEP - 2.6, FLOOR, CEILING, 0.78, pale)
+
+    # --- the painting ----------------------------------------------------
+    VIEW_W, VIEW_H, VIEW_Z = 5.2, 4.4, 2.5
+    # Strength 3.2, not 6. Emission is the same trade every bright thing in
+    # this file makes: past a point AgX rolls it off toward white and takes
+    # the hue with it, and a window onto a white nothing is a lamp. Dimmer
+    # and more saturated reads as further away and more real, and the sconces
+    # make up the light it stops giving the room.
+    view = look.window_light("The way out", strength=3.2, horizon=0.42,
+                             base=VIEW_Z, height=VIEW_H, cloud=0.38,
+                             sky=(0.045, 0.210, 0.920), ground=(0.130, 0.480, 0.050))
+    look.block((0, DEEP - 0.16, VIEW_Z + VIEW_H / 2), (VIEW_W, 0.12, VIEW_H),
+               view, bevel=None, name="Painting")
+    # The frame, four members rather than a slab with a hole in it.
+    for dx, dz, w, h in ((0, VIEW_H / 2 + 0.28, VIEW_W + 1.12, 0.56),
+                         (0, -VIEW_H / 2 - 0.28, VIEW_W + 1.12, 0.56),
+                         (VIEW_W / 2 + 0.28, 0, 0.56, VIEW_H + 1.12),
+                         (-VIEW_W / 2 - 0.28, 0, 0.56, VIEW_H + 1.12)):
+        look.block((dx, DEEP - 0.20, VIEW_Z + VIEW_H / 2 + dz), (w, 0.42, h),
+                   gilt, bevel=0.07, name="Frame")
+
+    # --- light -----------------------------------------------------------
+    # Two sconces, warm and weak, only there to keep the corners from being
+    # holes. Everything else in the room is lit by the picture.
+    for side in (-1, 1):
+        look.point_light((side * 8.4, 7.0, 6.4), energy=1500,
+                         radius=0.35, color=(1.0, 0.72, 0.36))
+        look.sphere((side * 8.4, 7.0, 6.4), 0.20,
+                    look.glowing("Sconce", colour=(1.0, 0.66, 0.30, 1.0),
+                                 strength=16.0), segments=14, rings=8,
+                    name="Sconce")
+
+    # Air, so the picture throws a shaft rather than just a pool.
+    # Enough to carry a shaft, not enough to fill the room. At 0.010 the far
+    # wall and the whole roof went to milk and the painting lit fog instead
+    # of stone.
+    look.haze(size=44, density=0.0034, colour=(0.55, 0.62, 0.72),
+              origin=(0, 10.0, 5.0), height=13.0)
+
+    # High enough to see over the rail. The balustrade is a foreground
+    # element, not a fence to be stuck behind -- at 5.65 it cut the floor off
+    # at the knees and the stairs never appeared at all.
+    look.camera((0.0, -7.6, 6.55), (0.0, DEEP, 3.55), lens=30)
+    look.view_transform("AgX", look="Medium High Contrast", exposure=1.02)
+    _finish(path, "painted_hall")
+
+
 def main():
     out = os.path.abspath(OUT)
     os.makedirs(out, exist_ok=True)
@@ -1894,6 +2093,7 @@ def main():
         "bone_flats": bone_flats,
         "bright_shore": bright_shore,
         "green_deep": green_deep,
+        "painted_hall": painted_hall,
     }
     wanted = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 

@@ -872,6 +872,114 @@ def glowing(name, colour=CANDLE, strength=25.0):
     return mat
 
 
+def checker(name="Checker", square=0.9, dark=(0.010, 0.010, 0.012, 1.0),
+            pale=(0.560, 0.545, 0.520, 1.0), roughness=0.07, seed=0.0):
+    """Polished chequer, measured in metres rather than in object widths.
+
+    World position, not object coordinates. A floor built as one big plane
+    has object coordinates normalised to its own size, so the squares come
+    out as big as the room -- and if the room ever changes size the floor
+    silently reflows. Metres are what a tiled floor is actually laid in.
+
+    The polish is uneven on purpose. A single roughness across a whole floor
+    gives one perfect mirror and reads as a rendering, where a real waxed
+    floor has patches that catch the light and patches that do not.
+    """
+    mat, tree, bsdf, _ = _new_material(name)
+    where = tree.nodes.new("ShaderNodeNewGeometry")
+    where.location = (-1200, 0)
+    grid = tree.nodes.new("ShaderNodeMapping")
+    grid.location = (-1000, 0)
+    sock(grid, "Scale", (0.5 / square,) * 3)
+    sock(grid, "Location", (seed * 1.7, seed * 2.3, 0.0))
+    tree.links.new(where.outputs["Position"], grid.inputs["Vector"])
+    squares = tree.nodes.new("ShaderNodeTexChecker")
+    squares.location = (-780, 0)
+    sock(squares, "Color1", dark)
+    sock(squares, "Color2", pale)
+    sock(squares, "Scale", 1.0)
+    tree.links.new(grid.outputs["Vector"], squares.inputs["Vector"])
+    tree.links.new(squares.outputs["Color"], bsdf.inputs["Base Color"])
+
+    wear = _noise(tree, 0.7, detail=5.0, roughness=0.55, location=(-780, -260))
+    tree.links.new(where.outputs["Position"], wear.inputs["Vector"])
+    polish = _ramp(tree, [(0.35, (roughness,) * 3 + (1.0,)),
+                          (0.68, (min(1.0, roughness * 4.5),) * 3 + (1.0,))],
+                   location=(-520, -260))
+    tree.links.new(out(wear, ("Fac", "Color")), polish.inputs["Fac"])
+    tree.links.new(out(polish, "Color"), bsdf.inputs["Roughness"])
+    sock(bsdf, "Metallic", 0.0)
+    sock(bsdf, ("Specular IOR Level", "Specular"), 0.5)
+    return mat
+
+
+def window_light(name="View", sky=(0.30, 0.58, 1.00), ground=(0.20, 0.52, 0.10),
+                 strength=8.0, horizon=0.40, base=0.0, height=1.0, cloud=0.5,
+                 seed=0.0):
+    """A picture that is a light: somewhere else, seen through a hole.
+
+    Emission rather than a lit surface, because the point is that it is the
+    brightest thing in a dark room and throws its own colour across the
+    floor. A painting lit *by* the room is a painting; a painting lighting
+    the room is a way out of it.
+
+    `base` and `height` are the world z the panel spans, so the horizon lands
+    where it should without anybody having to model a gradient.
+    """
+    mat, tree, bsdf, output = _new_material(name)
+    tree.nodes.remove(bsdf)
+    where = tree.nodes.new("ShaderNodeNewGeometry")
+    where.location = (-1200, 0)
+    up = tree.nodes.new("ShaderNodeMapping")
+    up.location = (-1000, 0)
+    sock(up, "Scale", (1.0, 1.0, 1.0 / max(height, 1e-4)))
+    sock(up, "Location", (0.0, 0.0, -base / max(height, 1e-4)))
+    tree.links.new(where.outputs["Position"], up.inputs["Vector"])
+    axis = tree.nodes.new("ShaderNodeSeparateXYZ")
+    axis.location = (-800, 0)
+    tree.links.new(up.outputs["Vector"], axis.inputs["Vector"])
+
+    def opaque(colour):
+        """Ramp stops want four components; callers reasonably write three."""
+        return tuple(colour[:3]) + (1.0,)
+
+    field = _ramp(tree, [(max(0.0, horizon - 0.04), opaque(ground)),
+                         (horizon, (ground[0] * 1.5 + 0.06,
+                                    ground[1] * 1.2 + 0.10,
+                                    ground[2] * 1.4 + 0.10, 1.0)),
+                         (min(1.0, horizon + 0.02), (0.72, 0.84, 0.98, 1.0)),
+                         (1.00, opaque(sky))],
+                  location=(-560, 0))
+    tree.links.new(axis.outputs["Z"], field.inputs["Fac"])
+
+    # Named `drift`, not `cloud`: `cloud` is the parameter, and calling the
+    # noise node the same thing silently replaced the number with the node.
+    drift = _noise(tree, 3.2, detail=6.0, roughness=0.5, location=(-800, -280),
+                   distortion=0.7)
+    tree.links.new(up.outputs["Vector"], drift.inputs["Vector"])
+    # Fewer, harder-edged clouds. Screened over the blue at 0.8 they covered
+    # most of the sky and the whole panel came out white -- which is not a
+    # window onto anywhere, it is a lamp.
+    puffs = _ramp(tree, [(0.56, (0, 0, 0, 1)), (0.70, (1, 1, 1, 1))],
+                  location=(-560, -280))
+    tree.links.new(out(drift, ("Fac", "Color")), puffs.inputs["Fac"])
+    # Cloud only above the horizon, which is where it lives.
+    sky_only = _mix(tree, "MULTIPLY", location=(-340, -160), factor=1.0)
+    tree.links.new(out(puffs, "Color"), _mix_in(sky_only, 0))
+    tree.links.new(axis.outputs["Z"], _mix_in(sky_only, 1))
+    # Screened, not mixed: cloud adds white to the sky rather than replacing
+    # it, so the blue survives underneath the way it does on a bright day.
+    weather = _mix(tree, "SCREEN", location=(-120, 0), factor=cloud)
+    tree.links.new(out(field, "Color"), _mix_in(weather, 0))
+    tree.links.new(_mix_out(sky_only), _mix_in(weather, 1))
+    lit = tree.nodes.new("ShaderNodeEmission")
+    lit.location = (240, 0)
+    sock(lit, "Strength", strength)
+    tree.links.new(_mix_out(weather), lit.inputs["Color"])
+    tree.links.new(lit.outputs["Emission"], output.inputs["Surface"])
+    return mat
+
+
 def sea_water(name="Sea", absorb=(0.07, 0.44, 0.46), density=0.085,
               glow=(0.30, 0.86, 0.84), turbidity=0.16,
               swell=0.028, chop=0.010, seed=0.0):
@@ -1643,7 +1751,7 @@ __all__ = [
     "WEAR", "worn_edge", "bryce_sky", "wedge",
     "wipe", "use_cycles", "view_transform", "render_to", "camera",
     "area_light", "point_light", "sun", "sock", "out",
-    "damp_stone", "rusted_iron", "heavy_cloth", "glowing", "scrying_glass", "sphere", "inp", "sea_water", "foliage", "subdivide_adaptively", "still_water",
+    "damp_stone", "rusted_iron", "heavy_cloth", "glowing", "scrying_glass", "sphere", "inp", "checker", "window_light", "sea_water", "foliage", "subdivide_adaptively", "still_water",
     "block", "roughen", "weather", "fog", "haze", "sky_gradient",
     "PITCH", "SOOT", "STONE_DARK", "STONE_LIGHT", "MOSS_DEEP", "MOSS_LIT",
     "RUST", "RUST_DEEP", "IRON", "BRASS", "CLOTH_OXBLOOD", "CANDLE",
