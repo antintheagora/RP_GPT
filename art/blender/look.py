@@ -879,6 +879,146 @@ def glowing(name, colour=CANDLE, strength=25.0):
     return mat
 
 
+def oil_film(name="Oil film", tint=(0.90, 0.95, 1.00, 1.00), ripple=0.055,
+             swirl=2.2, spread=0.030, thickness=(240.0, 980.0),
+             roughness=0.055, blend=0.46, clarity=0.74, seed=0.0):
+    """A membrane over an opening: translucent, rippling, and prismatic.
+
+    Three things at once, and each needs a different mechanism.
+
+    **Distortion** is a normal, not a texture. Two noise fields at different
+    scales go to chained bump nodes, so what you see through the panel bends
+    and swims -- a colour texture on glass would only tint what is behind it
+    and leave the geometry dead straight, which is the tell.
+
+    **The prism** is three refractions rather than one. Cycles is not
+    spectral, so a single refraction cannot split anything; what it can do is
+    refract red, green and blue at three slightly different IORs and add them
+    back together, and wherever the surface bends hard enough for those three
+    paths to diverge, the seam between them comes apart into colour. That is
+    what `spread` is: the gap between the three indices, and the whole effect
+    lives in it.
+
+    **The oil** is thin-film interference, which is a real thing this build
+    can do -- `Thin Film Thickness` in nanometres on a glass BSDF. Vary the
+    thickness across the surface with noise and you get the bands you see on
+    a puddle in a car park, because that is the same physics: light reflected
+    off the top of the film arriving out of step with light reflected off the
+    bottom, and which wavelength cancels depends on how far apart they are.
+
+    `clarity` is how much of it simply lets the view through. High, and
+    it has to be: the bending is the seasoning, not the dish.
+
+    `blend` is how much of the oil is mixed over the prism. Most of the
+    interest is in the refraction; the film is a wash over it.
+
+    So `thickness` is in nanometres and the range matters. Under about 200 nm
+    the film is thinner than the light and the colours wash out; over about a
+    thousand the bands crowd tighter than a pixel and average back to grey.
+    """
+    mat, tree, bsdf, output = _new_material(name)
+    tree.nodes.remove(bsdf)
+
+    coord = tree.nodes.new("ShaderNodeTexCoord")
+    coord.location = (-1500, 0)
+    mapping = tree.nodes.new("ShaderNodeMapping")
+    mapping.location = (-1320, 0)
+    sock(mapping, "Location", (seed * 2.7, seed * 1.9, seed * 3.3))
+    tree.links.new(coord.outputs["Object"], mapping.inputs["Vector"])
+    coords = mapping.outputs["Vector"]
+
+    # --- the swim -------------------------------------------------------
+    slow = _noise(tree, swirl, detail=5.0, roughness=0.55,
+                  location=(-1100, 240), distortion=1.4)
+    tree.links.new(coords, slow.inputs["Vector"])
+    quick = _noise(tree, swirl * 5.5, detail=6.0, roughness=0.5,
+                   location=(-1100, -20), distortion=0.8)
+    tree.links.new(coords, quick.inputs["Vector"])
+    heave = tree.nodes.new("ShaderNodeBump")
+    heave.location = (-820, 160)
+    sock(heave, "Strength", 0.85)
+    sock(heave, "Distance", ripple)
+    tree.links.new(out(slow, ("Fac", "Color")), heave.inputs["Height"])
+    chop = tree.nodes.new("ShaderNodeBump")
+    chop.location = (-620, 60)
+    sock(chop, "Strength", 0.40)
+    sock(chop, "Distance", ripple * 0.30)
+    tree.links.new(out(quick, ("Fac", "Color")), chop.inputs["Height"])
+    tree.links.new(heave.outputs["Normal"], chop.inputs["Normal"])
+    bent = chop.outputs["Normal"]
+
+    # --- the prism ------------------------------------------------------
+    stack = None
+    for index, (channel, shift) in enumerate(
+            (((1.0, 0.0, 0.0, 1.0), -spread),
+             ((0.0, 1.0, 0.0, 1.0), 0.0),
+             ((0.0, 0.0, 1.0, 1.0), spread))):
+        band = tree.nodes.new("ShaderNodeBsdfRefraction")
+        band.location = (-300, 260 - index * 180)
+        sock(band, "Color", tuple(c * t for c, t in zip(channel, tint)))
+        sock(band, "Roughness", roughness)
+        sock(band, "IOR", 1.46 + shift)
+        tree.links.new(bent, band.inputs["Normal"])
+        if stack is None:
+            stack = band.outputs["BSDF"]
+            continue
+        add = tree.nodes.new("ShaderNodeAddShader")
+        add.location = (-60, 200 - index * 150)
+        tree.links.new(stack, add.inputs[0])
+        tree.links.new(band.outputs["BSDF"], add.inputs[1])
+        stack = add.outputs["Shader"]
+
+    # --- the oil --------------------------------------------------------
+    grease = _noise(tree, swirl * 1.7, detail=7.0, roughness=0.6,
+                    location=(-1100, -300), distortion=2.2)
+    tree.links.new(coords, grease.inputs["Vector"])
+    depth = tree.nodes.new("ShaderNodeMapRange")
+    depth.location = (-820, -300)
+    sock(depth, "From Min", 0.25)
+    sock(depth, "From Max", 0.75)
+    sock(depth, "To Min", thickness[0])
+    sock(depth, "To Max", thickness[1])
+    tree.links.new(out(grease, ("Fac", "Color")), depth.inputs["Value"])
+
+    slick = tree.nodes.new("ShaderNodeBsdfGlass")
+    slick.location = (-300, -300)
+    sock(slick, "Color", tint)
+    sock(slick, "Roughness", roughness * 1.6)
+    sock(slick, "IOR", 1.46)
+    sock(slick, "Thin Film IOR", 1.52)
+    tree.links.new(depth.outputs["Result"], slick.inputs["Thin Film Thickness"])
+    tree.links.new(bent, slick.inputs["Normal"])
+
+    # --- and mostly out of the way ---------------------------------------
+    #
+    # Refraction alone was the wrong shape for this. A slab that bends every
+    # ray also rearranges everything behind it -- ground turning up above
+    # sky, one lamp arriving as five -- and a filter is supposed to sit over
+    # a view rather than replace it. So most of the surface is a plain
+    # Transparent BSDF, which passes what is behind it through untouched and
+    # tinted, and the refraction is the minority that bends. What you get is
+    # the real landscape with a swimming, doubled ghost of itself over it,
+    # which is what looking through a film actually looks like.
+    clear = tree.nodes.new("ShaderNodeBsdfTransparent")
+    clear.location = (-300, -560)
+    sock(clear, "Color", tint)
+
+    lens = tree.nodes.new("ShaderNodeMixShader")
+    lens.location = (60, -160)
+    sock(lens, "Fac", clarity)
+    tree.links.new(stack, lens.inputs[1])
+    tree.links.new(clear.outputs["BSDF"], lens.inputs[2])
+
+    blend_fac = blend
+    blend = tree.nodes.new("ShaderNodeMixShader")
+    blend.location = (300, 0)
+    sock(blend, "Fac", blend_fac)
+    tree.links.new(lens.outputs["Shader"], blend.inputs[1])
+    tree.links.new(slick.outputs["BSDF"], blend.inputs[2])
+    tree.links.new(blend.outputs["Shader"], output.inputs["Surface"])
+    return mat
+
+
 def metal(name="Steel", colour=(0.400, 0.425, 0.455, 1.0), roughness=0.30,
           pitting=0.35, seed=0.0):
     """Metal, which needs `Metallic` at 1 and nothing else pretending.
@@ -1802,7 +1942,7 @@ __all__ = [
     "WEAR", "worn_edge", "bryce_sky", "wedge",
     "wipe", "use_cycles", "view_transform", "render_to", "camera",
     "area_light", "point_light", "sun", "sock", "out",
-    "damp_stone", "rusted_iron", "heavy_cloth", "glowing", "scrying_glass", "sphere", "inp", "metal", "checker", "window_light", "sea_water", "foliage", "subdivide_adaptively", "still_water",
+    "damp_stone", "rusted_iron", "heavy_cloth", "glowing", "scrying_glass", "sphere", "inp", "oil_film", "metal", "checker", "window_light", "sea_water", "foliage", "subdivide_adaptively", "still_water",
     "block", "roughen", "weather", "fog", "haze", "sky_gradient",
     "PITCH", "SOOT", "STONE_DARK", "STONE_LIGHT", "MOSS_DEEP", "MOSS_LIT",
     "RUST", "RUST_DEEP", "IRON", "BRASS", "CLOTH_OXBLOOD", "CANDLE",

@@ -2328,6 +2328,32 @@ def painted_hall(path):
              rotation=(math.radians(-9.0), math.radians(-19.0),
                        math.radians(-25.0)), name="Pigeon")
 
+    # A membrane across the opening, so it stops being a window.
+    #
+    # Set into the wall's own thickness rather than hung in front of the
+    # frame: a pane on the room side would catch the chandelier and read
+    # as glass in a frame, where the whole point is that the surface
+    # belongs to the picture rather than to the joinery.
+    #
+    # Gentle, and clear. At ripple 0.052 with roughness 0.05 the panel
+    # was frosted bathroom glass: the hill behind it stopped being
+    # readable, and a filter you cannot see through is a wall. What is
+    # wanted is a surface that is obviously there and obviously has
+    # something behind it -- so the swim is broad and slow rather than
+    # fine, and the refraction is nearly clear.
+    #
+    # And 12mm thick, not 50. A refracting slab offsets everything
+    # behind it by an amount proportional to its thickness, and at 50mm
+    # with a rippled normal the offset varied enough across the panel to
+    # shuffle the horizon around -- ground appearing above sky. Thin
+    # enough and the swim is a swim rather than a rearrangement.
+    look.block((0, DEEP + 0.42, VIEW_Z + VIEW_H / 2),
+               (VIEW_W - 0.04, 0.012, VIEW_H - 0.04),
+               look.oil_film("Skin", ripple=0.016, swirl=1.4, spread=0.055,
+                             thickness=(260.0, 940.0), roughness=0.012,
+                             blend=0.26, clarity=0.76, seed=7.0),
+               bevel=0.0, name="Skin")
+
     # --- light -----------------------------------------------------------
     #
     # Two sources for the whole picture: the wheel of candles, and the sun
@@ -2340,7 +2366,7 @@ def painted_hall(path):
     # life size rather than the two-and-a-half-times smear any lamp in this
     # room would make of it. Eleven metres of bird across a floor whose tiles
     # are just under two.
-    look.sun((math.radians(-41.8), 0, math.radians(-18.0)), energy=4.2,
+    look.sun((math.radians(-41.8), 0, math.radians(-18.0)), energy=5.6,
              angle=0.006, color=(1.0, 0.885, 0.680))
     # 3.4, not 4.6: the grass is translucent and backlit through this
     # opening, so it lights up rather than merely being lit, and at 4.6
@@ -2369,21 +2395,14 @@ def painted_hall(path):
                    cloud_colour=(0.98, 0.98, 0.99), cloud_amount=0.66,
                    cloud_scale=2.8, cloud_sharpness=(0.44, 0.60), seed=11.0)
 
-    # And a lamp immediately behind the opening, which is the tidiest way
-    # to get a beam: the wall is the barn door. Everything it throws at
-    # the masonry stops there and only the cone through the hole gets in,
-    # so the shape of the light is the shape of the frame without a spot
-    # cone having to be aimed at anything. A hint of green in it, from the
-    # field it is supposed to be coming off.
-    look.point_light((0.0, 24.62, VIEW_Z + VIEW_H * 0.45), energy=3400,
-                     radius=0.30, color=(1.0, 0.820, 0.560))
+    # There is no lamp behind the opening any more, and there should not be.
+    # A point source behind a rippled film beads into a dozen images of
+    # itself, one per facet, and widening it to smear them back together
+    # turned a 2.1 m source five metres behind a 5.2 m hole into the entire
+    # view. The sun already comes through here and it is parallel, so it
+    # cannot bead: it casts one beam and one life-size shadow, which is what
+    # the lamp was standing in for.
 
-    # The air stops at the wall. Left running to y=32 it enclosed the beam
-    # lamp, which then lit the volume around itself and hung a glowing ball
-    # in the middle of the opening -- a lamp is invisible to a camera until
-    # you give it something to shine on, and fog three feet away is exactly
-    # that. It ends at 23 now, a foot short of the masonry, so the beam
-    # becomes visible only after it is through the hole.
     look.haze(size=36, density=0.0040, colour=(0.55, 0.62, 0.72),
               origin=(0, 5.0, 5.0), height=13.0)
 
