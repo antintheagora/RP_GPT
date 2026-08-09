@@ -121,7 +121,7 @@ def pier(x, y, material, height=3.4, width=0.72):
 
 def arch(x_from, x_to, y, springing, material, stones=13, thickness=0.34,
          depth=0.66, axis="X", fitted=False, core_material=None,
-         joint=0.028):
+         joint=0.060):
     """A semicircular arch built out of real voussoirs.
 
     A torus would be one smooth ring. The joints between wedge stones are the
@@ -158,16 +158,23 @@ def arch(x_from, x_to, y, springing, material, stones=13, thickness=0.34,
             # made of -- which is the whole of why the ring read as melted.
             # Open the joint by `joint` metres and the core shows through it
             # instead, darker and flat, and the stones separate.
+            #
+            # 60mm, which is a fat joint for dressed stone and right for
+            # this. The end wall is 24 metres from the camera: a 28mm joint
+            # there is two pixels wide, and two pixels of near-black get
+            # averaged into the stone either side of them by the sampler no
+            # matter how black they are. Making the core darker cannot fix a
+            # joint too narrow to survive being drawn.
             half = math.pi / stones / 2 - joint / (2 * radius)
             if axis == "X":
                 made.append(look.wedge(
                     (px, y, pz), half, radius, thickness, depth, material,
-                    rotation=(0, -angle + math.pi / 2, 0),
+                    rotation=(0, angle - math.pi / 2, 0),
                     name=f"Voussoir{index}"))
             else:
                 made.append(look.wedge(
                     (y, px, pz), half, radius, thickness, depth, material,
-                    rotation=(angle - math.pi / 2, 0, 0), along="Y",
+                    rotation=(math.pi / 2 - angle, 0, 0), along="Y",
                     name=f"Voussoir{index}"))
             continue
 
@@ -176,11 +183,11 @@ def arch(x_from, x_to, y, springing, material, stones=13, thickness=0.34,
         if axis == "X":
             made.append(look.block(
                 (px, y, pz), (arc, depth, thickness), material,
-                rotation=(0, -angle + math.pi / 2, 0), name=f"Voussoir{index}"))
+                rotation=(0, angle - math.pi / 2, 0), name=f"Voussoir{index}"))
         else:
             made.append(look.block(
                 (y, px, pz), (depth, arc, thickness), material,
-                rotation=(angle - math.pi / 2, 0, 0), name=f"Voussoir{index}"))
+                rotation=(math.pi / 2 - angle, 0, 0), name=f"Voussoir{index}"))
     return made
 
 
@@ -481,7 +488,7 @@ def undercroft(path, floor=True, render=True, groups=None,
     # dressed rather than pitted, so the stones read as rough blocks sitting
     # on a smooth core instead of the whole ring reading as one melted mass.
     core = dressed("Arch core", block_scale=1.6, wetness=0.42, mossy=False,
-                   seed=17, mortar=0.0, relief=0.10,
+                   seed=17, mortar=0.0, relief=0.10, shade=0.20,
                    tint=(0.0300, 0.0268, 0.0208, 1.0))
     floor_stone = dressed("Flagstone", block_scale=1.1, wetness=0.92,
                                   mossy=False, seed=8, mortar=0.35)

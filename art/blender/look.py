@@ -313,8 +313,13 @@ def _crack_field(tree, coords, scale, width, seed_offset, location):
 def damp_stone(name="Damp stone", block_scale=7.0, wetness=0.55, coursed=False,
                mossy=True, seed=0, tint=None, mortar=1.0, world_space=False,
                cracks=0.0, puddling=0.0, grain_axis=None, grain=5.0,
-               relief=1.0):
+               relief=1.0, shade=1.0):
     """Dark stone that has been underground a long time.
+
+    `shade` scales the whole base ramp toward black. Both ends of it, which
+    is the point: dropping only the light end leaves the crevices where they
+    were and the stone reads as the same stone under less light. Dropping
+    both makes it a darker stone.
 
     `relief` scales all three bump layers together, for the surfaces that
     want the colour of this stone without its texture -- a dressed core
@@ -420,7 +425,11 @@ def damp_stone(name="Damp stone", block_scale=7.0, wetness=0.55, coursed=False,
     tree.links.new(coords, weather.inputs["Vector"])
 
     # --- base colour ----------------------------------------------------
-    base = _ramp(tree, [(0.30, STONE_DARK), (0.72, tint or STONE_LIGHT)],
+    def dim(colour):
+        return tuple(channel * shade for channel in colour[:3]) + (colour[3],)
+
+    base = _ramp(tree, [(0.30, dim(STONE_DARK)),
+                        (0.72, dim(tint or STONE_LIGHT))],
                  location=(-900, -280))
     tree.links.new(out(weather, ("Fac", "Color")), base.inputs["Fac"])
 
