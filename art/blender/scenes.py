@@ -820,83 +820,6 @@ def borrowed(key, location, span, rotation=(0, 0, 0), name=None):
     return made
 
 
-def chandelier(x, y, ceiling, material, glow_material, drop=0.75, radius=1.60,
-               height=1.35, bars=14, energy=3200, name="Chandelier"):
-    """A pierced lantern on a short stem, with the lamp inside it.
-
-    The piercing is the whole idea. A lamp in a solid shade lights a room
-    evenly and says nothing about itself; a lamp in a cage throws the cage
-    across the ceiling, the walls and the floor, and what it casts ends up
-    being more of the object than the object is. It is the cheapest
-    interesting thing one light can do, and it is why every real chandelier
-    has holes in it.
-    """
-    made = []
-    hang = ceiling - drop
-    made.append(look.block((x, y, ceiling - 0.06), (0.62, 0.62, 0.16),
-                           material, bevel=0.04, name=name))
-    bpy.ops.mesh.primitive_cylinder_add(vertices=8, radius=0.062, depth=drop,
-                                        location=(x, y, ceiling - drop / 2))
-    stem = bpy.context.active_object
-    stem.name = name
-    stem.data.materials.append(material)
-    for polygon in stem.data.polygons:
-        polygon.use_smooth = True
-    made.append(stem)
-
-    for z, wide, thick in ((hang - 0.05, radius * 0.62, 0.16),
-                           (hang - height + 0.06, radius * 0.80, 0.14)):
-        bpy.ops.mesh.primitive_cylinder_add(vertices=24, radius=wide,
-                                            depth=thick, location=(x, y, z))
-        plate = bpy.context.active_object
-        plate.name = name
-        plate.data.materials.append(material)
-        for polygon in plate.data.polygons:
-            polygon.use_smooth = True
-        made.append(plate)
-
-    # Slats on a circle, every other one set in and shorter, so the lamp gets
-    # two spacings to draw with instead of one.
-    for index in range(bars):
-        angle = math.tau * index / bars
-        near = radius * (1.0 if index % 2 else 0.80)
-        made.append(look.block(
-            (x + math.cos(angle) * near, y + math.sin(angle) * near,
-             hang - height / 2),
-            (0.085, 0.20, height * (1.0 if index % 2 else 0.72)), material,
-            rotation=(0, 0, angle), bevel=0.02, name=name))
-
-    for z, ring in ((hang - height * 0.30, radius * 1.02),
-                    (hang - height * 0.78, radius * 0.88)):
-        bpy.ops.mesh.primitive_torus_add(major_radius=ring, minor_radius=0.055,
-                                         major_segments=40, minor_segments=8,
-                                         location=(x, y, z))
-        hoop = bpy.context.active_object
-        hoop.name = name
-        hoop.data.materials.append(material)
-        made.append(hoop)
-
-    bpy.ops.mesh.primitive_cone_add(vertices=14, radius1=radius * 0.30,
-                                    radius2=0.02, depth=0.55,
-                                    location=(x, y, hang - height - 0.24))
-    finial = bpy.context.active_object
-    finial.name = name
-    finial.rotation_euler = (math.pi, 0, 0)
-    finial.data.materials.append(material)
-    for polygon in finial.data.polygons:
-        polygon.use_smooth = True
-    made.append(finial)
-
-    # Small lamp, so the cage casts a sharp shadow. A wide source washes its
-    # own bars out and then the piercing means nothing.
-    heart = (x, y, hang - height * 0.52)
-    made.append(look.sphere(heart, radius * 0.22, glow_material,
-                            segments=18, rings=10, name=name))
-    look.point_light(heart, energy=energy, radius=radius * 0.16,
-                     color=(1.0, 0.660, 0.330))
-    return made
-
-
 def column(x, y, base, top, radius, material, sides=16, name="Column"):
     """A column with a foot and a head, because a bare cylinder is a pipe."""
     made = []
@@ -2096,8 +2019,8 @@ def painted_hall(path):
     # lamps a little less orange, for it to arrive red. `fade` at 0.74 is
     # the rest of it -- the worn part of the weave is most of the surface,
     # and at 0.45 most of a deep red is a dark red, which is brown.
-    carpet = look.heavy_cloth("Carpet", colour=(0.335, 0.0245, 0.0170, 1.0),
-                              fade=0.74, seed=6)
+    carpet = look.heavy_cloth("Carpet", colour=(0.690, 0.0570, 0.0350, 1.0),
+                              fade=0.80, seed=6)
     tiles = look.checker("Chequer", square=0.95, roughness=0.055,
                          dark=(0.009, 0.009, 0.011, 1.0),
                          pale=(0.520, 0.505, 0.480, 1.0))
@@ -2163,12 +2086,18 @@ def painted_hall(path):
                    pale, bevel=0.05, name="NewelPost")
 
     # --- columns in the far corners --------------------------------------
-    # Into the corners, and stopped below the roof. The capital sits at
-    # `top - radius*0.4` and is `radius*0.7` deep, so a column run to CEILING
-    # pushes it up through the beams -- which start 0.33 below the ceiling
-    # line and were being cut into.
+    # Touching the roof, and only just.
+    #
+    # `column` puts its capital at `top - radius*0.4` and makes it
+    # `radius*0.7` deep, so the capital's own top lands at `top - 0.05*radius`
+    # -- 40mm below `top` at this radius. The ceiling panel's underside is at
+    # CEILING + 0.60, and there is no beam over either corner (beams run at
+    # 2.5 m in x and 2.4 m in y; these stand at 9.0 and 22.85, between both),
+    # so `top` is CEILING + 0.64 and the capital arrives flush against the
+    # panel. Short of it and the column holds nothing up; past it and the
+    # capital comes through the ceiling, which is what the first pass did.
     for side in (-1, 1):
-        column(side * 9.35, DEEP - 1.05, FLOOR, CEILING - 0.46, 0.80, pale)
+        column(side * 9.0, DEEP - 1.15, FLOOR, CEILING + 0.64, 0.80, pale)
 
     # --- the painting ----------------------------------------------------
     VIEW_W, VIEW_H, VIEW_Z = 5.2, 4.4, 2.5
@@ -2190,29 +2119,23 @@ def painted_hall(path):
         look.block((dx, DEEP - 0.20, VIEW_Z + VIEW_H / 2 + dz), (w, 0.42, h),
                    gilt, bevel=0.07, name="Frame")
 
-    # --- a lantern over the middle of the floor ------------------------
-    brass = dressed("Brass", block_scale=2.0, wetness=0.35, mossy=False,
-                    seed=97, mortar=0.0, relief=0.5, specular=1.2,
-                    dark=(0.055, 0.036, 0.012, 1.0),
-                    tint=(0.310, 0.205, 0.062, 1.0))
-    chandelier(0.0, DEEP / 2, CEILING, brass,
-               look.glowing("Lamp", colour=(1.0, 0.720, 0.400, 1.0),
-                            strength=7.0),
-               drop=0.72, radius=1.70, height=1.45, bars=16, energy=4600)
-
     # --- and something that just came through -------------------------
     #
     # restore50's "Pigeon in Flight", CC-BY. Twelve and a half metres --
-    # two and a half times what it was, which is the point. Moved in from
-    # the wall as it grew: at this span from where it stood, the left wing
-    # would have been three metres inside the masonry.
+    # two and a half times what it was, which is the point.
+    #
+    # x = -3.3 is not taste, it is clearance. Yawed 25 degrees, an 11.2 m
+    # span reaches 5.07 m either side of centre, so anything left of
+    # -4.9 puts the wingtip inside a wall that stands at -10. And y went
+    # from 10.6 to 15.2 to sit it back by the picture it came out of
+    # rather than in front of the balcony.
     #
     # The model faces -Y with its wings on X, so the yaw is measured from
     # there: -25 degrees turns it across the room rather than straight down
     # it, which matters because a wing aimed at the lens has no width. The
     # position is not a guess -- a ray through the middle of the mark, taken
     # out to twelve metres, lands at (-6.6, 5.5).
-    borrowed("pigeon", (-5.0, 10.6, 6.55), 11.2,
+    borrowed("pigeon", (-3.3, 15.2, 6.10), 11.2,
              rotation=(math.radians(-9.0), math.radians(-19.0),
                        math.radians(-25.0)), name="Pigeon")
 
@@ -2226,6 +2149,34 @@ def painted_hall(path):
     for side in (-1, 1):
         look.point_light((side * 8.4, 7.0, 6.4), energy=900,
                          radius=0.45, color=(1.0, 0.615, 0.290))
+
+    # Two more over the landing, and much less orange than the sconces.
+    #
+    # Sampled off the frame the carpet came back at hue 19 degrees, value
+    # 0.187 -- a dark orange, which is what brown is. Neither half of that is
+    # the material's fault: the amber sconces carry the hue round toward
+    # orange before it ever reaches the eye, and nothing else was lighting
+    # the landing at all, so what did arrive was too dim to read as a colour.
+    # These are near-white, close, and only over the carpet. Weak, too:
+    # at 1250 the landing came back at value 0.705 and saturation 0.43,
+    # which is pink. A colour needs to be somewhere in the middle of
+    # the range to be a colour at all -- too dark is brown and too
+    # bright is white, and red has less room between the two than most.
+    #
+    # Low and well back, too. At (5.6, -4.4, 5.6) they were between the
+    # camera and the balustrade and lit its face: the rail stopped being
+    # a silhouette and became bright stone across the bottom of the
+    # frame. Dropped to the carpet's own height and pulled back to the
+    # lens, the rail is nine metres off instead of six and gets a
+    # quarter of what it was getting.
+    #
+    # And weak, with the carpet made brighter to compensate. The rail's
+    # brightness depends only on the lamp; the carpet's depends on the
+    # lamp AND its own colour, so trading energy for albedo keeps the red
+    # where it is and takes the spill off everything else.
+    for side in (-1, 1):
+        look.point_light((side * 5.6, -6.6, 4.70), energy=165,
+                         radius=0.8, color=(1.0, 0.815, 0.700))
 
     # Air, so the picture throws a shaft rather than just a pool.
     # Enough to carry a shaft, not enough to fill the room. At 0.010 the far
