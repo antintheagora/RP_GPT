@@ -243,6 +243,51 @@ def terrain(size=400.0, resolution=340, kind="hetero", height=34.0,
     return ground
 
 
+def vault_web(y_from, y_to, springing, radius, material, segments=34,
+              name="Vault"):
+    """The ceiling between the ribs.
+
+    There was not one. The vault was six free-standing transverse arches with
+    open sky-less black between them, on the theory -- written into this
+    scene's docstring -- that it would be *implied* by where the arches stop
+    being visible. That works while the arches are barely lit, and it stopped
+    working the moment the exposure went up: raise the light enough to read
+    the architecture and you also read that there is nothing behind it.
+
+    So what looks like floating stones in the vault is not one arch coming
+    apart. It is three different arches at 16, 18 and 22 metres, seen
+    overlapping through the gap where the ceiling should be.
+
+    A plain barrel, at the ribs' extrados so the ribs hang proud of it the
+    way a rib vault actually works.
+    """
+    verts, faces = [], []
+    for index in range(segments + 1):
+        angle = math.pi * index / segments
+        x = -radius * math.cos(angle)
+        z = springing + radius * math.sin(angle)
+        verts.append((x, y_from, z))
+        verts.append((x, y_to, z))
+    for index in range(segments):
+        a = index * 2
+        faces.append((a, a + 1, a + 3, a + 2))
+
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(verts, [], faces)
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    obj.data.materials.append(material)
+    for polygon in obj.data.polygons:
+        polygon.use_smooth = True
+    # Give it a wall thickness, so it is a ceiling rather than a film -- a
+    # single surface lit from one side leaks at every grazing angle.
+    solid = obj.modifiers.new("Solidify", "SOLIDIFY")
+    solid.thickness = 0.28
+    solid.offset = 1.0
+    return obj
+
+
 def monolith(x, y, height, width, material, lean=0.0, twist=0.0, z=0.0):
     """A standing slab. Bryce put these everywhere and so does this game."""
     return look.block((x, y, z + height / 2), (width, width * 0.62, height),
@@ -313,6 +358,11 @@ def undercroft(path, floor=True, render=True, groups=None,
         keep("Vault_Arches",
              arch(-3.0, 3.0, y, 3.62, stone, stones=17, thickness=0.34,
                   depth=0.62, fitted=fitted))
+
+    if fitted:
+        # Just inside the ribs' extrados (3.0 + 0.34/2 = 3.17), so the ribs
+        # stand proud of the web instead of z-fighting with it.
+        keep("Vault_Web", vault_web(-6.0, 17.4, 3.62, 3.15, stone))
 
     # Side walls, well back, so the arcade has something to be in front of.
     for x in (-7.4, 7.4):
