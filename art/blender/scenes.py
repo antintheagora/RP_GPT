@@ -2286,8 +2286,15 @@ def painted_hall(path):
     # centre -- so the range stands almost full height at the left of
     # the view, is a third of it in the middle, and has gone by the
     # right. Sky where it used to be.
+    #
+    # And down another 6.5 m, so what is left of it barely clears the
+    # near hill's own skyline. The horizon ray is at z -53.6 by the time
+    # it reaches a kilometre; peaks at -49.4 stand a quarter of a degree
+    # over it, which is about an eighth of the sky this window has. A
+    # range that fills the gap between the foreground and the sky is not
+    # depth, it is a second wall behind the first.
     terrain(size=1400, resolution=170, kind="hetero", height=6.0, seed=5.1,
-            offset=0.80, origin=(60, 1000, -65.0), material=turf,
+            offset=0.80, origin=(60, 1000, -71.5), material=turf,
             pass_at=110.0, pass_width=210.0, pass_depth=0.92)
 
     # One range, and it ends. The second one stood on the horizon and filled
@@ -2371,10 +2378,10 @@ def painted_hall(path):
     # does. Clarity 0.89 and spread 0.020 -- present, not in charge.
     look.block((0, DEEP + 0.42, VIEW_Z + VIEW_H / 2),
                (VIEW_W - 0.04, 0.012, VIEW_H - 0.04),
-               look.oil_film("Skin", tint=(0.560, 0.400, 0.980, 1.000),
+               look.oil_film("Skin", tint=(0.720, 0.190, 1.000, 1.000),
                              ripple=0.022, swirl=1.6, spread=0.052,
                              thickness=(280.0, 900.0), roughness=0.015,
-                             blend=0.32, clarity=0.55,
+                             blend=0.44, clarity=0.55,
                              eye=(1.48, 2.42), turns=2.1, seed=7.0),
                bevel=0.0, name="Skin")
 
@@ -2406,10 +2413,10 @@ def painted_hall(path):
     # above that is unreachable through this window, so the first one has to
     # already be the colour the sky is meant to be. It was 0.64/0.76/0.88,
     # which is what a sky fades to at the horizon and not what one looks like.
-    look.bryce_sky(bands=[(0.00, (0.215, 0.455, 0.900)),
-                          (0.07, (0.115, 0.335, 0.885)),
-                          (0.32, (0.045, 0.215, 0.800)),
-                          (1.00, (0.012, 0.075, 0.470))],
+    look.bryce_sky(bands=[(0.00, (0.075, 0.325, 0.945)),
+                          (0.07, (0.030, 0.205, 0.930)),
+                          (0.32, (0.012, 0.120, 0.840)),
+                          (1.00, (0.005, 0.045, 0.480))],
                    strength=1.20, bend=2.2,
                    # Cloud sits on a plane rather than on the dome, so near
                    # the horizon the cells crowd and foreshorten on their own
