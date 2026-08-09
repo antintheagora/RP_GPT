@@ -2363,9 +2363,10 @@ def painted_hall(path):
     # does. Clarity 0.89 and spread 0.020 -- present, not in charge.
     look.block((0, DEEP + 0.42, VIEW_Z + VIEW_H / 2),
                (VIEW_W - 0.04, 0.012, VIEW_H - 0.04),
-               look.oil_film("Skin", ripple=0.008, swirl=1.3, spread=0.020,
-                             thickness=(300.0, 880.0), roughness=0.010,
-                             blend=0.13, clarity=0.89, seed=7.0),
+               look.oil_film("Skin", ripple=0.022, swirl=1.6, spread=0.052,
+                             thickness=(280.0, 900.0), roughness=0.015,
+                             blend=0.32, clarity=0.55,
+                             eye=(1.48, 2.42), turns=2.1, seed=7.0),
                bevel=0.0, name="Skin")
 
     # --- light -----------------------------------------------------------

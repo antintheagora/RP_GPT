@@ -881,7 +881,8 @@ def glowing(name, colour=CANDLE, strength=25.0):
 
 def oil_film(name="Oil film", tint=(0.90, 0.95, 1.00, 1.00), ripple=0.055,
              swirl=2.2, spread=0.030, thickness=(240.0, 980.0),
-             roughness=0.055, blend=0.46, clarity=0.74, seed=0.0):
+             roughness=0.055, blend=0.46, clarity=0.74,
+             eye=(0.55, 2.05), turns=1.7, seed=0.0):
     """A membrane over an opening: translucent, rippling, and prismatic.
 
     Three things at once, and each needs a different mechanism.
@@ -909,6 +910,20 @@ def oil_film(name="Oil film", tint=(0.90, 0.95, 1.00, 1.00), ripple=0.055,
     `clarity` is how much of it simply lets the view through. High, and
     it has to be: the bending is the seasoning, not the dish.
 
+    `eye` and `turns` make it a whirlpool rather than an even sheet. `eye`
+    is the inner and outer radius of the fade, in metres across the panel:
+    inside the inner one the film is gone entirely and the view is as
+    sharp as an open hole, and by the outer one it is at full strength.
+    `turns` twists the ripple field about the middle by an angle that
+    grows as the radius shrinks, so the streaks wind inward and converge
+    on the clear centre.
+
+    The two work against each other on purpose. The twist is fiercest
+    exactly where the amplitude has faded to nothing, which is what a
+    drain looks like: the water turns fastest at the middle and the
+    surface there is flat and clear, and all the visible disturbance is
+    the ring around it being dragged.
+
     `blend` is how much of the oil is mixed over the prism. Most of the
     interest is in the refraction; the film is a wash over it.
 
@@ -921,11 +936,72 @@ def oil_film(name="Oil film", tint=(0.90, 0.95, 1.00, 1.00), ripple=0.055,
 
     coord = tree.nodes.new("ShaderNodeTexCoord")
     coord.location = (-1500, 0)
+    # Straight object coordinates, before any seed offset. The drain below
+    # measures distance from the middle of the panel, and the middle of the
+    # panel is where the object's own origin is -- shift the coordinates
+    # first and the centre of the whirlpool goes wherever the seed puts it,
+    # which at seed 7 was twenty-five metres off the picture and left the
+    # whole panel reading as rim.
+    raw = coord.outputs["Object"]
+
+    # --- the drain ------------------------------------------------------
+    #
+    # Radius across the face of the panel: flatten its thickness away and
+    # take the length of what is left, so this is distance from the middle of
+    # the picture and nothing else.
+    flat = tree.nodes.new("ShaderNodeVectorMath")
+    flat.location = (-1150, 480)
+    flat.operation = "MULTIPLY"
+    flat.inputs[1].default_value = (1.0, 0.0, 1.0)
+    tree.links.new(raw, flat.inputs[0])
+    span = tree.nodes.new("ShaderNodeVectorMath")
+    span.location = (-980, 480)
+    span.operation = "LENGTH"
+    tree.links.new(flat.outputs["Vector"], span.inputs[0])
+
+    # 0 at the middle, 1 by the rim. Everything the film does is scaled by it.
+    grip = tree.nodes.new("ShaderNodeMapRange")
+    grip.location = (-800, 560)
+    sock(grip, "From Min", eye[0])
+    sock(grip, "From Max", eye[1])
+    sock(grip, "To Min", 0.0)
+    sock(grip, "To Max", 1.0)
+    grip.clamp = True
+    tree.links.new(span.outputs["Value"], grip.inputs["Value"])
+
+    # And the twist, which runs the other way -- hardest at the middle.
+    wind = tree.nodes.new("ShaderNodeMapRange")
+    wind.location = (-800, 380)
+    sock(wind, "From Min", 0.0)
+    sock(wind, "From Max", eye[1])
+    sock(wind, "To Min", turns * math.tau)
+    sock(wind, "To Max", 0.0)
+    wind.clamp = True
+    tree.links.new(span.outputs["Value"], wind.inputs["Value"])
+
+    spin = tree.nodes.new("ShaderNodeVectorRotate")
+    spin.location = (-620, 440)
+    spin.rotation_type = "AXIS_ANGLE"
+    sock(spin, "Axis", (0.0, 1.0, 0.0))
+    sock(spin, "Center", (0.0, 0.0, 0.0))
+    tree.links.new(raw, spin.inputs["Vector"])
+    tree.links.new(wind.outputs["Result"], spin.inputs["Angle"])
+
+    # The seed offset goes on last, so it only moves the noise around
+    # and never the middle of the drain.
     mapping = tree.nodes.new("ShaderNodeMapping")
-    mapping.location = (-1320, 0)
+    mapping.location = (-440, 440)
     sock(mapping, "Location", (seed * 2.7, seed * 1.9, seed * 3.3))
-    tree.links.new(coord.outputs["Object"], mapping.inputs["Vector"])
+    tree.links.new(spin.outputs["Vector"], mapping.inputs["Vector"])
     coords = mapping.outputs["Vector"]
+
+    def scaled_by_grip(amount, location):
+        node = tree.nodes.new("ShaderNodeMath")
+        node.location = location
+        node.operation = "MULTIPLY"
+        node.inputs[1].default_value = amount
+        tree.links.new(grip.outputs["Result"], node.inputs[0])
+        return node.outputs["Value"]
 
     # --- the swim -------------------------------------------------------
     slow = _noise(tree, swirl, detail=5.0, roughness=0.55,
@@ -936,12 +1012,12 @@ def oil_film(name="Oil film", tint=(0.90, 0.95, 1.00, 1.00), ripple=0.055,
     tree.links.new(coords, quick.inputs["Vector"])
     heave = tree.nodes.new("ShaderNodeBump")
     heave.location = (-820, 160)
-    sock(heave, "Strength", 0.85)
+    tree.links.new(scaled_by_grip(0.85, (-980, 300)), heave.inputs["Strength"])
     sock(heave, "Distance", ripple)
     tree.links.new(out(slow, ("Fac", "Color")), heave.inputs["Height"])
     chop = tree.nodes.new("ShaderNodeBump")
     chop.location = (-620, 60)
-    sock(chop, "Strength", 0.40)
+    tree.links.new(scaled_by_grip(0.40, (-980, 120)), chop.inputs["Strength"])
     sock(chop, "Distance", ripple * 0.30)
     tree.links.new(out(quick, ("Fac", "Color")), chop.inputs["Height"])
     tree.links.new(heave.outputs["Normal"], chop.inputs["Normal"])
@@ -1003,16 +1079,33 @@ def oil_film(name="Oil film", tint=(0.90, 0.95, 1.00, 1.00), ripple=0.055,
     clear.location = (-300, -560)
     sock(clear, "Color", tint)
 
+    # Fully clear at the middle, `clarity` by the rim.
+    open_eye = tree.nodes.new("ShaderNodeMapRange")
+    open_eye.location = (-140, -420)
+    sock(open_eye, "From Min", 0.0)
+    sock(open_eye, "From Max", 1.0)
+    sock(open_eye, "To Min", 1.0)
+    sock(open_eye, "To Max", clarity)
+    tree.links.new(grip.outputs["Result"], open_eye.inputs["Value"])
+
     lens = tree.nodes.new("ShaderNodeMixShader")
     lens.location = (60, -160)
-    sock(lens, "Fac", clarity)
+    tree.links.new(open_eye.outputs["Result"], lens.inputs["Fac"])
     tree.links.new(stack, lens.inputs[1])
     tree.links.new(clear.outputs["BSDF"], lens.inputs[2])
 
-    blend_fac = blend
+    # No oil in the middle either -- the eye is meant to be a hole.
+    slick_fac = tree.nodes.new("ShaderNodeMapRange")
+    slick_fac.location = (60, -620)
+    sock(slick_fac, "From Min", 0.0)
+    sock(slick_fac, "From Max", 1.0)
+    sock(slick_fac, "To Min", 0.0)
+    sock(slick_fac, "To Max", blend)
+    tree.links.new(grip.outputs["Result"], slick_fac.inputs["Value"])
+
     blend = tree.nodes.new("ShaderNodeMixShader")
     blend.location = (300, 0)
-    sock(blend, "Fac", blend_fac)
+    tree.links.new(slick_fac.outputs["Result"], blend.inputs["Fac"])
     tree.links.new(lens.outputs["Shader"], blend.inputs[1])
     tree.links.new(slick.outputs["BSDF"], blend.inputs[2])
     tree.links.new(blend.outputs["Shader"], output.inputs["Surface"])
