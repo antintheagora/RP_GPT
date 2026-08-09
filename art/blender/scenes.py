@@ -553,6 +553,113 @@ def dead_tree(x, y, material, height=4.2, seed=0, z=0.0, limbs=5):
     return made
 
 
+def frond(base, aim, length, material, leaflets=13, seed=0, droop=0.42,
+          blade=0.62, name="Frond"):
+    """One palm leaf: a spine that bends over, and leaflets down both sides.
+
+    A frond drawn as a single tapering blade is a banana leaf. What reads as
+    a palm is the comb -- a run of narrow leaflets off a spine, thinning
+    toward the tip -- and it survives being small on screen where a smooth
+    outline does not.
+    """
+    rng = random.Random(seed)
+    made = []
+    point = Vector(base)
+    heading = Vector(aim).normalized()
+    step = length / leaflets
+    for index in range(leaflets):
+        travel = (index + 0.5) / leaflets
+        end = point + heading * step
+        middle = (point + end) / 2
+        spine = look.block(
+            tuple(middle), (0.055 * (1 - 0.6 * travel), step * 1.05,
+                            0.030 * (1 - 0.5 * travel)), material,
+            rotation=heading.to_track_quat("Y", "Z").to_euler(),
+            bevel=0.008, name=f"{name}Spine")
+        made.append(spine)
+        # Leaflets: longest a third of the way out, shortest at the tip.
+        reach = blade * math.sin(math.pi * min(1.0, 0.18 + travel * 0.92))
+        sideways = heading.cross(Vector((0, 0, 1)))
+        if sideways.length < 0.05:
+            sideways = Vector((1, 0, 0))
+        sideways.normalize()
+        for side in (-1, 1):
+            lean = (sideways * side * 0.86
+                    - Vector((0, 0, 0.36))
+                    + heading * rng.uniform(0.20, 0.46)).normalized()
+            bpy.ops.mesh.primitive_cone_add(
+                vertices=4, radius1=0.105, radius2=0.004, depth=reach,
+                location=tuple(middle + lean * reach / 2))
+            leaf = bpy.context.active_object
+            leaf.name = f"{name}Leaflet"
+            leaf.rotation_mode = "QUATERNION"
+            leaf.rotation_quaternion = lean.to_track_quat("Z", "Y")
+            leaf.scale = (1.0, 0.16, 1.0)
+            leaf.data.materials.append(material)
+            for polygon in leaf.data.polygons:
+                polygon.use_smooth = True
+            made.append(leaf)
+        point = end
+        heading = (heading - Vector((0, 0, droop / leaflets))).normalized()
+    return made
+
+
+def palm(x, y, trunk_material, leaf_material, height=8.0, lean=0.30,
+         fronds=9, seed=0, z=0.0, face=None):
+    """A coconut palm: a trunk that curves, and a crown that hangs.
+
+    The curve is the whole silhouette. A palm on a straight trunk reads as a
+    lamp post with a hat on, because every palm anybody has looked at leans
+    -- they grow toward the light and away from the wind, and a beach has
+    plenty of both.
+    """
+    rng = random.Random(seed)
+    made = []
+    heading = rng.uniform(0, math.tau) if face is None else face
+    tilt = Vector((math.cos(heading), math.sin(heading), 0.0))
+    point = Vector((x, y, z - 0.25))
+    segments = 10
+    for index in range(segments):
+        travel = index / segments
+        # The lean builds with height, so the trunk is an arc not a ramp.
+        direction = (Vector((0, 0, 1)) + tilt * lean * travel ** 1.4).normalized()
+        step = height / segments
+        end = point + direction * step
+        girth = 0.33 * (1.0 - 0.40 * travel)
+        bpy.ops.mesh.primitive_cone_add(
+            vertices=9, radius1=girth, radius2=girth * 0.93, depth=step * 1.06,
+            location=tuple((point + end) / 2))
+        drum = bpy.context.active_object
+        drum.name = "PalmTrunk"
+        drum.rotation_mode = "QUATERNION"
+        drum.rotation_quaternion = direction.to_track_quat("Z", "Y")
+        drum.data.materials.append(trunk_material)
+        for polygon in drum.data.polygons:
+            polygon.use_smooth = True
+        made.append(drum)
+        point = end
+    crown, top_aim = point, direction
+
+    for index in range(fronds):
+        angle = math.tau * index / fronds + rng.uniform(-0.22, 0.22)
+        outward = Vector((math.cos(angle), math.sin(angle),
+                          rng.uniform(0.34, 0.86)))
+        made += frond(crown + top_aim * 0.15, outward,
+                      height * rng.uniform(0.62, 0.84), leaf_material,
+                      leaflets=17, seed=seed * 31 + index,
+                      droop=rng.uniform(0.9, 1.6), blade=1.05)
+    # Coconuts, under the crown where they actually hang.
+    for index in range(rng.randint(3, 6)):
+        angle = rng.uniform(0, math.tau)
+        spot = crown + Vector((math.cos(angle) * rng.uniform(0.14, 0.34),
+                               math.sin(angle) * rng.uniform(0.14, 0.34),
+                               -rng.uniform(0.15, 0.42)))
+        made.append(look.sphere(tuple(spot), rng.uniform(0.10, 0.14),
+                                trunk_material, segments=14, rings=8,
+                                name="Coconut"))
+    return made
+
+
 def outcrop(x, y, size, material, seed=0, squat=0.55, z=0.0):
     """A weathered knob of rock, half buried.
 
@@ -1381,6 +1488,147 @@ def bone_flats(path):
     _finish(path, "bone_flats")
 
 
+def bright_shore(path):
+    """A beach, a palm, and the sea going out to the horizon.
+
+    The one scene here with a colour in it. Everything else in this file is
+    stone under weather; this is the opposite case, and it is built on a
+    different trick -- the sea is a *body* of water rather than a surface, so
+    the shallows and the deeps colour themselves out of the same shader.
+    """
+    look.wipe()
+    look.use_cycles(samples=460, volume_bounces=3)
+    look.view_transform("AgX", look="Medium High Contrast")
+
+    sand = dressed("Sand", block_scale=0.9, wetness=0.10, mossy=False,
+                   seed=71, mortar=0.0, relief=0.65,
+                   dark=(0.185, 0.140, 0.092, 1.0),
+                   tint=(0.640, 0.530, 0.375, 1.0))
+    reef = dressed("Reef rock", block_scale=0.35, wetness=0.55, mossy=False,
+                   seed=17, mortar=0.30, cracks=0.4,
+                   tint=(0.155, 0.140, 0.115, 1.0))
+    bark = dressed("Palm trunk", block_scale=2.6, wetness=0.10, mossy=False,
+                   seed=83, mortar=0.40, relief=0.95,
+                   tint=(0.165, 0.128, 0.088, 1.0))
+    leaf = look.foliage("Palm leaf", colour=(0.022, 0.082, 0.016, 1.0),
+                        under=(0.062, 0.150, 0.030, 1.0))
+    # 0.05, not 0.16. Looking along a lagoon rather than down into it, a ray
+    # crosses two metres of water at eighty degrees off the vertical, which
+    # is twenty-three metres of travel -- at 0.16 that leaves 3 per cent of
+    # the red and the shallows come back as dark as the deeps. Density has to
+    # be set for the path the camera actually takes through the water.
+    sea = look.sea_water("Lagoon", absorb=(0.05, 0.55, 0.45), density=2.0,
+                         glow=(0.26, 0.88, 0.86), turbidity=0.08,
+                         swell=0.030, chop=0.011, seed=2.0)
+
+    # Beach and seabed in one surface, because they are one surface. The
+    # waterline is wherever it crosses zero -- nothing places it, which means
+    # nothing can place it wrong.
+    def bed(along):
+        """How high the ground is, this far out. One function, so the rocks
+        can be put *on* the seabed rather than at zero -- which is where they
+        were, hanging at the surface like buoys."""
+        if along < 26.0:                       # dry sand, rising to the camera
+            height = (26.0 - along) * 0.030
+            # And a bluff behind it, for the camera to stand on. Nothing in
+            # frame -- it is under and behind the lens -- but the alternative
+            # is a camera floating twenty metres over a beach.
+            if along < -20.0:
+                height += (-20.0 - along) * 0.552
+            return height
+        if along < 230.0:                      # the shelf: turquoise water
+            return -(along - 26.0) * 0.016
+        if along < 380.0:
+            return -3.26 - (along - 230.0) * 0.115
+        return min(-20.5 - (along - 380.0) * 0.05, -20.5)
+
+    bpy.ops.mesh.primitive_grid_add(x_subdivisions=560, y_subdivisions=560,
+                                    size=1500, location=(0, 420, 0))
+    shore = bpy.context.active_object
+    shore.name = "Shore"
+    for vertex in shore.data.vertices:
+        along = vertex.co.y + 420.0
+        height = bed(along)
+        ripple = noise.hetero_terrain(
+            Vector((vertex.co.x * 0.004 + 3.1, along * 0.004 + 1.7, 0.4)),
+            0.85, 2.1, 6, 0.9)
+        # Sand bars where it is shallow, nothing where it is deep -- there is
+        # no light down there to read a ripple by.
+        vertex.co.z = height + ripple * (0.34 if height > -6.0 else 0.9)
+    shore.data.polygons.foreach_set("use_smooth", [True] * len(shore.data.polygons))
+    shore.data.update()
+    shore.data.materials.append(sand)
+    look.roughen(shore, amount=0.05, seed=4)
+
+    # The sea, as a solid. Its top is z=0 and its floor is below the seabed,
+    # so every ray that enters it travels the real depth before it comes back
+    # out -- which is the only way shallow and deep can differ.
+    bpy.ops.mesh.primitive_cube_add(size=16000, location=(0, 4000, -30))
+    body = bpy.context.active_object
+    body.name = "Sea"
+    body.scale.z = 60.0 / 16000.0
+    body.data.materials.append(sea)
+
+    # Coral heads standing off the shelf, which is what gives the flat water
+    # something to be flat around.
+    for index, (x, y, size, squat) in enumerate((
+            (-24.0, 74.0, 2.6, 0.55), (30.0, 112.0, 3.4, 0.42),
+            (-46.0, 168.0, 4.4, 0.38), (58.0, 214.0, 4.0, 0.50))):
+        outcrop(x, y, size, reef, seed=index * 9 + 5, squat=squat, z=bed(y))
+
+    # Two palms, both leaning out over the water the way they grow.
+    # 13 m and 9.5, because a coconut palm is 15 to 25 and the camera is
+    # seven metres up. At 7 m the crowns sat exactly on the horizon and read
+    # as shrubs -- height is relative to the lens, not to the ground.
+    palm(-19.0, 4.0, bark, leaf, height=13.5, lean=0.34, fronds=12, seed=3,
+         z=0.66, face=math.radians(66))
+    palm(15.0, 19.0, bark, leaf, height=10.5, lean=0.27, fronds=11, seed=8,
+         z=0.21, face=math.radians(116))
+    palm(-6.0, 20.0, bark, leaf, height=8.5, lean=0.40, fronds=10, seed=14,
+         z=0.18, face=math.radians(96))
+
+    # Driftwood and shells, so the sand is not an empty ramp.
+    beach = random.Random(55)
+    for index in range(14):
+        x = beach.uniform(-26.0, 26.0)
+        y = beach.uniform(-12.0, 24.0)
+        outcrop(x, y, beach.uniform(0.09, 0.32), reef,
+                seed=index * 6 + 41, squat=beach.uniform(0.4, 0.8), z=bed(y))
+
+    # Deeper than it looks like it should be. Most of what the sea shows is
+    # the sky reflected in it, so a pale sky makes a pale sea however the
+    # water itself is built -- the turquoise in the shallows only reads
+    # against a blue that is doing something.
+    look.bryce_sky(bands=[(0.00, (0.640, 0.740, 0.860)),
+                          (0.10, (0.300, 0.500, 0.810)),
+                          (0.40, (0.090, 0.265, 0.690)),
+                          (1.00, (0.022, 0.100, 0.430))],
+                   strength=1.25, bend=2.2,
+                   cloud_colour=(0.96, 0.96, 0.97), cloud_amount=0.50,
+                   cloud_scale=2.4, cloud_sharpness=(0.48, 0.70), seed=9.0)
+    # High and a little behind, because the turquoise only happens when the
+    # light is going down into the water rather than skidding off it.
+    look.sun((math.radians(38.0), 0, math.radians(-30.0)), energy=5.8,
+             angle=0.010, color=(1.0, 0.955, 0.870))
+    look.haze(size=17000, density=0.00008, colour=(0.55, 0.68, 0.80),
+              origin=(0, 4000, 80), height=520)
+
+    # Twenty-five metres up, on the headland, looking down into the lagoon.
+    #
+    # This is a Fresnel question and it decides the composition. Water only
+    # shows its colour where you look *into* it, and from eye height on the
+    # sand the near shelf is struck at 85 to 88 degrees off the vertical,
+    # where water reflects 60 to 85 per cent: the lagoon came back as a sheet
+    # of sky with rocks in it, three cameras running. From up here the same
+    # water is struck at 74 near the shore and 84 out at the drop-off, which
+    # reflects a sixth and a half -- so the turquoise is in the near lagoon
+    # and it fades to silver toward the horizon, which is exactly the
+    # gradient a tropical coast actually has.
+    look.camera((0.0, -46.0, 22.00), (6.0, 170.0, -4.0), lens=35)
+    look.view_transform("AgX", look="Medium High Contrast", exposure=1.00)
+    _finish(path, "bright_shore")
+
+
 def main():
     out = os.path.abspath(OUT)
     os.makedirs(out, exist_ok=True)
@@ -1401,6 +1649,7 @@ def main():
         "glass_waste": glass_waste,
         "hollow_king": hollow_king,
         "bone_flats": bone_flats,
+        "bright_shore": bright_shore,
     }
     wanted = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 

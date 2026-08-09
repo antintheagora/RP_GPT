@@ -100,7 +100,8 @@ def wipe():
     bpy.ops.wm.read_factory_settings(use_empty=True)
 
 
-def use_cycles(samples=256, transparent=False, denoise=True):
+def use_cycles(samples=256, transparent=False, denoise=True,
+               volume_bounces=0):
     """Cycles on the GPU if there is one, with the CPU roped in beside it."""
     scene = bpy.context.scene
     scene.render.engine = "CYCLES"
@@ -115,6 +116,15 @@ def use_cycles(samples=256, transparent=False, denoise=True):
     scene.cycles.diffuse_bounces = 6
     scene.cycles.glossy_bounces = 6
     scene.cycles.transmission_bounces = 8
+    # Volume bounces default to zero, and zero means a scattering volume can
+    # only ever take light away -- light that scatters is simply lost, never
+    # gathered. Every haze in this file has been running that way, which is
+    # fine for haze, where extinction is most of what you want. It is not
+    # fine for water: the turquoise of a lagoon is scattered light coming
+    # back up out of it, so at zero bounces the sea renders as clear glass
+    # over sand no matter what is dissolved in it. Off by default so the
+    # scenes built against it do not move.
+    scene.cycles.volume_bounces = volume_bounces
 
     prefs = bpy.context.preferences.addons.get("cycles")
     if not prefs:
@@ -340,7 +350,8 @@ def _crack_field(tree, coords, scale, width, seed_offset, location):
 def damp_stone(name="Damp stone", block_scale=7.0, wetness=0.55, coursed=False,
                mossy=True, seed=0, tint=None, mortar=1.0, world_space=False,
                cracks=0.0, puddling=0.0, grain_axis=None, grain=5.0,
-               relief=1.0, shade=1.0, displace=0.0, specular=None):
+               relief=1.0, shade=1.0, displace=0.0, specular=None,
+               dark=None):
     """Dark stone that has been underground a long time.
 
     `displace` cuts the cracks into the mesh instead of shading them, for
@@ -356,6 +367,11 @@ def damp_stone(name="Damp stone", block_scale=7.0, wetness=0.55, coursed=False,
     everything regardless of how dark it is, so a black road under a bright
     sky renders as a pale sheen and dropping its albedo does almost nothing
     -- measured, 2.6x less albedo moved the rendered value four per cent.
+
+    `dark` replaces the crevice colour. The default is near black, which is
+    right for stone underground and wrong for anything pale: sand mottled
+    down to 0.01 in its hollows reads as dirty grey, because most of what you
+    see of a rough surface is its hollows.
 
     `shade` scales the whole base ramp toward black. Both ends of it, which
     is the point: dropping only the light end leaves the crevices where they
@@ -469,7 +485,7 @@ def damp_stone(name="Damp stone", block_scale=7.0, wetness=0.55, coursed=False,
     def dim(colour):
         return tuple(channel * shade for channel in colour[:3]) + (colour[3],)
 
-    base = _ramp(tree, [(0.30, dim(STONE_DARK)),
+    base = _ramp(tree, [(0.30, dim(dark or STONE_DARK)),
                         (0.72, dim(tint or STONE_LIGHT))],
                  location=(-900, -280))
     tree.links.new(out(weather, ("Fac", "Color")), base.inputs["Fac"])
@@ -853,6 +869,121 @@ def glowing(name, colour=CANDLE, strength=25.0):
     sock(emission, "Color", colour)
     sock(emission, "Strength", strength)
     tree.links.new(emission.outputs["Emission"], output.inputs["Surface"])
+    return mat
+
+
+def sea_water(name="Sea", absorb=(0.07, 0.44, 0.46), density=0.085,
+              glow=(0.30, 0.86, 0.84), turbidity=0.16,
+              swell=0.028, chop=0.010, seed=0.0):
+    """Tropical water: a surface that refracts and a body that absorbs.
+
+    The colour is not painted on: the water has volume, and what is in it
+    does the colouring. A flat plane with a blue-green base colour cannot,
+    because the shallows and the deeps are then the same shader, and the
+    reason to put a beach in front of a sea is that they differ.
+
+    `density` does nearly all of it and `turbidity` nearly none, which was
+    not the plan. Suspended particles scattering light back up is the honest
+    account of why a lagoon glows, but measured here a scattering density of
+    1.5 -- on its own, with volume bounces on -- moved the rendered water by
+    0.015, which is noise, while absorption at 2.0 moved it by 0.10 and
+    turned it cyan. Whatever Cycles is doing with scattering inside a
+    refracting surface, it is not worth the samples. Absorption is doing the
+    work: it takes the red out over depth, and what comes back off the sand
+    is what is left.
+
+    Waves in two sizes and both stretched crossways, because swell arrives in
+    lines. Noise sampled round makes a rubber sheet with dimples in it.
+    """
+    mat, tree, bsdf, output = _new_material(name)
+    coord = tree.nodes.new("ShaderNodeTexCoord")
+    coord.location = (-1200, 0)
+    lines = tree.nodes.new("ShaderNodeMapping")
+    lines.location = (-1000, 0)
+    sock(lines, "Location", (seed * 3.1, seed * 2.3, 0.0))
+    sock(lines, "Scale", (1.0, 0.18, 1.0))
+    tree.links.new(coord.outputs["Generated"], lines.inputs["Vector"])
+
+    long_swell = _noise(tree, 220.0, detail=4.0, roughness=0.4,
+                        location=(-780, 140), distortion=0.5)
+    tree.links.new(lines.outputs["Vector"], long_swell.inputs["Vector"])
+    ripple = _noise(tree, 900.0, detail=6.0, roughness=0.5,
+                    location=(-780, -160), distortion=1.1)
+    tree.links.new(lines.outputs["Vector"], ripple.inputs["Vector"])
+
+    big = tree.nodes.new("ShaderNodeBump")
+    big.location = (200, -200)
+    sock(big, "Strength", 0.55)
+    sock(big, "Distance", swell)
+    tree.links.new(out(long_swell, ("Fac", "Color")), big.inputs["Height"])
+    small = tree.nodes.new("ShaderNodeBump")
+    small.location = (380, -300)
+    sock(small, "Strength", 0.30)
+    sock(small, "Distance", chop)
+    tree.links.new(out(ripple, ("Fac", "Color")), small.inputs["Height"])
+    tree.links.new(big.outputs["Normal"], small.inputs["Normal"])
+    tree.links.new(small.outputs["Normal"], bsdf.inputs["Normal"])
+
+    sock(bsdf, "Base Color", (1.0, 1.0, 1.0, 1.0))
+    sock(bsdf, ("Transmission Weight", "Transmission"), 1.0)
+    sock(bsdf, "Roughness", 0.02)
+    sock(bsdf, "Metallic", 0.0)
+    sock(bsdf, "IOR", 1.333)
+
+    absorption = tree.nodes.new("ShaderNodeVolumeAbsorption")
+    absorption.location = (560, -560)
+    sock(absorption, "Color", tuple(absorb) + (1.0,))
+    sock(absorption, "Density", density)
+    scatter = tree.nodes.new("ShaderNodeVolumeScatter")
+    scatter.location = (560, -740)
+    sock(scatter, "Color", tuple(glow) + (1.0,))
+    sock(scatter, "Density", turbidity)
+    # Forward-scattering, because that is what water does and it keeps the
+    # shallows from turning into flat fog.
+    sock(scatter, "Anisotropy", 0.45)
+    both = tree.nodes.new("ShaderNodeAddShader")
+    both.location = (760, -640)
+    tree.links.new(absorption.outputs["Volume"], both.inputs[0])
+    tree.links.new(scatter.outputs["Volume"], both.inputs[1])
+    tree.links.new(both.outputs["Shader"], output.inputs["Volume"])
+    return mat
+
+
+def foliage(name="Leaf", colour=(0.055, 0.190, 0.045, 1.0),
+            under=(0.140, 0.280, 0.070, 1.0), veins=0.35, seed=0.0):
+    """A leaf: green, uneven, and lit through as well as on.
+
+    Translucency is the whole thing. A leaf with an opaque diffuse shader is
+    a green card -- what says *leaf* is that the ones between you and the sun
+    are brighter than the ones facing you, because you are seeing the light
+    that went through them.
+    """
+    mat, tree, bsdf, _ = _new_material(name)
+    coord = tree.nodes.new("ShaderNodeTexCoord")
+    coord.location = (-1100, 0)
+    patchy = _noise(tree, 9.0, detail=6.0, roughness=0.6, location=(-880, 120),
+                    distortion=0.8)
+    tree.links.new(coord.outputs["Object"], patchy.inputs["Vector"])
+    shade = _ramp(tree, [(0.32, colour), (0.70, under)], location=(-640, 120))
+    tree.links.new(out(patchy, ("Fac", "Color")), shade.inputs["Fac"])
+    tree.links.new(out(shade, "Color"), bsdf.inputs["Base Color"])
+
+    grain = _noise(tree, 60.0, detail=5.0, roughness=0.5, location=(-880, -220))
+    tree.links.new(coord.outputs["Object"], grain.inputs["Vector"])
+    bump = tree.nodes.new("ShaderNodeBump")
+    bump.location = (200, -240)
+    sock(bump, "Strength", veins)
+    sock(bump, "Distance", 0.006)
+    tree.links.new(out(grain, ("Fac", "Color")), bump.inputs["Height"])
+    tree.links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
+
+    sock(bsdf, "Roughness", 0.46)
+    sock(bsdf, "Metallic", 0.0)
+    sock(bsdf, ("Specular IOR Level", "Specular"), 0.28)
+    # Thin and translucent rather than solid: light gets through a leaf.
+    sock(bsdf, "Subsurface Weight", 0.30)
+    sock(bsdf, "Subsurface Radius", (0.06, 0.11, 0.03))
+    sock(bsdf, "Subsurface Scale", 0.09)
     return mat
 
 
@@ -1512,7 +1643,7 @@ __all__ = [
     "WEAR", "worn_edge", "bryce_sky", "wedge",
     "wipe", "use_cycles", "view_transform", "render_to", "camera",
     "area_light", "point_light", "sun", "sock", "out",
-    "damp_stone", "rusted_iron", "heavy_cloth", "glowing", "scrying_glass", "sphere", "inp", "subdivide_adaptively", "still_water",
+    "damp_stone", "rusted_iron", "heavy_cloth", "glowing", "scrying_glass", "sphere", "inp", "sea_water", "foliage", "subdivide_adaptively", "still_water",
     "block", "roughen", "weather", "fog", "haze", "sky_gradient",
     "PITCH", "SOOT", "STONE_DARK", "STONE_LIGHT", "MOSS_DEEP", "MOSS_LIT",
     "RUST", "RUST_DEEP", "IRON", "BRASS", "CLOTH_OXBLOOD", "CANDLE",
