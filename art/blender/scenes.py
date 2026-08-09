@@ -243,6 +243,31 @@ def terrain(size=400.0, resolution=340, kind="hetero", height=34.0,
     return ground
 
 
+def jamb(x, y, top, material, width=0.34, depth=0.60, courses=6,
+         name="Jamb"):
+    """The upright an arch stands on, in courses, up to its springing.
+
+    An arch has to come from somewhere. The niche arch sprang at 2.05 metres
+    off the flat top of a slab and simply stopped there on both sides, so the
+    ring read as a shape drawn on the wall rather than as something built:
+    thirteen stones curving through the air with nothing under either end.
+
+    The last course is the impost -- wider, and proud of the rest -- because
+    the place where an upright stops being an upright and becomes an arch is
+    the one joint in the whole assembly you want to be able to see.
+    """
+    made = []
+    course = top / courses
+    for index in range(courses):
+        made.append(look.block(
+            (x, y, course * (index + 0.5)),
+            (width, depth, course), material, name=f"{name}{index}"))
+    made.append(look.block((x, y, top + 0.09),
+                           (width + 0.18, depth + 0.14, 0.18),
+                           material, name=f"{name}Impost"))
+    return made
+
+
 def vault_web(y_from, y_to, springing, radius, material, segments=34,
               name="Vault"):
     """The ceiling between the ribs.
@@ -372,10 +397,22 @@ def undercroft(path, floor=True, render=True, groups=None,
     # The altar at the end of the nave and its niche.
     keep("Wall_End",
          look.block((0, 17.6, 2.6), (9.0, 0.7, 5.6), stone, name="EastWall"))
-    keep("Niche", arch(-1.5, 1.5, 17.2, 2.05, stone, stones=13,
-                       thickness=0.30, depth=0.55, fitted=fitted))
-    keep("Niche", look.block((0, 17.2, 1.0), (3.0, 0.55, 2.1), stone,
-                             name="NicheBack"))
+    if fitted:
+        # A portal, not a shape on a wall. Two uprights carrying the ring
+        # down to the floor, the arch springing off their imposts, and the
+        # back of the niche pushed behind them so there is a recess for the
+        # candles to sit in rather than a slab flush with the stonework.
+        for x in (-1.5, 1.5):
+            keep("Niche", jamb(x, 17.20, 2.05, stone, width=0.34, depth=0.60))
+        keep("Niche", arch(-1.5, 1.5, 17.20, 2.23, stone, stones=13,
+                           thickness=0.34, depth=0.60, fitted=True))
+        keep("Niche", look.block((0, 17.44, 1.15), (2.9, 0.16, 2.3), stone,
+                                 name="NicheBack"))
+    else:
+        keep("Niche", arch(-1.5, 1.5, 17.2, 2.05, stone, stones=13,
+                           thickness=0.30, depth=0.55, fitted=fitted))
+        keep("Niche", look.block((0, 17.2, 1.0), (3.0, 0.55, 2.1), stone,
+                                 name="NicheBack"))
     keep("Altar", look.block((0, 16.2, 0.62), (3.4, 1.2, 1.15), stone,
                              name="Altar"))
     keep("Altar", look.block((0, 16.2, 1.26), (3.9, 1.5, 0.16), stone,
