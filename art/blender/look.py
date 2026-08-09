@@ -340,7 +340,7 @@ def _crack_field(tree, coords, scale, width, seed_offset, location):
 def damp_stone(name="Damp stone", block_scale=7.0, wetness=0.55, coursed=False,
                mossy=True, seed=0, tint=None, mortar=1.0, world_space=False,
                cracks=0.0, puddling=0.0, grain_axis=None, grain=5.0,
-               relief=1.0, shade=1.0, displace=0.0):
+               relief=1.0, shade=1.0, displace=0.0, specular=None):
     """Dark stone that has been underground a long time.
 
     `displace` cuts the cracks into the mesh instead of shading them, for
@@ -350,6 +350,12 @@ def damp_stone(name="Damp stone", block_scale=7.0, wetness=0.55, coursed=False,
     knee height -- the whole pattern reads as printed on. Needs geometry to
     move, so it does nothing at all unless the object is subdivided; see
     `subdivide_adaptively`.
+
+    `specular` overrides the Fresnel reflection, for flat surfaces the
+    camera sees edge-on. At grazing incidence a dielectric reflects nearly
+    everything regardless of how dark it is, so a black road under a bright
+    sky renders as a pale sheen and dropping its albedo does almost nothing
+    -- measured, 2.6x less albedo moved the rendered value four per cent.
 
     `shade` scales the whole base ramp toward black. Both ends of it, which
     is the point: dropping only the light end leaves the crevices where they
@@ -654,7 +660,8 @@ def damp_stone(name="Damp stone", block_scale=7.0, wetness=0.55, coursed=False,
 
     tree.links.new(colour_source, bsdf.inputs["Base Color"])
     sock(bsdf, "Metallic", 0.0)
-    sock(bsdf, ("Specular IOR Level", "Specular"), 0.4)
+    sock(bsdf, ("Specular IOR Level", "Specular"),
+         0.4 if specular is None else specular)
     return mat
 
 

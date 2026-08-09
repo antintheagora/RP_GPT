@@ -595,12 +595,14 @@ def ruined_road(start, end, material, width=5.8, slab=3.6, gap=0.35,
             if rng.random() < 0.16:
                 continue                     # a slab that is simply gone
             offset = width / 4 * side + rng.uniform(-0.10, 0.10)
-            # Nearly flush. The slab is 220mm thick and the lens is 620mm
-            # up, so a slab standing 150mm proud two metres away is a black
-            # plinth across the bottom of the frame -- which is exactly what
-            # the first pass built. What should show is the top face and a
-            # lip, not the side.
-            drop = -0.19 + rng.uniform(0.0, sink) - 0.02
+            # Proud enough to be a road, flush enough not to be a plinth.
+            #
+            # The slab is 220mm thick and the lens is 620mm up. At 150mm
+            # proud it was a black wall across the bottom of the frame; at
+            # -0.19 the median top surface sat 15mm *under* the dirt, so the
+            # road was mostly buried and what showed of it was edges. The
+            # top face wants to be the thing you see.
+            drop = -0.145 + rng.uniform(0.0, sink) - 0.02
             if rng.random() < 0.14:
                 drop -= rng.uniform(0.06, 0.20)   # one slab well under
             spot = centre + across * offset
@@ -1235,9 +1237,19 @@ def bone_flats(path):
     # A road, or the idea of one. It runs from under the lens out past the
     # rocks, which is the one line in the picture that says somebody used to
     # come here.
+    # Near black, and dark at both ends of the ramp rather than just the
+    # light one. Tinting alone leaves the crevices at the stone default,
+    # which is where a dark surface spends most of its area -- the road came
+    # out a shade of the dirt instead of a different material lying on it.
+    #
+    # How far down is a measured question, not a guessed one. At an albedo
+    # ten times under the hardpan's the slabs still rendered at 0.372 against
+    # the dirt's 0.451 -- 1.21x, which is a tone, not a contrast. AgX lifts
+    # a dark surface a long way, so the material has to go further than
+    # looks reasonable on paper to arrive anywhere near black on screen.
     roadbed = dressed("Roadbed", block_scale=0.55, wetness=0.05, mossy=False,
                       seed=63, mortar=0.70, cracks=1.5, relief=0.75,
-                      tint=(0.196, 0.178, 0.156, 1.0))
+                      shade=0.085, specular=0.05, tint=(0.068, 0.065, 0.070, 1.0))
     ruined_road((-3.4, -24.0), (11.5, 300.0), roadbed, seed=91)
 
     # Stones, close in. Everything else here starts twelve metres out, and a
