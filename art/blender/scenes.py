@@ -2523,7 +2523,7 @@ def painted_hall(path, mood="noon", view="balcony"):
     # the lens. Their paths cross at about fifty degrees. Two things moving
     # the same way in one picture read as one event; two things crossing read
     # as two, which is the whole reason for having both.
-    borrowed("panther", (1.0, 13.6, 0.02), 5.5,
+    borrowed("panther", (1.0, 13.6, 0.02), 9.0,
              rotation=(0.0, 0.0, math.radians(-25.0)), frame=247,
              name="Panther")
 
@@ -2626,7 +2626,13 @@ def painted_hall(path, mood="noon", view="balcony"):
         # without bending the room. From the top they close to about sixty
         # and both fit: measured, the rail's end lands 32 degrees off axis
         # against a 35-degree half frame, which puts it at the left edge.
-        look.camera((8.35, 0.60, 4.55), (-3.5, 12.0, 3.40), lens=26)
+        #
+        # Then back onto the landing and up, so the rail is something the
+        # lens looks *over* rather than past. Standing level with it, all
+        # that shows is the end post; from 700mm above it the balusters
+        # run across the bottom of the frame and the flight is still
+        # below them.
+        look.camera((8.70, -1.90, 5.35), (-3.2, 12.8, 2.90), lens=26)
     else:
         look.camera((0.0, -7.6, 6.55), (0.0, DEEP, 3.55), lens=30)
     look.view_transform("AgX", look="High Contrast",
