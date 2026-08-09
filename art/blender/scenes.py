@@ -2184,8 +2184,8 @@ def painted_hall(path):
 
     # --- something the size of a chandelier, being a chandelier --------
     #
-    # Hung to the right of the bird and at much the same depth, because
-    # that is the only place it does any work. An eleven-metre pigeon
+    # Centred on the room, at much the same depth as the bird, because
+    # depth is what makes it work as a ruler. An eleven-metre pigeon
     # fifteen metres off and an ordinary one three metres off project to
     # the same shape; what separates them is having something nearby
     # whose size nobody has to be told.
@@ -2193,7 +2193,7 @@ def painted_hall(path):
                     seed=97, mortar=0.0, relief=0.5, specular=1.2,
                     dark=(0.055, 0.036, 0.012, 1.0),
                     tint=(0.310, 0.205, 0.062, 1.0))
-    hoop_chandelier(3.9, 13.0, CEILING, brass,
+    hoop_chandelier(0.0, 12.5, CEILING, brass,
                     look.glowing("Candle", colour=(1.0, 0.660, 0.300, 1.0),
                                  strength=26.0),
                     drop=1.30, radius=1.05, candles=8, energy=1500)
@@ -2225,9 +2225,25 @@ def painted_hall(path):
     # going where the light lands, and there was nothing on the wall for it
     # to be coming out of anyway -- so the lamps are just gone and only what
     # they do is left.
-    for side in (-1, 1):
-        look.point_light((side * 8.4, 7.0, 6.4), energy=900,
-                         radius=0.45, color=(1.0, 0.615, 0.290))
+    look.point_light((8.4, 7.0, 6.4), energy=900,
+                     radius=0.45, color=(1.0, 0.615, 0.290))
+
+    # The left sconce moved up beside the bird, and it is the size cue.
+    #
+    # A shadow will not do it: the bird flies at 6.1 m under a 10.4 m
+    # ceiling, so any lamp in this room is only four metres above it and
+    # throws a shadow magnified two and a half times -- thirty metres of it,
+    # which is wider than the hall and reads as darkness rather than as a
+    # bird. Falloff does it instead. Put the lamp two metres off the near
+    # wingtip and the near wing is lit at two metres while the far one is
+    # lit at thirteen, so one is bright and the other is barely there. Light
+    # only falls off across an object when the object is large compared to
+    # its distance from the lamp, which is exactly the thing being claimed.
+    # Off the wall by two metres as well: at 8.7 it burned a hotspot on
+    # the plaster that was the brightest thing in the frame, and the eye
+    # went to the wall rather than to the wing it is lighting.
+    look.point_light((-7.6, 13.9, 7.9), energy=680,
+                     radius=0.38, color=(1.0, 0.615, 0.290))
 
     # Two more over the landing, and much less orange than the sconces.
     #
