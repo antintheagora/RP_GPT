@@ -775,6 +775,108 @@ def jungle_tree(x, y, trunk_material, leaf_material, height=14.0, girth=0.72,
     return made
 
 
+def wing(shoulder, span_dir, fore_dir, span, chord, material, sweep=0.34,
+         dihedral=0.30, droop=0.55, ribs=10, name="Wing"):
+    """One wing, as a planform rather than a shape.
+
+    Chord widest at the shoulder and tapering out, swept back along the way,
+    lifting then falling toward the tip. All four of those are what makes a
+    bird silhouette read as a bird -- a flat triangle stuck on a body reads
+    as a paper aeroplane, and a wing is only ever seen as a silhouette
+    anyway.
+    """
+    across = Vector(span_dir).normalized()
+    fore = Vector(fore_dir).normalized()
+    up = across.cross(fore).normalized()
+    verts, faces = [], []
+    for index in range(ribs + 1):
+        travel = index / ribs
+        lift = dihedral * span * travel - droop * span * travel ** 2.2
+        lead = (Vector(shoulder) + across * (span * travel)
+                - fore * (sweep * span * travel) + up * lift)
+        wide = chord * (1.0 - 0.66 * travel ** 1.15)
+        verts.append(tuple(lead))
+        verts.append(tuple(lead - fore * wide))
+        if index:
+            back = (index - 1) * 2
+            here = index * 2
+            faces.append((back, back + 1, here + 1, here))
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(verts, [], faces)
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    obj.data.materials.append(material)
+    for polygon in obj.data.polygons:
+        polygon.use_smooth = True
+    return obj
+
+
+def pigeon(location, facing, scale, body_material, wing_material,
+           beak_material=None, pitch=0.16, bank=0.0, name="Pigeon"):
+    """A pigeon in flight, at whatever size you like.
+
+    `scale` is the wingspan, because that is the measurement anybody has an
+    instinct for. Everything else is a fraction of it, so a six-metre bird is
+    the same bird as a thirty-centimetre one and not a differently-shaped
+    animal that happens to be large.
+    """
+    made = []
+    fore = Vector((math.cos(facing), math.sin(facing), 0.0)).normalized()
+    fore = (fore + Vector((0, 0, pitch))).normalized()
+    side = fore.cross(Vector((0, 0, 1))).normalized()
+    up = side.cross(fore).normalized()
+    if bank:
+        side = (side + up * bank).normalized()
+        up = side.cross(fore).normalized()
+    here = Vector(location)
+
+    body_len = scale * 0.42
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=1.0, segments=28, ring_count=16,
+                                         location=tuple(here))
+    body = bpy.context.active_object
+    body.name = name
+    body.rotation_mode = "QUATERNION"
+    body.rotation_quaternion = fore.to_track_quat("Y", "Z")
+    body.scale = (scale * 0.115, body_len / 2, scale * 0.125)
+    body.data.materials.append(body_material)
+    for polygon in body.data.polygons:
+        polygon.use_smooth = True
+    made.append(body)
+
+    neck = here + fore * body_len * 0.46 + up * scale * 0.045
+    head = neck + fore * scale * 0.075 + up * scale * 0.028
+    made.append(look.sphere(tuple(neck), scale * 0.072, body_material,
+                            segments=20, rings=12, name=name))
+    made.append(look.sphere(tuple(head), scale * 0.058, body_material,
+                            segments=20, rings=12, name=name))
+    bpy.ops.mesh.primitive_cone_add(
+        vertices=10, radius1=scale * 0.021, radius2=scale * 0.004,
+        depth=scale * 0.062,
+        location=tuple(head + fore * scale * 0.055 - up * scale * 0.006))
+    beak = bpy.context.active_object
+    beak.name = name
+    beak.rotation_mode = "QUATERNION"
+    beak.rotation_quaternion = fore.to_track_quat("Z", "Y")
+    beak.data.materials.append(beak_material or body_material)
+    for polygon in beak.data.polygons:
+        polygon.use_smooth = True
+    made.append(beak)
+
+    for hand in (-1, 1):
+        shoulder = here + side * hand * scale * 0.085 + up * scale * 0.055
+        made.append(wing(tuple(shoulder), side * hand, fore,
+                         scale * 0.46, scale * 0.34, wing_material,
+                         sweep=0.13, dihedral=0.34, droop=0.20,
+                         name=f"{name}Wing"))
+    # Tail: the same planform, short and wide, run out the back.
+    made.append(wing(tuple(here - fore * body_len * 0.44 - up * scale * 0.012),
+                     -fore, side, scale * 0.20, scale * 0.19, wing_material,
+                     sweep=-0.30, dihedral=0.04, droop=0.10, ribs=6,
+                     name=f"{name}Tail"))
+    return made
+
+
 def column(x, y, base, top, radius, material, sides=16, name="Column"):
     """A column with a foot and a head, because a bare cylinder is a pipe."""
     made = []
@@ -1965,7 +2067,7 @@ def painted_hall(path):
                    seed=44, mortar=0.45, relief=0.9,
                    dark=(0.010, 0.009, 0.008, 1.0),
                    tint=(0.055, 0.046, 0.036, 1.0))
-    carpet = look.heavy_cloth("Carpet", colour=(0.155, 0.016, 0.014, 1.0),
+    carpet = look.heavy_cloth("Carpet", colour=(0.062, 0.0055, 0.0050, 1.0),
                               seed=6)
     tiles = look.checker("Chequer", square=0.95, roughness=0.055,
                          dark=(0.009, 0.009, 0.011, 1.0),
@@ -2022,8 +2124,12 @@ def painted_hall(path):
                    pale, bevel=0.05, name="NewelPost")
 
     # --- columns in the far corners --------------------------------------
+    # Into the corners, and stopped below the roof. The capital sits at
+    # `top - radius*0.4` and is `radius*0.7` deep, so a column run to CEILING
+    # pushes it up through the beams -- which start 0.33 below the ceiling
+    # line and were being cut into.
     for side in (-1, 1):
-        column(side * 8.2, DEEP - 2.6, FLOOR, CEILING, 0.78, pale)
+        column(side * 9.35, DEEP - 1.05, FLOOR, CEILING - 0.46, 0.80, pale)
 
     # --- the painting ----------------------------------------------------
     VIEW_W, VIEW_H, VIEW_Z = 5.2, 4.4, 2.5
@@ -2045,16 +2151,41 @@ def painted_hall(path):
         look.block((dx, DEEP - 0.20, VIEW_Z + VIEW_H / 2 + dz), (w, 0.42, h),
                    gilt, bevel=0.07, name="Frame")
 
+    # --- and something that just came through -------------------------
+    #
+    # Six metres across, banking out of the picture and down the hall. It is
+    # lit almost entirely from behind by the thing it came out of, which is
+    # the point: a silhouette with a rim on it says "arrived from there"
+    # where a well-lit bird would just be a bird standing in a room.
+    slate = dressed("Pigeon", block_scale=3.0, wetness=0.34, mossy=False,
+                    seed=131, mortar=0.0, relief=0.45,
+                    dark=(0.028, 0.030, 0.040, 1.0),
+                    tint=(0.150, 0.163, 0.196, 1.0))
+    quill = dressed("Flight feather", block_scale=2.2, wetness=0.28,
+                    mossy=False, seed=137, mortar=0.0, relief=0.55,
+                    dark=(0.017, 0.018, 0.024, 1.0),
+                    tint=(0.098, 0.106, 0.130, 1.0))
+    horn = dressed("Beak", block_scale=4.0, wetness=0.30, mossy=False,
+                   seed=139, mortar=0.0, relief=0.4,
+                   dark=(0.060, 0.045, 0.040, 1.0),
+                   tint=(0.230, 0.180, 0.165, 1.0))
+    # Three-quarter, not head-on. A wing is a sheet: pointed at the lens it
+    # is a wire, and the first pass had the bird flying straight down the
+    # hall with two hairlines where its wings should be. Turned across the
+    # room it presents both of them.
+    pigeon((-1.1, 13.4, 5.30), math.radians(212.0), 6.1, slate, quill,
+           beak_material=horn, pitch=0.11, bank=0.26)
+
     # --- light -----------------------------------------------------------
     # Two sconces, warm and weak, only there to keep the corners from being
     # holes. Everything else in the room is lit by the picture.
+    # No bulbs. A visible source is a bright disc the eye goes to instead of
+    # going where the light lands, and there was nothing on the wall for it
+    # to be coming out of anyway -- so the lamps are just gone and only what
+    # they do is left.
     for side in (-1, 1):
-        look.point_light((side * 8.4, 7.0, 6.4), energy=1500,
-                         radius=0.35, color=(1.0, 0.72, 0.36))
-        look.sphere((side * 8.4, 7.0, 6.4), 0.20,
-                    look.glowing("Sconce", colour=(1.0, 0.66, 0.30, 1.0),
-                                 strength=16.0), segments=14, rings=8,
-                    name="Sconce")
+        look.point_light((side * 8.4, 7.0, 6.4), energy=1700,
+                         radius=0.45, color=(1.0, 0.545, 0.185))
 
     # Air, so the picture throws a shaft rather than just a pool.
     # Enough to carry a shaft, not enough to fill the room. At 0.010 the far
