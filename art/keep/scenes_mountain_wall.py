@@ -222,20 +222,13 @@ def candle(x, y, z, material, wax, height=0.26, energy=45):
 
 def terrain(size=400.0, resolution=340, kind="hetero", height=34.0,
             seed=0.0, offset=0.9, origin=(0, 0, 0), material=None,
-            keep_clear=0.0, pass_at=None, pass_width=800.0, pass_depth=0.8):
+            keep_clear=0.0):
     """Fractal ground.
 
     `hetero_terrain` erodes: flat valleys, ridges that rise out of them, which
     is what a weathered range looks like. `ridged` does the opposite and gives
     knife-edged spires. Both are the functions the era's landscape tools were
     actually built on, which is why they land in the right decade.
-
-    `pass_at` opens a way through. It scales the height down toward a given
-    world x, quadratically, so the range becomes undulations there rather
-    than stopping at a wall -- the difference between country you could walk
-    into and a backdrop painted across the end of it. `pass_depth` is how
-    much of the height goes at the middle of the corridor, `pass_width` how
-    far either side it reaches.
     """
     bpy.ops.mesh.primitive_grid_add(x_subdivisions=resolution,
                                     y_subdivisions=resolution,
@@ -263,13 +256,7 @@ def terrain(size=400.0, resolution=340, kind="hetero", height=34.0,
                 fade = (distance / keep_clear) ** 2
                 vertex.co.z = vertex.co.z * fade - (1 - fade) * origin[2]
                 continue
-        rise = height
-        if pass_at is not None:
-            across = abs(vertex.co.x + origin[0] - pass_at)
-            if across < pass_width:
-                ease = (across / pass_width) ** 2
-                rise = height * (1.0 - pass_depth * (1.0 - ease))
-        vertex.co.z += value * rise
+        vertex.co.z += value * height
     ground.data.polygons.foreach_set(
         "use_smooth", [True] * len(ground.data.polygons))
     ground.data.update()
@@ -1215,19 +1202,10 @@ def bone_flats(path):
     # on a number nobody has looked at, and 260 put peaks 880 m up: a wall of
     # spires from the top of the frame down to a third. Sized instead by what
     # they should subtend from 2.4 and 4.4 km, which is a few degrees each.
-    # Both open in the middle -- to hills, not to nothing. At 0.84 the near
-    # range kept a sixth of its height through the corridor, which at two
-    # kilometres is sixteen pixels of anything, and the way through stopped
-    # being a way through a range and became a gap where a range was not. The camera's own sight line reaches x = 20 at
-    # the near range and x = 40 at the far one, so the corridors sit there
-    # rather than on the world axis -- a way through that is not in front of
-    # you is a way through somebody else gets to use.
     terrain(size=2400, resolution=240, kind="hetero", height=50.0, seed=4.7,
-            offset=0.80, origin=(-260, 2400, -34), material=far_rock,
-            pass_at=20.0, pass_width=700.0, pass_depth=0.71)
+            offset=0.80, origin=(-260, 2400, -34), material=far_rock)
     terrain(size=3600, resolution=190, kind="hetero", height=110.0, seed=2.3,
-            offset=0.72, origin=(320, 4400, -70), material=far_rock,
-            pass_at=40.0, pass_width=1080.0, pass_depth=0.60)
+            offset=0.72, origin=(320, 4400, -70), material=far_rock)
 
     # Middle-distance rocks, so there is something between the weeds at your
     # feet and the mountains an hour's walk away.
