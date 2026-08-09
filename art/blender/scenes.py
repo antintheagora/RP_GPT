@@ -2265,7 +2265,49 @@ PAINTED_HALL_MOODS = {
 }
 
 
-def painted_hall(path, mood="noon", view="balcony", cutaway=False):
+#: The sky over the flats. Not a mood -- a different world.
+#:
+#: Bands run bottom to top, indexed by sin(elevation) raised to 1/bend, so
+#: everything below is the horizon and everything above is overhead. The
+#: order is the point: hot rose on the deck, through a violet nobody's
+#: atmosphere does, to a green-teal at the zenith. Skies go warm at the
+#: bottom and cold at the top and that much is kept, because a sky that
+#: breaks that rule reads as a mistake rather than as another planet. What
+#: is broken is which colours, and it is broken hard enough that nobody will
+#: think it is meant to be Tuesday afternoon.
+#: How hard the flats are lit. Every one of these was found by sweeping and
+#: measuring saturation, because every one of them was wrong by eye.
+#:
+#: AgX takes the colour out of anything bright, and that governs the whole
+#: variant: at sky 0.80 and sun 5.6 the dome measured luma 218 at saturation
+#: 0.019 -- white, whatever the bands said. A sky meant to be the wrong
+#: colour has to be dim enough to be a colour at all.
+#:
+#: Turning things off one at a time is what sorted out which was which.
+#: Cloud at 0.52 in near-white was worth half the wash on its own (sky
+#: saturation 0.07 against 0.14 with none). The haze was flattening the
+#: mountains rather than the sky -- spires 156 luma with it, 106 without, a
+#: range being erased instead of set back. And the sun was bleaching the
+#: ground: with it off the plain went from saturation 0.12 to 0.38, which is
+#: the difference between pale grit and red dirt.
+#:
+#: So: a low sun that models without bleaching, cloud kept but tinted to the
+#: horizon instead of white, and just enough haze to say six kilometres.
+FLATS_SKY_STRENGTH = 0.35
+FLATS_SUN = 0.9
+FLATS_CLOUD = 0.20
+FLATS_CLOUD_COLOUR = (0.72, 0.42, 0.46)
+FLATS_HAZE = 0.00004
+
+FLATS_SKY = [(0.00, (0.980, 0.400, 0.255)),
+             (0.09, (0.760, 0.255, 0.330)),
+             (0.26, (0.360, 0.150, 0.470)),
+             (0.55, (0.105, 0.185, 0.430)),
+             (1.00, (0.045, 0.330, 0.310))]
+
+
+def painted_hall(path, mood="noon", view="balcony", cutaway=False,
+                 beyond="white"):
     """A hall with a way out of it hanging on the far wall.
 
     Everything here is arranged around one idea: the picture is the only
@@ -2273,6 +2315,12 @@ def painted_hall(path, mood="noon", view="balcony", cutaway=False):
     chequer throws what reaches it back up at the ceiling, and the painting
     burns a hole in the far wall with daylight from somewhere else on the
     other side of it. Two sconces keep the corners from going to black.
+
+    `beyond` is what the cutaway opens onto: "white", or "flats" for a
+    cracked plain under a sky that is not the colour a sky is. The room's own
+    light does not change between them -- the wall and the roof are still
+    solid to every ray but the camera's either way -- so this is a change of
+    what is seen out there and not of how anything inside is lit.
 
     `cutaway` takes the left wall out of the picture and puts a colossal cat
     through the gap. Out of the picture, not out of the room: the wall is
@@ -2286,6 +2334,7 @@ def painted_hall(path, mood="noon", view="balcony", cutaway=False):
     look.use_cycles(samples=560, volume_bounces=2)
     look.view_transform("AgX", look="Medium High Contrast")
     lit = PAINTED_HALL_MOODS[mood]
+    flats = cutaway and beyond == "flats"
 
     FLOOR, LANDING, CEILING = 0.0, 3.60, 10.4
     HALL, DEEP = 10.0, 24.0
@@ -2395,6 +2444,9 @@ def painted_hall(path, mood="noon", view="balcony", cutaway=False):
                                bevel=0.0, name="SideWall"))
 
         # A shed over the outside, before any of it can be lit deliberately.
+        # None of this exists when there is a landscape out there: the shed,
+        # the panel and the cap are three ways of saying "nothing", and the
+        # flats say something instead.
         #
         # Cutting a wall out of a room does not put the far half of the cat
         # in the dark -- it puts it outdoors, under the same sky and the same
@@ -2410,8 +2462,9 @@ def painted_hall(path, mood="noon", view="balcony", cutaway=False):
         # closed on every side, and short of y 30 so it never shades the
         # hillside the picture is looking at. What lights the cat out there
         # is then exactly one lamp, which can be set to anything.
-        look.unseen(look.block((-22.2, 0.0, 2.5), (23.6, 60.0, 45.0),
-                               beam, bevel=0.0, name="OutsideShed"))
+        if not flats:
+            look.unseen(look.block((-22.2, 0.0, 2.5), (23.6, 60.0, 45.0),
+                                   beam, bevel=0.0, name="OutsideShed"))
 
         # Then white, and nothing else, behind all of it.
         #
@@ -2429,9 +2482,10 @@ def painted_hall(path, mood="noon", view="balcony", cutaway=False):
         # the picture that gets this far crosses at 75.4. So the panel ends
         # at 71, which is four metres clear on each side of a gap that is
         # nine metres wide and would not have been found by looking.
-        look.backdrop((-24.0, 32.5, 16.0), (60.0, 77.0),
-                      rotation=(0.0, math.radians(90.0), 0.0),
-                      strength=320.0, name="WhiteVoid")
+        if not flats:
+            look.backdrop((-24.0, 32.5, 16.0), (60.0, 77.0),
+                          rotation=(0.0, math.radians(90.0), 0.0),
+                          strength=320.0, name="WhiteVoid")
 
         # And a ceiling on the whole arrangement, because a hole in a roof
         # is a hole upward and a vertical panel cannot catch what goes
@@ -2445,8 +2499,9 @@ def painted_hall(path, mood="noon", view="balcony", cutaway=False):
         # picture's own sight lines cannot reach: they leave at about a
         # degree above horizontal, so they need nine hundred metres to climb
         # this high and the panel has stopped long before.
-        look.backdrop((-29.5, 30.0, 20.0), (61.0, 130.0),
-                      strength=320.0, name="WhiteAbove")
+        if not flats:
+            look.backdrop((-29.5, 30.0, 20.0), (61.0, 130.0),
+                          strength=320.0, name="WhiteAbove")
 
         # Nothing hangs under the beams any more -- the roof is cut above,
         # and what the cut opens onto is this same white field, which is why
@@ -2583,86 +2638,148 @@ def painted_hall(path, mood="noon", view="balcony", cutaway=False):
     # stops over anything indoors -- and past a point AgX takes the
     # green out along with the brightness, which is how grass ends up
     # sage.
-    turf = dressed("Hillside", block_scale=0.34, wetness=0.22,
-                   mossy=True, seed=53, mortar=0.0, relief=0.45,
-                   specular=0.10,
-                   dark=(0.005, 0.078, 0.003, 1.0),
-                   tint=(0.038, 0.480, 0.016, 1.0))
-    # Origin -9.3, not -3, and height 5 rather than 8. Measured, the
-    # first pass put the hill's median surface at z +14.3 while the
-    # sight line through the opening is at -1.9 by the time it gets
-    # there -- so the view went straight under the hill and out to a
-    # ridge 700 m away. `height` multiplies a fractal that runs past 3,
-    # which is the third time that has caught me in this file.
-    #
-    # Then flatter again. At height 5 the near peaks stood above the
-    # opening's upper sight line and shut the sky out entirely -- the
-    # window has to show a horizon, not a hillside, and a horizon needs
-    # the ground to stay under the line for the whole run out to it.
-    # Clouds as objects, because the procedural ones cannot reach here.
-    #
-    # `bryce_sky` samples its cloud field at X/Z and Y/Z with Z floored at
-    # 0.045 -- that floor is what stops the cells stretching to infinity at
-    # the horizon, and it is also why there is nothing to see through this
-    # window: every ray out of it leaves at under a degree, where Z is 0.010
-    # and the floor is already holding, so the field has no variation left to
-    # show. A sky that is mostly below its own floor needs real geometry.
-    #
-    # Small and far, per the brief: 11 to 23 m across at 480 to 1150 m,
-    # which is around a degree each -- a handful scattered over the
-    # opening rather than a lid across it. Twenty-four of them at 17 to
-    # 38 m closed the sky into an overcast, which is a different weather
-    # from the one asked for.
-    vapour = dressed("Cloud", block_scale=0.02, wetness=0.0, mossy=False,
-                     seed=61, mortar=0.0, relief=0.12, specular=0.04,
-                     dark=(0.880, 0.905, 0.955, 1.0),
-                     tint=(1.000, 1.000, 1.000, 1.0))
-    # And in the band the window can actually see. The opening's upper sight
-    # line is only +0.011 in slope, so at 500 m it has climbed to z +12 while
-    # the horizon ray has fallen to -24: everything above +12 out there is
-    # behind the head of the frame. The first pass put them at 6 to 34 and
-    # two thirds of them were hidden by masonry.
-    drift = random.Random(303)
-    for index in range(13):
-        outcrop(drift.uniform(-260.0, 260.0), drift.uniform(480.0, 1150.0),
-                drift.uniform(11.0, 23.0), vapour,
-                seed=index * 4 + 9, squat=drift.uniform(0.20, 0.32),
-                z=drift.uniform(-13.0, 4.0))
+    if flats:
+        # A plain, two ranges and some rocks, which between them is most of
+        # what the era's landscapes ever were.
+        #
+        # Materials straight off `bone_flats`: the same voronoi that cuts
+        # joints between masonry blocks cuts polygons into dried mud, and it
+        # is the one pattern everybody reads as ground that has not seen
+        # rain. The far rock is darker than the plain it stands behind, so a
+        # range arrives as a shape rather than as a brighter patch of the
+        # same dirt.
+        hardpan = dressed("Hardpan", block_scale=0.30, wetness=0.03,
+                          mossy=False, seed=41, mortar=0.42, cracks=1.05,
+                          displace=0.024, tint=(0.238, 0.170, 0.104, 1.0))
+        far_rock = dressed("Far rock", block_scale=0.02, wetness=0.04,
+                           mossy=False, seed=29, mortar=0.10,
+                           tint=(0.148, 0.110, 0.084, 1.0))
+        sandstone = dressed("Sandstone", block_scale=0.09, wetness=0.05,
+                            mossy=False, seed=13, mortar=0.22, cracks=0.45,
+                            tint=(0.255, 0.176, 0.112, 1.0))
 
-    # A second range, a kilometre out, and only its tops break the
-    # skyline -- a fifth of a degree of it. Depth is not one thing at a
-    # distance, it is two things at different distances with air in
-    # between, and until there was something behind the near hill there
-    # was nothing for the eye to measure that hill against.
-    #
-    # It runs down to nothing toward the right. `pass_at` at x=110 puts
-    # the collapse just off the right edge of what the window can see --
-    # at a kilometre the opening takes in about 84 m either side of
-    # centre -- so the range stands almost full height at the left of
-    # the view, is a third of it in the middle, and has gone by the
-    # right. Sky where it used to be.
-    #
-    # And down another 6.5 m, so what is left of it barely clears the
-    # near hill's own skyline. The horizon ray is at z -53.6 by the time
-    # it reaches a kilometre; peaks at -49.4 stand a quarter of a degree
-    # over it, which is about an eighth of the sky this window has. A
-    # range that fills the gap between the foreground and the sky is not
-    # depth, it is a second wall behind the first.
-    terrain(size=1400, resolution=170, kind="hetero", height=6.0, seed=5.1,
-            offset=0.80, origin=(60, 1000, -71.5), material=turf,
-            pass_at=110.0, pass_width=210.0, pass_depth=0.92)
+        # Nearly flat, and it has to be. `height` multiplies a fractal that
+        # runs past 3, so 0.55 is already relief of a metre and a half, and a
+        # metre and a half at forty metres is a horizon to a lens six metres
+        # up. The plain's job is to be the distance, not to have shape.
+        plain = terrain(size=6000, resolution=560, kind="hetero", height=0.55,
+                        seed=9.4, offset=0.92, origin=(-500, 500, -0.4),
+                        material=hardpan, keep_clear=90.0)
+        # `keep_clear` levels a terrain to world zero near the origin, and
+        # world zero is exactly where this room's floor is -- two surfaces in
+        # one plane, which renders as a shimmer along every tile they share.
+        # Down 80mm afterwards: under the slab, and under the cat's outdoor
+        # paws by less than a boot sole.
+        plain.location.z -= 0.08
 
-    # One range, and it ends. The second one stood on the horizon and filled
-    # the top half of the opening with rock, where the whole point of cutting
-    # a hole in a wall is that there is sky through it. Nothing past 295 m
-    # now, so above the near hill's own skyline there is only the dome.
-    # Down another eleven metres. Ray-sampled, the skyline sat 20% down
-    # the opening and the ask was half and half -- and the horizon in a
-    # window is set by how far *below* the sill the ground is, not by
-    # how far away it is. Push it further off and the horizon only
-    # climbs toward eye level; drop it and it falls where you want it.
-    terrain(size=260, resolution=220, kind="hetero", height=2.6, seed=17.3,
-            offset=0.86, origin=(0, 165, -17.5), material=turf)
+        # Fantastical, which in this toolkit means `ridged` -- the fractal
+        # that makes cones and knife edges instead of eroded valleys, and
+        # which is as close to the shape of the era's mountains as anything
+        # here gets.
+        #
+        # A terrain is a square about its origin, and that is the whole of
+        # what went wrong first time. Centred 900 m out at 2600 across, its
+        # near edge stood 400 m the *other* side of the building -- peaks
+        # ninety metres up at fifty metres away, filling a quarter of the
+        # frame and putting a mountain behind the picture. What matters is
+        # not where a range is centred but where its near edge lands, so
+        # these are sized and placed so the closest rock is a kilometre off.
+        terrain(size=4200, resolution=340, kind="ridged", height=95.0,
+                seed=4.7, offset=0.86, origin=(-3000, 2600, -80),
+                material=far_rock)
+        # And an eroded one behind it at six kilometres. Depth is not one
+        # range, it is two at different distances with air between them.
+        terrain(size=7000, resolution=220, kind="hetero", height=200.0,
+                seed=2.3, offset=0.74, origin=(-6500, 5000, -260),
+                material=far_rock)
+
+        # Something to stop the eye between the cracks at the threshold and
+        # the mountains an hour away.
+        for index, (x, y, size, squat) in enumerate((
+                (-70.0, 40.0, 9.0, 0.55), (-150.0, 130.0, 17.0, 0.48),
+                (-270.0, 280.0, 32.0, 0.52), (-46.0, -30.0, 7.0, 0.62))):
+            outcrop(x, y, size, sandstone, seed=index * 7 + 3, squat=squat)
+    else:
+        turf = dressed("Hillside", block_scale=0.34, wetness=0.22,
+                       mossy=True, seed=53, mortar=0.0, relief=0.45,
+                       specular=0.10,
+                       dark=(0.005, 0.078, 0.003, 1.0),
+                       tint=(0.038, 0.480, 0.016, 1.0))
+        # Origin -9.3, not -3, and height 5 rather than 8. Measured, the
+        # first pass put the hill's median surface at z +14.3 while the
+        # sight line through the opening is at -1.9 by the time it gets
+        # there -- so the view went straight under the hill and out to a
+        # ridge 700 m away. `height` multiplies a fractal that runs past 3,
+        # which is the third time that has caught me in this file.
+        #
+        # Then flatter again. At height 5 the near peaks stood above the
+        # opening's upper sight line and shut the sky out entirely -- the
+        # window has to show a horizon, not a hillside, and a horizon needs
+        # the ground to stay under the line for the whole run out to it.
+        # Clouds as objects, because the procedural ones cannot reach here.
+        #
+        # `bryce_sky` samples its cloud field at X/Z and Y/Z with Z floored at
+        # 0.045 -- that floor is what stops the cells stretching to infinity at
+        # the horizon, and it is also why there is nothing to see through this
+        # window: every ray out of it leaves at under a degree, where Z is 0.010
+        # and the floor is already holding, so the field has no variation left to
+        # show. A sky that is mostly below its own floor needs real geometry.
+        #
+        # Small and far, per the brief: 11 to 23 m across at 480 to 1150 m,
+        # which is around a degree each -- a handful scattered over the
+        # opening rather than a lid across it. Twenty-four of them at 17 to
+        # 38 m closed the sky into an overcast, which is a different weather
+        # from the one asked for.
+        vapour = dressed("Cloud", block_scale=0.02, wetness=0.0, mossy=False,
+                         seed=61, mortar=0.0, relief=0.12, specular=0.04,
+                         dark=(0.880, 0.905, 0.955, 1.0),
+                         tint=(1.000, 1.000, 1.000, 1.0))
+        # And in the band the window can actually see. The opening's upper sight
+        # line is only +0.011 in slope, so at 500 m it has climbed to z +12 while
+        # the horizon ray has fallen to -24: everything above +12 out there is
+        # behind the head of the frame. The first pass put them at 6 to 34 and
+        # two thirds of them were hidden by masonry.
+        drift = random.Random(303)
+        for index in range(13):
+            outcrop(drift.uniform(-260.0, 260.0), drift.uniform(480.0, 1150.0),
+                    drift.uniform(11.0, 23.0), vapour,
+                    seed=index * 4 + 9, squat=drift.uniform(0.20, 0.32),
+                    z=drift.uniform(-13.0, 4.0))
+
+        # A second range, a kilometre out, and only its tops break the
+        # skyline -- a fifth of a degree of it. Depth is not one thing at a
+        # distance, it is two things at different distances with air in
+        # between, and until there was something behind the near hill there
+        # was nothing for the eye to measure that hill against.
+        #
+        # It runs down to nothing toward the right. `pass_at` at x=110 puts
+        # the collapse just off the right edge of what the window can see --
+        # at a kilometre the opening takes in about 84 m either side of
+        # centre -- so the range stands almost full height at the left of
+        # the view, is a third of it in the middle, and has gone by the
+        # right. Sky where it used to be.
+        #
+        # And down another 6.5 m, so what is left of it barely clears the
+        # near hill's own skyline. The horizon ray is at z -53.6 by the time
+        # it reaches a kilometre; peaks at -49.4 stand a quarter of a degree
+        # over it, which is about an eighth of the sky this window has. A
+        # range that fills the gap between the foreground and the sky is not
+        # depth, it is a second wall behind the first.
+        terrain(size=1400, resolution=170, kind="hetero", height=6.0, seed=5.1,
+                offset=0.80, origin=(60, 1000, -71.5), material=turf,
+                pass_at=110.0, pass_width=210.0, pass_depth=0.92)
+
+        # One range, and it ends. The second one stood on the horizon and filled
+        # the top half of the opening with rock, where the whole point of cutting
+        # a hole in a wall is that there is sky through it. Nothing past 295 m
+        # now, so above the near hill's own skyline there is only the dome.
+        # Down another eleven metres. Ray-sampled, the skyline sat 20% down
+        # the opening and the ask was half and half -- and the horizon in a
+        # window is set by how far *below* the sill the ground is, not by
+        # how far away it is. Push it further off and the horizon only
+        # climbs toward eye level; drop it and it falls where you want it.
+        terrain(size=260, resolution=220, kind="hetero", height=2.6, seed=17.3,
+                offset=0.86, origin=(0, 165, -17.5), material=turf)
     # The frame, four members rather than a slab with a hole in it.
     for dx, dz, w, h in ((0, VIEW_H / 2 + 0.28, VIEW_W + 1.12, 0.56),
                          (0, -VIEW_H / 2 - 0.28, VIEW_W + 1.12, 0.56),
@@ -2934,9 +3051,15 @@ def painted_hall(path, mood="noon", view="balcony", cutaway=False):
         # body is a change of light rather than a join between two different
         # cats -- and the far half is the half that gets printed against
         # white, so every stop it gains is contrast the shirt loses.
-        look.unseen(look.area_light((-20.0, -12.0, 14.0), (-16.0, 9.0, 4.5),
-                                    energy=5200, size=18,
-                                    color=(1.000, 0.975, 0.940)))
+        # Only when there is nothing out there. With the flats the sky and
+        # the sun light that half of the cat, which is what is supposed to
+        # light something standing outdoors, and this lamp would be a second
+        # sun coming from the wrong place.
+        if not flats:
+            look.unseen(look.area_light((-20.0, -12.0, 14.0),
+                                        (-16.0, 9.0, 4.5),
+                                        energy=5200, size=18,
+                                        color=(1.000, 0.975, 0.940)))
 
         # And a fill on the near corner, which was the one part of this frame
         # nothing reached. Warm, soft, out of frame and out of the floor's
@@ -2973,7 +3096,8 @@ def painted_hall(path, mood="noon", view="balcony", cutaway=False):
     # room would make of it. Eleven metres of bird across a floor whose tiles
     # are just under two.
     look.sun((math.radians(lit["sun"][0]), 0, math.radians(lit["sun"][1])),
-             energy=lit["sun"][2], angle=0.006, color=lit["sun"][3])
+             energy=FLATS_SUN if flats else lit["sun"][2],
+             angle=0.006, color=lit["sun"][3])
 
     # Whatever else this mood wants burning in the room.
     for x, y, z, energy, colour in lit["sconces"]:
@@ -2993,15 +3117,24 @@ def painted_hall(path, mood="noon", view="balcony", cutaway=False):
     # above that is unreachable through this window, so the first one has to
     # already be the colour the sky is meant to be. It was 0.64/0.76/0.88,
     # which is what a sky fades to at the horizon and not what one looks like.
-    look.bryce_sky(bands=lit["sky"],
-                   strength=lit["sky_strength"], bend=2.2,
+    look.bryce_sky(bands=FLATS_SKY if flats else lit["sky"],
+                   strength=FLATS_SKY_STRENGTH if flats else lit["sky_strength"],
+                   bend=2.5 if flats else 2.2,
                    # Cloud sits on a plane rather than on the dome, so near
                    # the horizon the cells crowd and foreshorten on their own
                    # -- about eight of them across this opening at scale 2.8,
                    # which is small enough to read as distance without
                    # dissolving into noise at the size the window is.
-                   cloud_colour=(0.98, 0.98, 0.99), cloud_amount=0.66,
-                   cloud_scale=2.8, cloud_sharpness=(0.44, 0.60), seed=11.0)
+                   # Bigger and fewer over the flats, because there the
+                   # sky is most of the picture rather than a slot in a wall
+                   # -- and tinted, since a white cloud under a rose horizon
+                   # is a cloud from a different sky.
+                   cloud_colour=FLATS_CLOUD_COLOUR if flats
+                   else (0.98, 0.98, 0.99),
+                   cloud_amount=FLATS_CLOUD if flats else 0.66,
+                   cloud_scale=1.1 if flats else 2.8,
+                   cloud_sharpness=(0.40, 0.66) if flats else (0.44, 0.60),
+                   seed=11.0)
 
     # There is no lamp behind the opening any more, and there should not be.
     # A point source behind a rippled film beads into a dozen images of
@@ -3032,8 +3165,29 @@ def painted_hall(path, mood="noon", view="balcony", cutaway=False):
     # took the green out of everything equally, which is not distance,
     # it is weather. The near hill has to keep its colour for the far
     # one losing its to mean anything.
-    look.haze(size=1520, density=0.00030, colour=(0.60, 0.71, 0.86),
-              origin=(0, 800, 40.0), height=300.0)
+    # Over the flats it has to be bigger and it has to sit the other way:
+    # the ranges are out to -X, not up +Y, and air that is not between you
+    # and a mountain does nothing for it. Tinted to the horizon rather than
+    # to blue, because aerial perspective is the sky's colour arriving in
+    # front of things.
+    if flats:
+        # And it must not contain the camera. `haze` is a box, and a box
+        # centred 1200 m out at 5200 across reaches back past the lens --
+        # so every ray in the picture, including the ones going straight up,
+        # crossed kilometres of fog before it got anywhere. Swept, the sky
+        # came back at saturation 0.02 to 0.04 whatever the bands said and
+        # whatever the sun did, because what was being measured was not the
+        # sky, it was the fog in front of it.
+        #
+        # Near edge at x -600, which is well beyond the building, and the
+        # density down to a third: aerial perspective is the difference
+        # between a range at one kilometre and a range at six, not a veil
+        # over the whole frame.
+        look.haze(size=4000, density=FLATS_HAZE, colour=(0.86, 0.52, 0.44),
+                  origin=(-2600, 1800, 60.0), height=520.0)
+    else:
+        look.haze(size=1520, density=0.00030, colour=(0.60, 0.71, 0.86),
+                  origin=(0, 800, 40.0), height=300.0)
 
     if view == "stair":
         # Part way down the right-hand flight, looking back across the room.
@@ -3073,7 +3227,7 @@ def painted_hall(path, mood="noon", view="balcony", cutaway=False):
                         exposure=lit["exposure"])
     stem = "painted_hall" if mood == "noon" else f"painted_hall_{mood}"
     if cutaway:
-        stem += "_cutaway"
+        stem += "_flats" if flats else "_cutaway"
     _finish(path, stem if view == "balcony" else f"{stem}_{view}")
 
 
@@ -3109,6 +3263,10 @@ def main():
     jobs["painted_hall_cutaway"] = lambda p: painted_hall(p, cutaway=True)
     jobs["painted_hall_cutaway_stair"] = (
         lambda p: painted_hall(p, view="stair", cutaway=True))
+    jobs["painted_hall_flats"] = (
+        lambda p: painted_hall(p, cutaway=True, beyond="flats"))
+    jobs["painted_hall_flats_stair"] = (
+        lambda p: painted_hall(p, view="stair", cutaway=True, beyond="flats"))
     wanted = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 
     # `save` writes .blend files instead of PNGs, for the named scenes.
