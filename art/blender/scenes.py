@@ -2298,6 +2298,9 @@ FLATS_SUN = 0.9
 FLATS_CLOUD = 0.20
 FLATS_CLOUD_COLOUR = (0.72, 0.42, 0.46)
 FLATS_HAZE = 0.00004
+#: Daylight inside the box behind the picture.
+FLATS_DIORAMA = 3000.0
+
 #: How bright the painted view burns. Same rule as the sky: bright is white.
 #: Swept 3.4 down to 0.6 -- the hills went 155 luma at saturation 0.19 to 120
 #: at 0.27, and the room floor did not move by two points across the whole
@@ -2672,7 +2675,12 @@ def painted_hall(path, mood="noon", view="balcony", cutaway=False,
         # runs past 3, so 0.55 is already relief of a metre and a half, and a
         # metre and a half at forty metres is a horizon to a lens six metres
         # up. The plain's job is to be the distance, not to have shape.
-        plain = terrain(size=6000, resolution=560, kind="hetero", height=0.55,
+        # 0.18, not 0.55. `keep_clear` only levels the ninety metres nearest
+        # the origin; past that the fractal runs free, and at 0.55 it lifted
+        # the dirt to a metre and a half -- through the lawn in the box
+        # behind the picture, which showed as a strip of desert along the
+        # bottom of the frame. Flatlands anyway.
+        plain = terrain(size=6000, resolution=560, kind="hetero", height=0.18,
                         seed=9.4, offset=0.92, origin=(-500, 500, -0.4),
                         material=hardpan, keep_clear=90.0)
         # `keep_clear` levels a terrain to world zero near the origin, and
@@ -2710,44 +2718,116 @@ def painted_hall(path, mood="noon", view="balcony", cutaway=False,
                 (-270.0, 280.0, 32.0, 0.52), (-46.0, -30.0, 7.0, 0.62))):
             outcrop(x, y, size, sandstone, seed=index * 7 + 3, squat=squat)
 
-        # The picture keeps its green hills and its blue sky, and in this
-        # variant it keeps them by being a picture again.
+        # The picture keeps its green hills and its blue sky, and it keeps
+        # them as real ground under a real sky -- a second world, standing in
+        # the space behind the far wall.
         #
-        # It is worth writing down why, because two goes at real geometry
-        # both failed the same way. The frame looks +Y and the missing wall
-        # looks -X and +Y, so from any one lens they are working the same
-        # half of the world. One world sky cannot be blue through the frame
-        # and violet through the wall; and worse, the plain is at z 0, so
-        # the frame's own sight line -- which used to fall for three hundred
-        # metres before it met a hillside at -17.5 -- now meets dirt at
-        # ninety. Ray-swept with a hill raised onto the plain and a sky panel
-        # behind it, the panel took no rays at all: the plain had already
-        # buried both.
+        # Why there is room for one, which is not obvious. A sight line out
+        # through the missing wall travels leftward and goes on travelling
+        # leftward; straight lines do not turn corners, so it can never come
+        # back to look behind the far wall. Anything tucked back there is
+        # invisible from the cutaway by construction rather than by careful
+        # placement.
         #
-        # The ways out were a hole in the plain, which a fractal grid does
-        # not have, or standing the building on a mesa with the flats
-        # dropping away below it, which is a different picture from the one
-        # asked for. So: the opening is filled again, with the emissive view
-        # this file has always had a helper for. Green below, blue above,
-        # cloud, and the horizon at half height where it was put. It still
-        # lights the room through the frame, which is the part that mattered
-        # -- a painting lit by the room is a painting, and a painting
-        # lighting the room is a way out of it.
-        look.block((0, DEEP + 0.92, VIEW_Z + VIEW_H / 2),
-                   (VIEW_W - 0.04, 0.4, VIEW_H - 0.04),
-                   look.window_light("Painted view",
-                                     # Darker than a sky "is", because at
-                                     # strength 1.2 the old 0.945 blue came
-                                     # out past 1.0 in radiance and clipped
-                                     # to white -- measured 226 luma at
-                                     # saturation 0.06, which is a cloud.
-                                     # A third of that stays blue.
+        # Swept, the empty wedge between what the frame wants and what the
+        # wall already sees runs 14 m at forty metres out, 20 at sixty, 30 at
+        # ninety. Shared between both lenses it closes at about ninety,
+        # because the stair's frame reaches further left than the balcony's
+        # wall does. Forty metres deep sits well inside that, with 13 m to
+        # spare on the tighter of the two.
+        #
+        # It needs no walls. The frame's cone never leaves the volume the
+        # ground and the backdrop already cover, so a floor and a sky are the
+        # whole box.
+        #
+        # The ground goes *above* the flats, not below. The plain is at z 0
+        # and runs straight through this space; a diorama floor beneath it
+        # would simply be buried, which is exactly how the two earlier
+        # attempts failed. At 1.4 it covers the dirt instead.
+        # Low, because `height` multiplies a fractal that runs past 3 and the
+        # horizon in the frame is wherever this ground stops. At base 1.4 and
+        # height 0.8 the grass came out at z 3.5 to 4.0 and filled four fifths
+        # of the opening; the sight line through the middle of the frame wants
+        # to graze it at about 1.7.
+        # And it is a strip laid down the frame's own sight line, not a
+        # square. Two things force that.
+        #
+        # A grid is a square about its origin, so the first one -- 90 across,
+        # centred on y 46 -- began at y 1, which is inside the hall and above
+        # its floor. That render came back with the chequer turfed over.
+        #
+        # Then a square starting past the wall still failed, because the
+        # wedge it has to live in is a wedge: at forty metres out the wall's
+        # sight lines have already reached x -15, while at ninety they are
+        # only at -31. Any square wide enough to hold the frame's cone at the
+        # far end pokes into the wall's view at the near end, which is the
+        # green sliver that turned up on the flats.
+        #
+        # So: a long, narrow strip, rotated onto the line from the lens
+        # through the middle of the frame, and per lens because that line is
+        # a different line from each. Thirty across against a gap that never
+        # closes below twenty, and seventy long, which is enough for the
+        # lowest ray through the frame -- it does not reach this height until
+        # thirty-odd metres out -- to land on grass rather than on the edge.
+        eye_xy = (8.70, -1.90) if view == "stair" else (0.0, -7.6)
+        reach = math.hypot(-eye_xy[0], DEEP + 0.4 - eye_xy[1])
+        step_x = (-eye_xy[0]) / reach
+        step_y = (DEEP + 0.4 - eye_xy[1]) / reach
+        turn = math.atan2(-step_x, step_y)
+
+        def down_the_view(distance):
+            """A point that far past the frame, along the frame's own line."""
+            return (eye_xy[0] + step_x * (reach + distance),
+                    eye_xy[1] + step_y * (reach + distance))
+
+        # Centred 41 m out, and both ends of that are constrained.
+        #
+        # Rotated onto the stair's line, a strip centred at 35 swings its
+        # near corner back to y 21.6 -- inside the hall, three metres in
+        # front of the far wall -- and 4% of that frame came back as a patch
+        # of lawn indoors. Pushed to 45 the corner cleared the building but
+        # the *far* corner of the leading edge then started at y 36.7, and
+        # the lowest ray through the frame is down to lawn height by 34.7:
+        # it passed under the edge and landed on desert, which showed as a
+        # strip of dirt along the bottom of the picture. 41 clears the
+        # building by two and a half metres and catches that ray.
+        grass_x, grass_y = down_the_view(41.0)
+        grass = terrain(size=70, resolution=150, kind="hetero", height=0.5,
+                        seed=17.3, offset=0.86, origin=(grass_x, grass_y, 0.9),
+                        material=turf)
+        grass.rotation_euler.z = turn
+        # Eighteen metres across, which is as wide as it can be. Traced at
+        # three depths: at forty metres out the nearest thing the wall sees
+        # is x -15.4 and this strip's edge is at -14.2; at sixty, -21.8
+        # against -20.8; at ninety, -31.5 against -30.7. About a metre of
+        # daylight the whole way, and 30 across leaked 4% of the frame.
+        grass.scale.x = 18.0 / 70.0
+
+        # The sky it stands against, sixty-odd metres back and square to the
+        # same line. The horizon is where this panel meets the grass rather
+        # than anywhere in the material, so the ramp is set nearly all sky
+        # and the join does the work.
+        sky_x, sky_y = down_the_view(62.0)
+        look.block((sky_x, sky_y, 8.0), (18.0, 0.6, 12.0),
+                   look.window_light("Diorama sky",
+                                     # A third of a sky's blue: at full
+                                     # strength 0.945 ran past 1.0 in
+                                     # radiance and clipped to white.
                                      sky=(0.028, 0.115, 0.330),
                                      ground=(0.050, 0.340, 0.028),
-                                     strength=FLATS_VIEW, horizon=0.50,
-                                     base=VIEW_Z, height=VIEW_H,
+                                     strength=FLATS_VIEW, horizon=0.05,
+                                     base=2.0, height=12.0,
                                      cloud=0.55, seed=11.0),
-                   bevel=0.0, name="PaintedView")
+                   rotation=(0.0, 0.0, turn), bevel=0.0, name="DioramaSky")
+
+        # Daylight for it, or the grass is lit by a violet sky and comes out
+        # the colour of a bruise. Out of frame, and aimed down into the box
+        # so as little as possible lands on the flats outside it.
+        lamp_x, lamp_y = down_the_view(24.0)
+        aim_x, aim_y = down_the_view(48.0)
+        look.unseen(look.area_light((lamp_x, lamp_y, 26.0), (aim_x, aim_y, 1.0),
+                                    energy=FLATS_DIORAMA, size=14,
+                                    color=(0.760, 0.855, 1.000)))
     else:
         turf = dressed("Hillside", block_scale=0.34, wetness=0.22,
                        mossy=True, seed=53, mortar=0.0, relief=0.45,
