@@ -1669,7 +1669,7 @@ def sphere(location, radius, material, segments=72, rings=36, name="Sphere"):
 
 
 def block(location, size, material, rotation=(0, 0, 0), bevel=None,
-          name="Block"):
+          smooth=True, name="Block"):
     """One dressed stone. Bevelled, because a sharp edge reads as cardboard.
 
     The bevel is the single highest-value detail in the whole set: it is what
@@ -1717,8 +1717,17 @@ def block(location, size, material, rotation=(0, 0, 0), bevel=None,
     # facets. `harden_normals` above keeps the flat faces flat, which is the
     # combination that makes a bevel look like wear instead of like a
     # low-poly cylinder.
+    #
+    # `smooth=False` for anything that has to sit flush against its
+    # neighbours. `harden_normals` only acts on faces the bevel creates, so
+    # at `bevel=0` there are none and the box keeps averaged normals -- which
+    # shades every face as a gradient running out to its own edges. Two
+    # blocks of different proportions then arrive at a shared joint with
+    # different gradients, and the joint shows as a line. Measured on the far
+    # wall: a step of 16 in luma at exactly x 2.61, where the sill meets the
+    # jamb.
     for polygon in obj.data.polygons:
-        polygon.use_smooth = True
+        polygon.use_smooth = smooth
     # No `use_auto_smooth`: Blender removed it in 4.1, and the guard I first
     # wrote -- `= True if hasattr(...) else None` -- still performs the
     # assignment and raises on the way. `harden_normals` on the bevel does

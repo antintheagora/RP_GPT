@@ -2293,7 +2293,7 @@ PAINTED_HALL_MOODS = {
 #:
 #: So: a low sun that models without bleaching, cloud kept but tinted to the
 #: horizon instead of white, and just enough haze to say six kilometres.
-FLATS_SKY_STRENGTH = 0.35
+FLATS_SKY_STRENGTH = 0.52
 FLATS_SUN = 0.9
 FLATS_CLOUD = 0.20
 FLATS_CLOUD_COLOUR = (0.72, 0.42, 0.46)
@@ -2308,11 +2308,15 @@ FLATS_DIORAMA = 3000.0
 #: light in the hall. 1.2 keeps the green readable without bleaching it.
 FLATS_VIEW = 1.2
 
-FLATS_SKY = [(0.00, (0.980, 0.400, 0.255)),
-             (0.09, (0.760, 0.255, 0.330)),
-             (0.26, (0.360, 0.150, 0.470)),
-             (0.55, (0.105, 0.185, 0.430)),
-             (1.00, (0.045, 0.330, 0.310))]
+#: Deeper than they look. Pushing the low channels toward zero is the only
+#: way to gain saturation without losing brightness, because AgX takes colour
+#: out as luma rises -- so a band that reads violet at 0.36/0.15/0.47 has to
+#: go to 0.33/0.06/0.52 to keep its violet once the strength goes up.
+FLATS_SKY = [(0.00, (0.995, 0.300, 0.140)),
+             (0.09, (0.800, 0.135, 0.285)),
+             (0.26, (0.330, 0.055, 0.525)),
+             (0.55, (0.065, 0.125, 0.490)),
+             (1.00, (0.018, 0.345, 0.300))]
 
 
 def painted_hall(path, mood="noon", view="balcony", cutaway=False,
@@ -2420,17 +2424,26 @@ def painted_hall(path, mood="noon", view="balcony", cutaway=False,
     # groove down it -- four of them, radiating from the corners of the
     # picture, which is exactly what was showing. The wall is one surface, so
     # its pieces must not admit to being pieces.
+    # Flat-shaded in the cutaway, which is what finally closed the seam
+    # under the picture. Nothing is wrong with the geometry -- the pieces
+    # overlap by 10mm and the plaster is measured in metres, so the pattern
+    # runs straight across -- but at `bevel=0` there is nothing for
+    # `harden_normals` to harden, so each block keeps averaged normals and
+    # shades as a gradient out to its own edges. The sill is 5.2 by 2.6 and
+    # the jamb 8.2 by 11.4, so they arrive at the joint with different
+    # gradients and the joint draws itself. Flat normals, no gradient, no
+    # line.
     JAMB = (HALL * 2 + 1.6 - VIEW_W) / 2
     for side in (-1, 1):
         look.block((side * (VIEW_W + JAMB) / 2, DEEP + 0.4, CEILING / 2),
                    (JAMB, 0.8, CEILING + 1.0),
-                   plaster, bevel=0.0, name="EndWall")
+                   plaster, bevel=0.0, smooth=not cutaway, name="EndWall")
     look.block((0, DEEP + 0.4, (VIEW_Z + VIEW_H + CEILING + 0.9) / 2),
                (VIEW_W + 0.02, 0.8, CEILING + 0.9 - VIEW_Z - VIEW_H), plaster,
-               bevel=0.0, name="EndWall")
+               bevel=0.0, smooth=not cutaway, name="EndWall")
     look.block((0, DEEP + 0.4, (VIEW_Z - 0.1) / 2),
                (VIEW_W + 0.02, 0.8, VIEW_Z + 0.1), plaster, bevel=0.0,
-               name="EndWall")
+               smooth=not cutaway, name="EndWall")
     look.block((0, -9.6, CEILING / 2), (HALL * 2 + 1.6, 0.8, CEILING + 1.0),
                plaster, bevel=0.05, name="BackWall")
 
@@ -2712,10 +2725,15 @@ def painted_hall(path, mood="noon", view="balcony", cutaway=False,
                 material=far_rock)
 
         # Something to stop the eye between the cracks at the threshold and
-        # the mountains an hour away.
+        # the mountains an hour away -- and scattered rather than singular.
+        # One rock at seventy metres reads as a prop; eight at two hundred to
+        # a kilometre read as country, because what says distance is not any
+        # one of them but the fact that they get smaller in order.
         for index, (x, y, size, squat) in enumerate((
-                (-70.0, 40.0, 9.0, 0.55), (-150.0, 130.0, 17.0, 0.48),
-                (-270.0, 280.0, 32.0, 0.52), (-46.0, -30.0, 7.0, 0.62))):
+                (-235.0, 175.0, 15.0, 0.50), (-430.0, 350.0, 24.0, 0.46),
+                (-150.0, 265.0, 8.0, 0.55), (-620.0, 520.0, 30.0, 0.44),
+                (-95.0, 150.0, 5.0, 0.58), (-340.0, 640.0, 14.0, 0.52),
+                (-780.0, 300.0, 21.0, 0.48), (-195.0, 430.0, 7.5, 0.56))):
             outcrop(x, y, size, sandstone, seed=index * 7 + 3, squat=squat)
 
         # The picture keeps its green hills and its blue sky, and it keeps
