@@ -141,6 +141,24 @@ def test_the_approaches_offered_are_the_ones_you_are_good_at():
     assert {o.stat for o in burglar} == {"PER", "INT", "AGI"}
 
 
+def test_equal_stats_do_not_permanently_hide_four_approaches():
+    """Ties stay stable within a scene but rotate fairly between problems."""
+    from engine.model import SPECIAL_KEYS
+
+    stats = _player().stats
+    seen = set()
+
+    for index in range(24):
+        scene = _scene()
+        scene.id = f"problem-{index}"
+        first = [option.stat for option in approach_options(scene, stats)]
+        second = [option.stat for option in approach_options(scene, stats)]
+        assert first == second
+        seen.update(first)
+
+    assert seen == set(SPECIAL_KEYS)
+
+
 def test_the_menu_does_not_leak_the_keeper_s_ratings():
     """Sorting by the obstacle's own Bearings would hand the player the
     answer for free and make Observe pointless -- A5 is hints, not

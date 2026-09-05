@@ -1,10 +1,19 @@
 {% extends "base.html" %}
 {% block content %}
-<section class="grid gap-6 lg:grid-cols-2">
+<section class="legacy-setup grid gap-6 lg:grid-cols-2">
   <div class="space-y-4">
-    <h2 class="text-2xl font-semibold">Start a fresh run (Legacy)</h2>
+    <header class="setup-intro">
+      <a href="{{ url_for('landing') }}" class="overline text-dust hover:text-bone">Back to worlds</a>
+      <p class="panel-overline">Custom campaign</p>
+      <h1 class="text-2xl font-semibold">Create a fresh adventure</h1>
+      <p id="setup-intro-copy" class="panel-subtle">Choose the world and your hero now. Optional details stay tucked away until you need them.</p>
+    </header>
     {% if error %}
-    <div class="bg-rust/10 border border-rust text-flare rounded px-4 py-3">{{ error }}</div>
+    <div class="setup-error bg-rust/10 border border-rust text-flare rounded px-4 py-3"
+         role="alert" aria-live="assertive" tabindex="-1">
+      <strong>Campaign could not start.</strong>
+      <p>{{ error }}</p>
+    </div>
     {% endif %}
     <div class="ninebox u-box">
       <div class="nf tl"></div>
@@ -17,10 +26,11 @@
       <div class="nf b"></div>
       <div class="nf br"></div>
       <div class="nine-content">
-        <form method="post" action="{{ url_for('start_game') }}" class="space-y-6 u-box-content">
-          <div>
-            <p class="block text-sm font-medium text-tan">Scenario</p>
-            <div class="mt-2 grid grid-cols-2 gap-3 text-sm">
+        <form method="post" action="{{ url_for('start_game') }}" class="space-y-6 u-box-content"
+              aria-describedby="setup-intro-copy">
+          <fieldset>
+            <legend class="block text-sm font-medium text-tan">Scenario</legend>
+            <div class="scenario-options mt-2 grid grid-cols-2 gap-3 text-sm">
               {% set current = previous.get('scenario') if previous else 'apocalypse' %}
               {% for value, label in [('apocalypse', 'Apocalypse'), ('dark_fantasy', 'Dark Fantasy'), ('haunted_house', 'Haunted House'), ('custom', 'Custom World')] %}
               <label class="scenario-card">
@@ -29,83 +39,92 @@
               </label>
               {% endfor %}
             </div>
-          </div>
-          <div class="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label class="block text-sm" for="f-custom_label">Campaign label</label>
-              <div class="mt-1 u-input-shell">
-                <input type="text" name="custom_label" value="{{ previous.get('custom_label') if previous else '' }}" placeholder="Sky Citadel" class="u-input" id="f-custom_label" />
-              </div>
-            </div>
-            <div>
-              <label class="block text-sm" for="f-model">Gemma / Ollama model</label>
-              <div class="mt-1 u-input-shell">
-                {# Was hardcoded to gemma3:12b, which is not installed and is
-                   two versions behind Core.Config. The field is always sent,
-                   so that stale string won every time and the configured
-                   default was never used. #}
-                <input type="text" name="model" value="{{ previous.get('model') or default_model }}" class="u-input" id="f-model" />
-              </div>
-            </div>
-          </div>
+          </fieldset>
           <div>
-            <label class="block text-sm" for="f-ollama_host">Ollama host (optional)</label>
+            <label class="block text-sm" for="f-custom_label">Campaign name <span class="field-hint">(optional)</span></label>
             <div class="mt-1 u-input-shell">
-              <input type="text" name="ollama_host" value="{{ previous.get('ollama_host') if previous else '' }}" placeholder="http://127.0.0.1:11434" class="u-input" id="f-ollama_host" />
+              <input type="text" name="custom_label" value="{{ previous.get('custom_label') if previous else '' }}" placeholder="Sky Citadel" class="u-input" id="f-custom_label" maxlength="120" />
             </div>
           </div>
-          <div class="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label class="block text-sm" for="f-player_name">Player name</label>
-              <div class="mt-1 u-input-shell">
-                <input type="text" name="player_name" value="{{ previous.get('player_name') if previous else '' }}" class="u-input" id="f-player_name" />
-              </div>
-            </div>
-            <div>
-              <label class="block text-sm" for="f-player_age">Age</label>
-              <div class="mt-1 u-input-shell">
-                <input type="number" name="player_age" value="{{ previous.get('player_age') if previous else '' }}" class="u-input" id="f-player_age" />
-              </div>
-            </div>
-          </div>
-          <div class="grid gap-4 sm:grid-cols-3">
-            <div>
-              <label class="block text-sm" for="f-player_sex">Pronouns / Sex</label>
-              <div class="mt-1 u-input-shell">
-                <input type="text" name="player_sex" value="{{ previous.get('player_sex') if previous else '' }}" class="u-input" id="f-player_sex" />
-              </div>
-            </div>
-            <div>
-              <label class="block text-sm" for="f-player_hair">Hair</label>
-              <div class="mt-1 u-input-shell">
-                <input type="text" name="player_hair" value="{{ previous.get('player_hair') if previous else '' }}" class="u-input" id="f-player_hair" />
-              </div>
-            </div>
-            <div>
-              <label class="block text-sm" for="f-player_clothing">Clothing</label>
-              <div class="mt-1 u-input-shell">
-                <input type="text" name="player_clothing" value="{{ previous.get('player_clothing') if previous else '' }}" class="u-input" id="f-player_clothing" />
-              </div>
-            </div>
-          </div>
-          <div>
-            <label class="block text-sm" for="f-player_appearance">Appearance details</label>
-            <div class="mt-1 u-input-shell">
-              <input type="text" name="player_appearance" value="{{ previous.get('player_appearance') if previous else '' }}" class="u-input" id="f-player_appearance" />
-            </div>
-          </div>
-          {# The only thing in the game that leaves this machine.
 
-             The model is local. The stylesheet, the fonts and htmx are
-             vendored. Pictures are not: the prompt goes to an image service,
-             and the prompt is the player's own description of their character
-             and whole paragraphs of their campaign. There was no switch for
-             it anywhere and nothing said it was happening. #}
+          <details class="setup-disclosure">
+            <summary>Local model settings</summary>
+            <div class="setup-disclosure-body">
+              <div>
+                <label class="block text-sm" for="f-model">Gemma / Ollama model</label>
+                <p id="model-hint" class="field-hint">Keep the detected default unless you have another local model installed.</p>
+                <div class="mt-1 u-input-shell">
+                  {# Was hardcoded to gemma3:12b, which is not installed and is
+                     two versions behind Core.Config. The field is always sent,
+                     so that stale string won every time and the configured
+                     default was never used. #}
+                  <input type="text" name="model" value="{{ previous.get('model') or default_model }}" class="u-input" id="f-model" aria-describedby="model-hint" autocomplete="off" spellcheck="false" />
+                </div>
+              </div>
+              <div>
+                <label class="block text-sm" for="f-ollama_host">Ollama host <span class="field-hint">(optional)</span></label>
+                <div class="mt-1 u-input-shell">
+                  <input type="url" name="ollama_host" value="{{ previous.get('ollama_host') if previous else '' }}" placeholder="http://127.0.0.1:11434" class="u-input" id="f-ollama_host" autocomplete="url" spellcheck="false" />
+                </div>
+              </div>
+            </div>
+          </details>
+
+          <div>
+            <label class="block text-sm" for="f-player_name">Hero name <span class="field-hint">(optional; defaults to Explorer)</span></label>
+            <div class="mt-1 u-input-shell">
+              <input type="text" name="player_name" value="{{ previous.get('player_name') if previous else '' }}" placeholder="Explorer" class="u-input" id="f-player_name" maxlength="80" autocomplete="name" />
+            </div>
+          </div>
+
+          <details class="setup-disclosure">
+            <summary>Hero appearance <span>(optional)</span></summary>
+            <div class="setup-disclosure-body">
+              <div>
+                <label class="block text-sm" for="f-player_age">Age</label>
+                <div class="mt-1 u-input-shell">
+                  <input type="number" name="player_age" value="{{ previous.get('player_age') if previous else '' }}" class="u-input" id="f-player_age" min="1" inputmode="numeric" />
+                </div>
+              </div>
+              <div class="grid gap-4 sm:grid-cols-3">
+                <div>
+                  <label class="block text-sm" for="f-player_sex">Pronouns / Sex</label>
+                  <div class="mt-1 u-input-shell">
+                    <input type="text" name="player_sex" value="{{ previous.get('player_sex') if previous else '' }}" class="u-input" id="f-player_sex" />
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-sm" for="f-player_hair">Hair</label>
+                  <div class="mt-1 u-input-shell">
+                    <input type="text" name="player_hair" value="{{ previous.get('player_hair') if previous else '' }}" class="u-input" id="f-player_hair" />
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-sm" for="f-player_clothing">Clothing</label>
+                  <div class="mt-1 u-input-shell">
+                    <input type="text" name="player_clothing" value="{{ previous.get('player_clothing') if previous else '' }}" class="u-input" id="f-player_clothing" />
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label class="block text-sm" for="f-player_appearance">Appearance details</label>
+                <div class="mt-1 u-input-shell">
+                  <textarea name="player_appearance" rows="3" class="u-input" id="f-player_appearance">{{ previous.get('player_appearance') if previous else '' }}</textarea>
+                </div>
+              </div>
+            </div>
+          </details>
+          <details class="setup-disclosure">
+            <summary>Scene art <span>(optional)</span></summary>
+            <div class="setup-disclosure-body">
+          {# Art is local for the same reason the language model is local:
+             prompts contain the player's appearance and campaign prose. #}
           <div class="rounded-sm border border-edge bg-soot/60 p-4">
             <label class="flex items-start gap-3 cursor-pointer">
               <input type="checkbox" name="images" value="1"
                      class="mt-1 h-4 w-4 accent-ember"
-                     {% if not previous or previous.get('images') %}checked{% endif %} />
+                     {% if local_art and (not previous or previous.get('images')) %}checked{% endif %}
+                     {% if not local_art %}disabled{% endif %} />
               <span>
                 <span class="block text-parchment">Generate pictures</span>
                 {# What this actually costs depends on what is running. It
@@ -119,11 +138,9 @@
                   </span>
                 {% else %}
                   <span class="block text-sm text-dust mt-1">
-                    ComfyUI is not running, so scenes and portraits would be
-                    drawn by an outside service &mdash; which means the
-                    description of your character and the situation you are in
-                    are sent to it. Start ComfyUI to keep it all on this
-                    machine, or turn this off and nothing leaves it.
+                    ComfyUI is not running, so local scene art is unavailable.
+                    Nothing will be sent to an outside service. Start ComfyUI
+                    before launching if you want campaign pictures.
                   </span>
                 {% endif %}
               </span>
@@ -150,20 +167,27 @@
               {% endfor %}
             </div>
           </div>
-
-          <div>
-            <label class="block text-sm" for="f-world_notes">World bible / notes</label>
-            <div class="mt-1 u-input-shell">
-              <textarea name="world_notes" rows="4" class="u-input" id="f-world_notes">{{ previous.get('world_notes') if previous else '' }}</textarea>
             </div>
-          </div>
+          </details>
+
+          <details class="setup-disclosure">
+            <summary>World notes <span>(optional)</span></summary>
+            <div class="setup-disclosure-body">
+              <div>
+                <label class="block text-sm" for="f-world_notes">Lore, places, factions, or a campaign goal</label>
+                <div class="mt-1 u-input-shell">
+                  <textarea name="world_notes" rows="4" class="u-input" id="f-world_notes">{{ previous.get('world_notes') if previous else '' }}</textarea>
+                </div>
+              </div>
+            </div>
+          </details>
           <button type="submit" class="u-button w-full"
                   data-waiting-text="The Keeper is drawing up your campaign…">Launch campaign</button>
         </form>
       </div>
     </div>
   </div>
-  <div class="space-y-6">
+  <aside class="setup-guide-column space-y-6">
     <div class="ninebox u-box">
       <div class="nf tl"></div>
       <div class="nf t"></div>
@@ -175,12 +199,13 @@
       <div class="nf b"></div>
       <div class="nf br"></div>
       <div class="nine-content u-box-content">
-        <h3 class="text-xl font-semibold">About this build</h3>
-        <ul class="mt-4 space-y-3 text-sm text-tan">
-          <li>• Flask + HTMX front-end rendered in a PyWebview shell.</li>
-          <li>• Tailwind CSS + Daisy-esque cards for quick theming.</li>
-          <li>• Shared engine + Gemma prompts from the core RP-GPT stack.</li>
-          <li>• Desktop now, web deployment later with the same code.</li>
+        <p class="panel-overline">Before you begin</p>
+        <h2 class="text-xl font-semibold">Everything stays local</h2>
+        <ul class="setup-guide-list mt-4 space-y-3 text-sm text-tan">
+          <li>The Keeper uses the Ollama model installed on this computer.</li>
+          <li>The first campaign setup can take about a minute. The progress message will stay visible while it works.</li>
+          <li>Your campaign is saved before play begins, so you can safely continue it later.</li>
+          <li>Scene art is available only when local ComfyUI is running. No remote fallback is used.</li>
         </ul>
       </div>
     </div>
@@ -201,6 +226,6 @@
       </div>
     </div>
     {% endif %}
-  </div>
+  </aside>
 </section>
 {% endblock %}

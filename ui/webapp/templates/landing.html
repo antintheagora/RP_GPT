@@ -1,29 +1,68 @@
 {% extends "base.html" %}
 {% block content %}
 
+{# The landing page had an `h1` only when a campaign happened to be open --
+   it was the heading of the "still open" panel, inside its own conditional --
+   so the first screen anyone sees usually had no page heading at all. This
+   one is unconditional, and the panel's heading drops to `h2`, which is what
+   it always was in the document's structure. #}
+<h1 class="sr-only">RP-GPT &mdash; your campaigns</h1>
+
 {% if error %}
 <section class="load-error" role="alert">{{ error }}</section>
 {% endif %}
 
+{% if has_active %}
+<section class="active-campaign-return" aria-labelledby="active-campaign-title">
+  <div>
+    <p class="panel-overline">Campaign in progress</p>
+    <h2 id="active-campaign-title">Your current campaign is still open</h2>
+    <p>Return to the exact scene you left without loading or replacing it.</p>
+  </div>
+  <a href="{{ url_for('play') }}" class="u-button active-campaign-return-button">Return to current campaign</a>
+</section>
+{% endif %}
+
 {% if saved_runs %}
-<section class="continue-strip">
-  <p class="panel-overline">Unfinished</p>
-  <div class="continue-cards">
-    {% for run in saved_runs %}
-    <form method="post" action="{{ url_for('continue_run') }}" class="continue-card">
-      <input type="hidden" name="path" value="{{ run.path }}">
-      <button type="submit" class="continue-button">
+{% macro campaign_card(run, selected_world) -%}
+  <form method="post" action="{{ url_for('continue_run') }}"
+        class="continue-card {{ 'is-complete' if not run.running else '' }}">
+    <input type="hidden" name="path" value="{{ run.path }}">
+    {% if selected_world %}<input type="hidden" name="world" value="{{ selected_world.slug }}">{% endif %}
+    <button type="submit" class="continue-button">
+      <span class="continue-heading">
         <span class="continue-title">{{ run.title }}</span>
-        {# `saved_at` was collected and then never shown, and three runs of
-           the same world at the same turn are otherwise identical cards --
-           there was no way to tell which one you were just playing. #}
-        <span class="continue-meta">{{ run.player }} &middot; Act {{ run.act }}/{{ run.act_count }} &middot; Turn {{ run.turn }}{% if run.saved_when %} &middot; {{ run.saved_when }}{% endif %}</span>
-        {% if run.last_line %}<span class="continue-line">{{ run.last_line }}</span>{% endif %}
-        <span class="continue-cta">Continue</span>
-      </button>
-    </form>
+        <span class="continue-status">{{ 'In progress' if run.running else 'Complete' }}</span>
+      </span>
+      {# `saved_at` was collected and then never shown, and three runs of
+         the same world at the same turn are otherwise identical cards. #}
+      <span class="continue-meta">{{ run.player }} &middot; Act {{ run.act }}/{{ run.act_count }} &middot; Turn {{ run.turn }}{% if run.saved_when %} &middot; {{ run.saved_when }}{% endif %}</span>
+      {% if not run.running and run.ending %}
+        <span class="continue-line">{{ run.ending }}</span>
+      {% elif run.last_line %}
+        <span class="continue-line">{{ run.last_line }}</span>
+      {% endif %}
+      <span class="continue-cta">{{ 'Continue' if run.running else 'View ending' }}</span>
+    </button>
+  </form>
+{%- endmacro %}
+<section class="continue-strip">
+  <p class="panel-overline">Recent campaigns</p>
+  <div class="continue-cards">
+    {% for run in saved_runs[:6] %}
+      {{ campaign_card(run, selected) }}
     {% endfor %}
   </div>
+  {% if saved_runs|length > 6 %}
+    <details class="continue-older">
+      <summary>Show {{ saved_runs|length - 6 }} older campaign{{ '' if saved_runs|length == 7 else 's' }}</summary>
+      <div class="continue-cards">
+        {% for run in saved_runs[6:] %}
+          {{ campaign_card(run, selected) }}
+        {% endfor %}
+      </div>
+    </details>
+  {% endif %}
 </section>
 {% endif %}
 
@@ -44,9 +83,9 @@
           <p class="panel-overline">World Directory</p>
           <h2 class="panel-title">World Roster</h2>
         </div>
-        <a href="{{ url_for('legacy_start') }}" class="overline text-dust hover:text-bone">Legacy setup</a>
+        <a href="{{ url_for('legacy_start') }}" class="overline text-dust hover:text-bone">Custom setup</a>
       </div>
-      <p class="panel-subtle">Select an existing setting or spin up a custom one.</p>
+      <p class="panel-subtle">Choose a prepared setting or build a custom campaign.</p>
       <div class="world-list u-scroll scroll-fade">
         {% for world in worlds %}
         <a href="{{ url_for('landing', world=world.slug) }}" class="world-entry {% if selected and selected.slug==world.slug %}is-active{% endif %}">
@@ -90,9 +129,13 @@
         </div>
         <p class="world-preview-copy">{{ selected.subtitle or 'Bring this world to life by finalising the blueprint.' }}</p>
       </div>
+      {% if selected.is_virtual %}
+      <a href="{{ url_for('legacy_start') }}" class="u-button w-full mt-6">Create a custom world</a>
+      {% else %}
       <form method="post" action="{{ url_for('select_world', slug=selected.slug) }}" class="mt-6">
-        <button class="u-button w-full" {% if selected.is_virtual %}disabled title="World creation UI coming soon"{% endif %}>Use World</button>
+        <button class="u-button w-full" type="submit">Use this world</button>
       </form>
+      {% endif %}
       {% else %}
       <p class="text-sm text-dust">No saved worlds yet. Create one in the desktop client or via the upcoming builder.</p>
       {% endif %}
@@ -119,7 +162,7 @@
       {% if selected %}
       <div class="world-blueprint u-scroll scroll-fade">
         {% if selected.is_virtual %}
-        <p class="text-sm text-tan leading-relaxed">You're about to craft a brand new setting. The upcoming builder will capture lore bibles, act pacing, and roster choices. For now, continue via the legacy launcher if you need to spin up a bespoke run immediately.</p>
+        <p class="text-sm text-tan leading-relaxed">Custom setup lets you choose the genre, name your hero, add world notes, and begin immediately. The local Keeper turns those choices into a complete campaign.</p>
         {% else %}
         <dl class="blueprint-grid">
           <div>

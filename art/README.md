@@ -6,8 +6,25 @@ Every plate and backdrop in the game, as source rather than as pixels.
 python art/render.py
 ```
 
-Roughly two minutes for the six UI plates and ten for the five scenes, on a
-GPU. Blender is found automatically; set `BLENDER` if it isn't.
+The local title ambience is source-built too. It uses only deterministic
+oscillators and filtered synthetic noise; FFmpeg compresses the temporary PCM
+file to the Ogg shipped by the web UI:
+
+```bash
+python art/generate_theme.py
+```
+
+Roughly two minutes for the six UI plates, and a few minutes a scene on a GPU.
+Blender is found automatically; set `BLENDER` if it isn't.
+
+Name scenes after a `--` to render only those:
+
+```bash
+python art/render.py -- painted_hall_flats_stair
+```
+
+`save` in that list writes `.blend` files to `art/blend/` instead of PNGs, for
+opening and posing by hand. `export` writes an OBJ.
 
 ## Why this exists
 
@@ -40,8 +57,9 @@ block and the moss moves.
 |---|---|
 | `blender/look.py` | The house style. Materials, lighting, cameras, haze. Everything else imports this. |
 | `blender/ui_frames.py` | Nine-slice frames, buttons, inputs, a cloth hanging, and the dark-stone border around the whole screen. → `static/ui/rendered/` |
-| `blender/scenes.py` | The crypt, and four landscapes. → `static/ui/scenes/` |
+| `blender/scenes.py` | The crypt, six landscapes, and the painted hall. → `static/ui/scenes/` |
 | `render.py` | Finds Blender and runs the above. |
+| `generate_theme.py` | Rebuilds the original, sample-free title ambience. |
 
 ## Why the runs are grained
 
@@ -114,8 +132,15 @@ bright green staircases in the corners of the screen. One keystone instead.
 ## The scenes
 
 `undercroft` follows the game's existing backdrop — a candle-lit vaulted
-crypt. The other four are deliberately in the manner of an early-90s
-landscape renderer, which came down to four things and not to geometry:
+crypt. `drowned_steps`, `glass_waste`, `hollow_king`, `bone_flats`,
+`bright_shore` and `green_deep` are landscapes. `painted_hall` is a room, and
+is the one that has been pushed hardest: it takes a `mood` (eight of them,
+from `noon` to `ashfall`), a `view` (from the balcony or from the stair), and
+a `cutaway` that removes the left wall so the room opens onto something else —
+either flat white, for a shirt, or onto a second landscape.
+
+The landscapes are deliberately in the manner of an early-90s renderer, which
+came down to four things and not to geometry:
 
 - **Haze that never clears.** Distance is read entirely from how much air is
   in front of a thing.
@@ -157,9 +182,11 @@ doing.
 
 ## Borrowed models
 
-`painted_hall` uses one model that is not ours. It lives outside this
+`painted_hall` uses two models that are not ours. They live outside this
 repository -- see `BORROWED` in `blender/scenes.py` -- and the scene renders
-without it if the path is wrong, minus the bird.
+without either if the path is wrong, minus that animal. **This means the hall
+is not reproducible on another machine**, which is the one place the "source,
+not pixels" rule does not hold.
 
 **Pigeon in Flight** — by **restore50**, licensed **CC-BY 4.0**
 (https://creativecommons.org/licenses/by/4.0/), from
@@ -170,5 +197,13 @@ https://sketchfab.com/3d-models/none-d135106ba138411fbe8d779b2fb90599
 https://sketchfab.com/3d-models/black-panther-7fca11c89cca4362a525c891a8345112
 
 CC-BY is not CC0: the credit has to travel with anything published that
-contains it. If `painted_hall.png` ships in the game, restore50 and
-kenchoo are both named in whatever credits the game has.
+contains it. If any `painted_hall` render ships in the game — or on a shirt,
+or anywhere else — restore50 and kenchoo are both named.
+
+This file used to say the credit was recorded here "and nowhere a player could
+see it", and called that a gap rather than a decision. **The gap is closed**:
+the game has a credits screen at `/credits`, reachable from the menu on every
+screen and from the first one, and both names are on it.
+`tests/test_web_ui.py` holds it there — a credits page that stops naming them
+fails the suite. If either model is ever removed from the hall, the names come
+off that page and not before.

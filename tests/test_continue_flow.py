@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 
@@ -42,6 +44,52 @@ def test_landing_shows_nothing_to_continue_when_there_are_no_saves(app):
     assert b"Unfinished" not in response.data
 
 
+def test_landing_offers_the_in_memory_campaign_without_needing_a_save(monkeypatch):
+    """Worlds is an inspection route, not an irreversible exit from play."""
+    from ui.webapp.server import create_app
+
+    active = type(
+        "ActiveSession",
+        (),
+        {"state": type("State", (), {"image_style": "", "images_enabled": False})()},
+    )()
+
+    class ReadOnlyStore:
+        # Deliberately expose no create/adopt/destroy method: rendering this
+        # link may inspect the session and must not mutate it.
+        def get(self, session_id):
+            return active if session_id == "still-playing" else None
+
+    monkeypatch.setattr("engine.persistence.list_runs", lambda _root: [])
+    application = create_app(ReadOnlyStore())
+    application.config.update(TESTING=True)
+    client = application.test_client()
+    with client.session_transaction() as flask_session:
+        flask_session["session_id"] = "still-playing"
+
+    body = client.get("/").get_data(as_text=True)
+
+    assert "Recent campaigns" not in body, "the return path accidentally depends on a save card"
+    callout = re.search(
+        r'<section class="active-campaign-return"[^>]*>(.*?)</section>',
+        body,
+        re.S,
+    )
+    assert callout, "an active session has no visible route back from Worlds"
+    assert 'aria-labelledby="active-campaign-title"' in callout.group(0)
+    assert re.search(
+        r'<a href="/play"[^>]*>Return to current campaign</a>',
+        callout.group(1),
+    ), "the return control must be a real, named link to /play"
+
+
+def test_landing_does_not_promise_a_current_campaign_when_none_is_active(app):
+    body = app.test_client().get("/").get_data(as_text=True)
+
+    assert "Return to current campaign" not in body
+    assert "active-campaign-return" not in body
+
+
 def test_landing_offers_a_saved_run(app, tmp_path, monkeypatch):
     import Core.Paths as paths
     import ui.webapp.server as server
@@ -53,7 +101,8 @@ def test_landing_offers_a_saved_run(app, tmp_path, monkeypatch):
     response = app.test_client().get("/")
     body = response.data.decode("utf-8")
     assert response.status_code == 200
-    assert "Unfinished" in body
+    assert "Recent campaigns" in body
+    assert "In progress" in body
     assert "The Ashfall" in body
     assert "Wren" in body
     assert "Turn 7" in body
@@ -81,9 +130,74 @@ def test_continue_on_a_corrupt_save_reports_instead_of_500ing(app, tmp_path):
     bad = tmp_path / "broken.json"
     bad.write_text("{ not json", encoding="utf-8")
 
-    response = app.test_client().post("/continue", data={"path": str(bad)})
+    response = app.test_client().post(
+        "/continue",
+        data={"path": str(bad), "world": "Grimdark_fantasy"},
+    )
+    body = response.data.decode("utf-8")
     assert response.status_code == 200, "a bad save must not 500 -- htmx refuses to render errors"
-    assert b"could not be loaded" in response.data
+    assert "could not be loaded" in body
+    assert "World Roster" in body, "reporting one bad save blanked every working world"
+    assert 'href="/?world=Grimdark_fantasy" class="world-entry is-active"' in body
+
+
+def test_landing_labels_completed_saves_as_endings(app, monkeypatch):
+    # The route closes over engine.persistence.list_runs, so patch the source
+    # it imports on each request rather than a server-module alias.
+    monkeypatch.setattr(
+        "engine.persistence.list_runs",
+        lambda _root: [{
+            "path": "finished/state.json",
+            "world": "w",
+            "run_id": "done",
+            "label": "The Lantern Below",
+            "saved_at": 0,
+            "summary": {
+                "scenario": "The Lantern Below",
+                "player": "Mara",
+                "act": 3,
+                "act_count": 3,
+                "turn": 7,
+                "running": False,
+                "ending": "The drowned bells fall silent.",
+            },
+        }],
+    )
+
+    body = app.test_client().get("/").data.decode("utf-8")
+
+    assert "Recent campaigns" in body
+    assert "Complete" in body
+    assert "View ending" in body
+    assert "The drowned bells fall silent." in body
+    assert ">Unfinished<" not in body
+
+
+def test_every_saved_campaign_remains_reachable_after_the_recent_six(app, monkeypatch):
+    runs = []
+    for index in range(7):
+        runs.append({
+            "path": f"run-{index}/state.json",
+            "world": "w",
+            "run_id": f"run-{index}",
+            "label": f"Campaign {index}",
+            "saved_at": 100 - index,
+            "summary": {
+                "scenario": f"Campaign {index}",
+                "player": "Mara",
+                "act": 1,
+                "act_count": 3,
+                "turn": index,
+                "running": True,
+            },
+        })
+    monkeypatch.setattr("engine.persistence.list_runs", lambda _root: runs)
+
+    body = app.test_client().get("/").data.decode("utf-8")
+
+    assert "Campaign 6" in body
+    assert "Show 1 older campaign" in body
+    assert body.count('action="/continue"') == 7
 
 
 def test_a_turn_writes_a_save(tmp_path, monkeypatch):

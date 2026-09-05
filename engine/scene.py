@@ -146,6 +146,11 @@ class Scene:
     description: str = ""
     obstacles: Dict[str, Obstacle] = field(default_factory=dict)
     foes: List[Foe] = field(default_factory=list)
+    # Living foes the player successfully got away from. Keeping them apart
+    # from ``foes`` matters: combat is derived from the living foes in the
+    # scene, while the bridge still needs the objects in order to preserve
+    # damage and avoid re-introducing the same enemy on the next sync.
+    disengaged: List[Foe] = field(default_factory=list)
     exits: List[str] = field(default_factory=list)
     facts: List[str] = field(default_factory=list)   # seeded, true, unrevealed
 
@@ -162,6 +167,21 @@ class Scene:
     def add_foe(self, foe: "Foe") -> "Foe":
         self.foes.append(foe)
         return foe
+
+    def disengage(self) -> List["Foe"]:
+        """Move every living foe out of the active scene.
+
+        A successful Withdraw is not a kill and must not zero enemy HP.  It
+        simply ends this encounter. Dead foes stay in ``foes`` so their
+        terminal state can still be synchronised normally.
+        """
+        leaving = [foe for foe in self.foes if foe.alive]
+        if not leaving:
+            return []
+        self.foes = [foe for foe in self.foes if not foe.alive]
+        known = {foe.name for foe in self.disengaged}
+        self.disengaged.extend(foe for foe in leaving if foe.name not in known)
+        return leaving
 
     def foe(self, name: str = "") -> Optional["Foe"]:
         """The one being fought. Named if given, else whoever is still up."""

@@ -95,9 +95,20 @@ def for_person(store: LedgerStore, entity_id: int, name: str, *,
         # Only reach past their own history when they have none. Something
         # that happened *to them* always beats something that happened near
         # them, and mixing the two makes everyone sound like a witness.
-        if len(picked) < limit and searching_for:
+        #
+        # What it is reaching for is the *ownerless* row -- a thing that
+        # happened in the world, attached to nobody on purpose so that anyone
+        # present can bring it up. The filter skipped rows belonging to this
+        # person and let rows belonging to *other people* straight through, so
+        # one NPC was handed another's history and said it in the first
+        # person. Measured: Mira, with one memory of her own, was told she
+        # remembered "Kael called you a coward at the bridge"; Rook, with no
+        # history at all, was told he remembered being pulled out of a river
+        # by Sable. Both call sites were affected, and in a conversation it
+        # became the NPC's own recollection.
+        if not picked and searching_for:
             for found in store.search(searching_for, limit=limit * 2):
-                if found.entity_id == entity_id or found.kind not in WORTH_SAYING:
+                if found.entity_id is not None or found.kind not in WORTH_SAYING:
                     continue
                 picked.append(found)
                 if len(picked) >= limit:
@@ -129,6 +140,39 @@ def _rank(events: Sequence[Recorded]) -> List[Recorded]:
     return sorted(events, key=score)
 
 
+def phrase_for(found: Sequence["Callback"]) -> str:
+    """One person's memories, with the difference between them kept.
+
+    `Callback.theirs` was computed on every callback and read by nothing --
+    both consumers joined every summary with a single space and handed the
+    result over as one undifferentiated string. Two things went wrong with
+    that.
+
+    The first is that something which happened *to* someone reads identically
+    to something they merely stood near. The whole reason the ownerless world
+    row exists is so that anyone present can raise it; a narrator told "Mira:
+    Mira thanked you for the bread The bridge came down in the night" has no
+    way to know that only the first of those is hers, and will happily write
+    her claiming the second.
+
+    The second is smaller and uglier: summaries do not end in full stops, so
+    joining them with a space ran two sentences together into one that is not
+    a sentence.
+    """
+    mine = [c.summary.rstrip(". ") for c in found if c.theirs]
+    seen = [c.summary.rstrip(". ") for c in found if not c.theirs]
+    parts = []
+    if mine:
+        parts.append("; ".join(mine) + ".")
+    if seen:
+        # "also" only when there is something for it to be also to. With no
+        # memories of their own it read "Rook: Was also there when: the bridge
+        # came down", which implies a first thing that is not there.
+        lead = "Was also there when: " if mine else "Was there when: "
+        parts.append(lead + "; ".join(seen) + ".")
+    return " ".join(parts)
+
+
 def block(store: LedgerStore, people: Sequence, *,
           searching_for: str = "") -> str:
     """The prompt block: who is here, and what is between you.
@@ -150,8 +194,7 @@ def block(store: LedgerStore, people: Sequence, *,
         found = for_person(store, entity_id, name, searching_for=searching_for)
         if not found:
             continue
-        detail = " ".join(c.summary for c in found)
-        lines.append(f"- {name}: {detail}")
+        lines.append(f"- {name}: {phrase_for(found)}")
 
     if not lines:
         return ""
@@ -159,4 +202,5 @@ def block(store: LedgerStore, people: Sequence, *,
             + "\n".join(lines))
 
 
-__all__ = ["Callback", "for_person", "block", "PER_PERSON", "WORTH_SAYING"]
+__all__ = ["Callback", "for_person", "block", "phrase_for",
+           "PER_PERSON", "WORTH_SAYING"]

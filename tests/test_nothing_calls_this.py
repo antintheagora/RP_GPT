@@ -59,7 +59,7 @@ KNOWN = {
 
     # -- Constructors and helpers the engine exports for front ends.
     "render_result", "clock_from_json", "tide_from_json",
-    "is_usable", "drain", "wait", "create_app", "resist_cost",
+    "is_usable", "drain", "wait", "create_app",
 
     # -- Odds. The game deliberately does not show a player their chance,
     #    so this is exported for tooling rather than the turn loop.
@@ -138,4 +138,48 @@ def test_the_allowlist_does_not_rot():
     assert not stale, (
         "these are in KNOWN but are called now, so drop them from the list: "
         + ", ".join(sorted(stale))
+    )
+
+
+# =============================
+# --- AN EXPLANATION MUST -----
+# ------ BE A DOCSTRING -------
+# =============================
+
+def test_a_modules_explanation_is_actually_its_docstring():
+    """A string below an import is not a docstring, it is a statement.
+
+    Seven modules had one, including the two largest files in the web layer
+    and `Core/Choice_Handler.py`, whose stray string described three
+    responsibilities the module had not had for some time. `__doc__` was
+    `None` for every one of them, so the careful explanation at the top of
+    the file reached `help()`, an editor hover and any doc tooling as nothing
+    at all -- and, in Choice_Handler's case, was wrong as well as invisible.
+
+    This project spends a great deal of prose on explaining why. It is worth
+    a test that the prose is attached to the thing it explains.
+    """
+    import ast
+
+    strays = []
+    for folder in ("engine", "Core", "ui", "ledger"):
+        for path in sorted((ROOT / folder).rglob("*.py")):
+            if "__pycache__" in str(path):
+                continue
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            if ast.get_docstring(tree):
+                continue
+            loose = next(
+                (node for node in tree.body
+                 if isinstance(node, ast.Expr)
+                 and isinstance(node.value, ast.Constant)
+                 and isinstance(node.value.value, str)),
+                None,
+            )
+            if loose is not None:
+                strays.append(f"{path.relative_to(ROOT)}:{loose.lineno}")
+
+    assert not strays, (
+        "these modules explain themselves to nobody -- move the string above "
+        f"the imports: {strays}"
     )

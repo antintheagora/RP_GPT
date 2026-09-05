@@ -1,11 +1,3 @@
-from __future__ import annotations
-
-from engine import events as _ev
-
-from Core.Logging import get_logger
-
-_log = get_logger("scene_evolution")
-
 """
 Scene_Evolution
 ----------------
@@ -25,6 +17,14 @@ Design details (plain language):
 - We keep all text cleaning and journal calls exactly as before, so behavior
   matches the original implementation.
 """
+
+from __future__ import annotations
+
+from engine import events as _ev
+
+from Core.Logging import get_logger
+
+_log = get_logger("scene_evolution")
 
 import random
 import re

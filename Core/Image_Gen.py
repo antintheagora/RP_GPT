@@ -1,40 +1,20 @@
-"""Image prompt helpers and terminal display utilities for RP_GPT.
-
-Hardened for higher success rates while preserving detail:
-- Short, noun-heavy prompts with bounded length + safety word replacements
-- Deterministic ordering to reduce cache misses
-- Content-Type/signature/size checks to reject HTML error payloads
-- Jittered retries with a simplified fallback prompt and smaller size
-- Gentle rate limiting to avoid bursts/429s
-- Terminal viewer refuses non-images instead of trying to display them
-"""
+"""Local image prompt helpers and terminal display utilities for RP_GPT."""
 
 from __future__ import annotations
 
 from engine import events as _ev
-from Core.Config import get_config
 from Core.Logging import get_logger
 
 _log = get_logger("image_gen")
 
 import base64
 import os
-import random
 import shutil
-import ssl
 import subprocess
 import sys
-import time
-from typing import TYPE_CHECKING, Callable, Optional
-from urllib import parse, request
+from typing import TYPE_CHECKING
 
 from Core.Helpers import sanitize_prose, summarize_for_prompt
-
-# Optional certifi for stricter TLS when available
-try:  # noqa: SIM105
-    import certifi  # type: ignore
-except Exception:  # pragma: no cover - optional dependency
-    certifi = None  # type: ignore
 
 # Reuse the style + builder from AI_Dungeon_Master. This import was missing the
 # `Core.` prefix, so it raised ModuleNotFoundError on every run and silently
@@ -346,7 +326,7 @@ def make_ending_prompt(state: "GameState", success: bool) -> str:
 
 
 def make_image_prompt(state: "GameState", detail: str = "moderate") -> str:
-    """Assemble a turn-by-turn scene prompt for Pollinations.
+    """Assemble a turn-by-turn scene prompt for the local renderer.
 
     Uses AI_Dungeon_Master.image_prompt_from_state if available; otherwise local builder
     that omits meters/lists but preserves scene flavor and a bit of texture.
@@ -388,48 +368,6 @@ def supports_kitty() -> bool:
     return bool(os.environ.get("KITTY_WINDOW_ID"))
 
 
-_last_image_ts = 0.0
-
-def pollinations_url(prompt: str, width: int, height: int,
-                     seed: Optional[int] = None,
-                     model: Optional[str] = None) -> str:
-    """The image URL.
-
-    `seed` matters more than it looks: the service is deterministic on the
-    prompt, so two turns in the same room returned byte-identical pictures.
-    Varying it per turn gives a new angle on the same scene rather than the
-    same file again.
-    """
-    query = parse.quote_plus(prompt)
-    # `private=true` is not decoration. Without it this service publishes
-    # every prompt and every image it makes to a public feed, and these
-    # prompts are not abstract: they carry the player's own description of
-    # their character and whole paragraphs of their campaign's situation.
-    # Nothing in the game said so and there was no way to decline.
-    url = (f"https://image.pollinations.ai/prompt/{query}"
-           f"?width={width}&height={height}&nologo=true&private=true")
-    if seed is not None:
-        url += f"&seed={int(seed) % 1_000_000}"
-    # Named explicitly. Asking for nothing got whatever the host defaulted to
-    # that week, which is not a choice anyone made.
-    url += f"&model={model or get_config().image_model}"
-    return url
-
-
-def build_urls_with_fallbacks(prompt: str, width: int, height: int,
-                              seed: Optional[int] = None,
-                              model: Optional[str] = None) -> tuple[str, str]:
-    primary = pollinations_url(prompt, width, height, seed, model)
-    simple = pollinations_url(
-        compress_and_sanitize(f"moody establishing shot. {image_style_prefix()}.", max_len=220),
-        min(width, 640),
-        min(height, 360),
-        seed,
-        model,
-    )
-    return primary, simple
-
-
 def _looks_like_image(path: str) -> bool:
     try:
         with open(path, "rb") as f:
@@ -444,69 +382,6 @@ def _ok_file(path: str, min_bytes: int = 2048) -> bool:
         return os.path.getsize(path) >= min_bytes
     except Exception:
         return False
-
-
-def _sleep_with_jitter(base: float, attempt: int) -> None:
-    time.sleep(base * attempt + random.uniform(0, base))
-
-
-def download_image(
-    url: str,
-    out_path: str,
-    timeout: int = 60,
-    certifi_module: Optional[object] = None,
-    max_attempts: int = 4,
-    backoff_seconds: float = 2.0,
-    simplified_url: Optional[str] = None,
-) -> None:
-    """Download an image with strict payload checks and fallback.
-
-    - Enforces Content-Type image/*
-    - Validates file signature and minimum size
-    - Retries with jitter; final hail-mary uses simplified_url (smaller, simpler)
-    """
-    req = request.Request(url, headers={"User-Agent": "RP-GPT/1.1"})
-    last_error: Optional[Exception] = None
-
-    def _try(_req: request.Request, _ctx) -> None:
-        with request.urlopen(_req, timeout=timeout, context=_ctx) as resp:
-            ctype = resp.headers.get("Content-Type", "")
-            status = getattr(resp, "status", 200)
-            if status != 200 or not ctype.startswith("image/"):
-                raise RuntimeError(f"Bad response status/ctype: {status} {ctype}")
-            with open(out_path, "wb") as fh:
-                fh.write(resp.read())
-        if not _looks_like_image(out_path) or not _ok_file(out_path):
-            raise RuntimeError("Downloaded payload isn’t a valid image.")
-
-    for attempt in range(1, max_attempts + 1):
-        try:
-            if certifi_module:
-                ctx = ssl.create_default_context(cafile=certifi_module.where())  # type: ignore[attr-defined]
-            else:
-                ctx = ssl.create_default_context()
-            _try(req, ctx)
-            return
-        except Exception as e1:
-            last_error = e1
-            # One unverified retry per attempt (some endpoints have broken chains)
-            try:
-                _try(req, ssl._create_unverified_context())
-                return
-            except Exception as e2:
-                last_error = e2
-        if attempt < max_attempts:
-            _sleep_with_jitter(backoff_seconds, attempt)
-
-    if simplified_url:
-        try:
-            req2 = request.Request(simplified_url, headers={"User-Agent": "RP-GPT/1.1"})
-            _try(req2, ssl._create_unverified_context())
-            return
-        except Exception as e3:
-            last_error = e3
-
-    raise RuntimeError(f"Image download failed after {max_attempts} attempts: {last_error}") from last_error
 
 
 # =============================
@@ -588,9 +463,6 @@ __all__ = [
     # fetch/display
     "supports_iterm_inline",
     "supports_kitty",
-    "pollinations_url",
-    "build_urls_with_fallbacks",
-    "download_image",
     "iterm_inline_image",
     "kitty_inline_stub",
     "show_image_in_terminal_or_fallback",

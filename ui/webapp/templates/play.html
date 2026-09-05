@@ -1,45 +1,79 @@
 {% extends "base.html" %}
 {% block content %}
+  {# The play screen had no `h1` at all -- the only screen in the game that
+     did not, and the one a player spends every hour on. Its visible headings
+     start at `h2` (the act goal) because that is the right size for them, so
+     this names the campaign for anyone navigating by heading and stays out of
+     the way of everyone else. It lives in the shell rather than in a partial
+     so an htmx swap cannot take the document's only `h1` with it. #}
+  <h1 class="sr-only">{{ campaign }}</h1>
+
   {# The turn as it is written. Lives outside both htmx targets so a swap
      cannot wipe it mid-sentence, and empties itself when the settled render
      arrives -- see chronicle.js. #}
   <div id="chronicle" class="chronicle-feed" aria-live="polite"></div>
 
-  {# Three areas rather than two columns:
+  {# Three areas, and on a wide screen they sit like this:
 
-         scene   aside
-         turn    turn
+         turn   scene
+         turn   aside
 
-     The picture leads, across most of the width. The log sits beside it and
-     stops where it stops -- it scrolls inside that height rather than running
-     on past the bottom of the image. The turn panel, which is the tallest
-     thing on the screen by a distance, gets the full width underneath. #}
+     The decision takes the wide column and the whole height; the picture and
+     the journal share the narrow one. It used to be the other way round --
+     picture across the top, decision underneath -- which put the menu below
+     the fold on every screen size there is, because a 16:9 plate across two
+     thirds of the width is taller than half the window. See the fixed-layout
+     block in app.css for the measurements. Narrow screens still stack in
+     source order and scroll the document. #}
   <div class="play-grid">
     <div id="scene-panel" class="play-scene"
          hx-get="{{ url_for('scene_panel') }}"
-         hx-trigger="load, refresh-turn from:body" hx-target="this"></div>
+         hx-trigger="load, refresh-turn from:body, refresh-scene from:body" hx-target="this"></div>
 
+    <div class="play-turn">
+      {% if not game_over %}
+        <a class="decision-jump" href="#current-decision">
+          <span>Current choices</span><span aria-hidden="true">&darr;</span>
+        </a>
+      {% endif %}
+      <div id="turn-panel"
+           hx-get="{{ url_for('turn_panel') }}"
+           hx-trigger="load, refresh-turn from:body" hx-target="this"></div>
+    </div>
+
+    {# On a phone the decision surface must follow the scene, not hundreds of
+       lines of history. Desktop grid areas still place this log beside the
+       scene, while source and keyboard order stay scene -> actions -> log. #}
     <div class="play-aside">
       <div id="log-panel" class="play-panel"
            hx-get="{{ url_for('log_panel') }}"
            hx-trigger="load, refresh-turn from:body" hx-target="this"></div>
     </div>
-
-    <div id="turn-panel" class="play-turn"
-         hx-get="{{ url_for('turn_panel') }}"
-         hx-trigger="load, refresh-turn from:body" hx-target="this"></div>
   </div>
 {% endblock %}
 
 {% block overlays %}
+  <div id="chapter-transition" class="chapter-transition" role="dialog" aria-modal="true"
+       aria-labelledby="chapter-transition-title" hidden
+       data-initial-title="{{ initial_chapter }}" data-chapter-key="{{ chapter_key }}">
+    <div class="chapter-transition-card">
+      <span>Chapter turning</span>
+      <strong id="chapter-transition-title" data-chapter-title></strong>
+      <button type="button" data-chapter-skip>Continue</button>
+    </div>
+  </div>
+
   {# Same reasoning as the Menu tab: a screen you can only reach by guessing a
      keystroke is a screen nobody opens. #}
-  <button type="button" class="sheet-tab" data-sheet="toggle" title="Character sheet (C)">Character</button>
+  <button type="button" class="sheet-tab" data-sheet="toggle" title="Character sheet (C)"
+          aria-controls="sheet-overlay" aria-expanded="false">Character</button>
 
   {# Fetched when it is opened, not on page load and not with every turn. The
      turn panel is re-fetched after every action; this is not. #}
-  <div id="sheet-overlay" class="sheet-overlay hidden" data-sheet="backdrop">
-    <div class="sheet-panel ninebox" style="--img: var(--frame-image); --slice: 56px; --gap: 12px;">
+  <div id="sheet-overlay" class="sheet-overlay hidden" data-sheet="backdrop" data-dialog="sheet"
+       role="dialog" aria-modal="true" aria-labelledby="sheet-title" aria-hidden="true">
+    <div class="sheet-panel ninebox" tabindex="-1"
+         style="--img: var(--frame-image); --slice: 56px; --gap: 12px;">
       <div class="nf tl"></div><div class="nf t"></div><div class="nf tr"></div>
       <div class="nf l"></div><div class="nf c"></div><div class="nf r"></div>
       <div class="nf bl"></div><div class="nf b"></div><div class="nf br"></div>

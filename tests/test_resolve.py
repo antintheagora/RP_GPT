@@ -300,3 +300,71 @@ def test_difficulty_does_not_depend_on_how_well_the_player_is_doing():
     assert "state" not in parameters
     assert "scene_phase" not in parameters
     assert "pressure" not in parameters
+
+
+# =============================
+# -- THE SPEC AND THE CODE ----
+# ---- SAY THE SAME NUMBERS ---
+# =============================
+
+def _spec_table(heading: str) -> dict:
+    """Pull a `| `word` | number | ... |` table out of MECHANICS.md.
+
+    Read rather than transcribed. A copied table drifts silently -- and this
+    one had, for a long time: MECHANICS described `base_difficulty` as a plain
+    integer the author picked, while the engine had stopped asking for one and
+    was adding a whole second modifier the spec did not mention anywhere.
+    """
+    import re
+    from pathlib import Path
+
+    text = Path("MECHANICS.md").read_text(encoding="utf-8")
+    after = text.split(heading, 1)[1]
+    # Stop at the blank line that ends the table, so the next table's rows
+    # cannot be swept up by a heading that moves.
+    rows = {}
+    for line in after.splitlines():
+        # Both minus signs, because a spec written in prose uses U+2212 and a
+        # spec written in a hurry uses the hyphen. The `+` matters too: the
+        # first version of this parser had no `+` in it and silently dropped
+        # the two positive plan rows rather than failing.
+        found = re.match(r"\|\s*`(\w+)`\s*\|\s*([-−+])?(\d+)\s*\|", line)
+        if found:
+            sign = -1 if found.group(2) in ("-", "−") else 1
+            rows[found.group(1)] = sign * int(found.group(3))
+        elif rows and not line.strip().startswith("|"):
+            break
+    return rows
+
+
+def test_the_difficulty_words_are_worth_what_the_spec_says():
+    from engine.resolve import DIFFICULTY_BASE
+
+    spec = _spec_table("**How hard the thing is.**")
+    assert spec, "the table is gone from MECHANICS 2.2"
+    assert {d.value: n for d, n in DIFFICULTY_BASE.items()} == spec
+
+
+def test_the_plan_words_are_worth_what_the_spec_says():
+    from engine.resolve import PLAN_MODIFIER
+
+    spec = _spec_table("**How good the plan is**")
+    assert spec, "the table is gone from MECHANICS 2.2"
+    assert {p.value: n for p, n in PLAN_MODIFIER.items()} == spec
+
+
+def test_the_worst_a_base_difficulty_can_get_is_what_the_spec_publishes():
+    """An implausible plan at desperate odds. The spec says 8-22 now; it said
+    8-18 while the engine could already reach 22."""
+    from engine.resolve import (MAX_BASE_DIFFICULTY, MIN_BASE_DIFFICULTY,
+                                _difficulty_from)
+
+    worst = _difficulty_from({"how_hard": "desperate", "plan": "implausible"})
+    best = _difficulty_from({"how_hard": "routine", "plan": "inspired"})
+    assert worst == MAX_BASE_DIFFICULTY + 4 == 22
+    assert best == MIN_BASE_DIFFICULTY == 8
+
+    from pathlib import Path
+    spec = Path("MECHANICS.md").read_text(encoding="utf-8")
+    assert "8 (trivial) – 22 (hopeless)" in spec
+    assert "| Base difficulty | 8–22, default 12 |" in spec

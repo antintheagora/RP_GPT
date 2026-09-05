@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 import random
+import threading
 import time
 import urllib.error
 import urllib.parse
@@ -56,6 +57,20 @@ CFG = 1.0
 TIMEOUT_SECONDS = 180.0
 POLL_SECONDS = 0.4
 
+# Availability is presentation metadata, not a render request. The Flask base
+# context is evaluated for every full page and every HTMX partial, so an
+# uncached four-second probe made one click fan out into several waits whenever
+# ComfyUI was not running. Keep the answer briefly and make the probe itself a
+# one-second local-health check. A render still has the full timeout above.
+# A normal local-model turn can take tens of seconds; a ten-second cache had
+# already expired by the time its three UI partials rendered, so offline art
+# still added a health-check pause to every action. Explicit settings retries
+# use ``refresh=True``; passive page metadata can safely stay warm for a minute.
+AVAILABILITY_TTL_SECONDS = 60.0
+AVAILABILITY_TIMEOUT_SECONDS = 1.0
+_availability_cache: Dict[str, tuple[float, bool]] = {}
+_availability_lock = threading.Lock()
+
 
 class ComfyUnavailable(RuntimeError):
     """ComfyUI is not answering, or has not got the models."""
@@ -66,23 +81,43 @@ def _get(host: str, path: str, timeout: float = 5.0) -> bytes:
         return response.read()
 
 
-def available(host: str = DEFAULT_HOST) -> bool:
+def available(host: str = DEFAULT_HOST, *, refresh: bool = False) -> bool:
     """Whether ComfyUI is up and holding the weights this graph needs.
 
     Both halves matter. A running ComfyUI without the FLUX.2 files answers
     every request cheerfully and fails inside the render, which surfaces as a
     picture that never arrives rather than as a reason.
+
+    The result is cached briefly because this function is also used to label
+    UI controls. It must never turn one page render into a repeated network
+    wait. ``refresh`` is available for an explicit user retry.
     """
-    try:
-        raw = _get(host, "/object_info/UNETLoader", timeout=4.0)
-        names = json.loads(raw)["UNETLoader"]["input"]["required"]["unet_name"][0]
-    except Exception:
-        _log.debug("no ComfyUI at %s", host, exc_info=True)
-        return False
-    if UNET not in names:
-        _log.info("ComfyUI is up but has no %s", UNET)
-        return False
-    return True
+    now = time.monotonic()
+    if not refresh:
+        cached = _availability_cache.get(host)
+        if cached is not None and now - cached[0] < AVAILABILITY_TTL_SECONDS:
+            return cached[1]
+
+    # Three partial refreshes can arrive together after one action. Only one
+    # of them should touch the local service; the rest reuse its answer.
+    with _availability_lock:
+        now = time.monotonic()
+        if not refresh:
+            cached = _availability_cache.get(host)
+            if cached is not None and now - cached[0] < AVAILABILITY_TTL_SECONDS:
+                return cached[1]
+        try:
+            raw = _get(host, "/object_info/UNETLoader",
+                       timeout=AVAILABILITY_TIMEOUT_SECONDS)
+            names = json.loads(raw)["UNETLoader"]["input"]["required"]["unet_name"][0]
+            ready = UNET in names
+        except Exception:
+            _log.debug("no ComfyUI at %s", host, exc_info=True)
+            ready = False
+        if not ready and 'names' in locals():
+            _log.info("ComfyUI is up but has no %s", UNET)
+        _availability_cache[host] = (time.monotonic(), ready)
+        return ready
 
 
 def workflow(prompt: str, width: int, height: int, seed: int,

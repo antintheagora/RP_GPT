@@ -1,52 +1,40 @@
+"""Two small facts about the sheet and the act, asked at menu-building time.
+
+This module used to be what its own description said it was: "option building
+(the 1-3 SPECIAL choices + microplans), menu rendering, and handling the user's
+menu choice". None of that is here any more -- the menu is built in
+`engine/actions.py` and resolved in `engine/turn.py` -- and what survived is
+two questions the callers still need answered:
+
+    goal_lock_active   is this act close enough to its ending to focus in?
+    _offer_stats       which approaches does the sheet put forward?
+
+That description was also not a docstring. It sat below an import, which makes
+it a bare string expression: `Choice_Handler.__doc__` was `None`, so the one
+place the module explained itself explained it to nobody, and explained it
+wrongly in any case.
+
+Seventeen of the twenty imports above it were left over from the removed code
+-- `observe_prompt`, `option_microplans_prompt`, `GemmaClient`, `journal_add`
+and the rest, brought in and never called. That is exactly the silhouette
+`tests/test_nothing_calls_this.py` exists to catch: from the import list, a
+module doing nothing is indistinguishable from a module doing a great deal.
+`observe_prompt` in particular must never be wired up here -- an Observe
+result is a mechanical fact the engine authors in `apply_observation`, and
+asking a model to write one would break the first rule in CLAUDE.md.
+"""
+
 from __future__ import annotations
 
-from engine import events as _ev
-
-"""
-Choice_Handler
-----------------
-Simple, human-readable module that groups together:
-- Option building (the 1–3 SPECIAL choices + microplans)
-- Menu rendering
-- Handling the user's menu choice
-
-Design notes (plain language):
-- We keep behavior identical to the previous in-file code.
-- To avoid circular imports, we look up a few things from RP_GPT at runtime
-  inside functions (calc/check/evolve/TurnMode/etc.). This way, RP_GPT can
-  import this module, and when these functions run, RP_GPT is already loaded.
-- We also try to read SPECIAL_KEYS from RP_GPT dynamically. If unavailable,
-  we fall back to the standard SPECIAL list so nothing breaks.
-"""
-
 import random
-import sys
-from dataclasses import dataclass, field
-from typing import Dict, List, Tuple, Optional, TYPE_CHECKING
-
-# Local helpers for wrapping/sanitizing text and journal utilities
-from Core.Helpers import (
-    wrap,
-    sanitize_prose,
-    verbish_from_microplan,
-    journal_add,
-    journal_lore_line,
-)
-
-# Prompt helpers and model client
-from Core.AI_Dungeon_Master import (
-    option_microplans_prompt,
-    observe_prompt,
-    GemmaClient,
-    get_extra_world_text,
-)
+from typing import List, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    # Only used for type hints to keep runtime import order simple
+    # Only used for type hints, to keep runtime import order simple.
     from RP_GPT import GameState
 
 
-# --- Small indirection helpers to avoid circular imports at module import time ---
+# --- Small indirection helper to avoid a circular import at module load ---
 def _core():
     """Import RP_GPT at call time to access shared classes/functions safely."""
     import RP_GPT as core  # type: ignore
@@ -66,12 +54,6 @@ def _get_special_keys() -> List[str]:
         return list(getattr(core, "SPECIAL_KEYS", ["STR", "PER", "END", "CHA", "INT", "AGI", "LUC"]))
     except Exception:
         return ["STR", "PER", "END", "CHA", "INT", "AGI", "LUC"]
-
-
-# =============================
-# --------- OPTIONS -----------
-# =============================
-
 
 
 def goal_lock_active(state: "GameState", last_success: bool) -> bool:
@@ -113,21 +95,3 @@ def _offer_stats(state: "GameState", count: int = 3) -> list:
     offered = top + ([wildcard] if wildcard else [])
     # Keep the sheet's own order so the menu does not reshuffle every turn.
     return sorted(offered, key=keys.index)
-
-
-
-
-
-
-# =============================
-# ------ CHOICE HANDLER -------
-# =============================
-
-
-
-
-
-
-
-
-

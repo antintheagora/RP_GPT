@@ -178,7 +178,6 @@ from Core.Image_Gen import (
     make_ending_prompt,
     make_combat_image_prompt,
     describe_actor_physical,
-    pollinations_url,
 )
 from Core.Interactions import (
     pick_actor,

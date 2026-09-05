@@ -102,3 +102,42 @@ def test_every_narrative_prompt_pins_the_point_of_view():
                    next_situation_prompt(state, "success", "push", goal_lock=False)):
         assert "second person" in prompt
         assert "third person" in prompt
+
+
+def test_a_foe_on_the_board_has_to_be_in_the_paragraph():
+    """The closed-list rule is only half a rule.
+
+    It stops the model adding a fighter to the scene and never asked it to
+    mention the one already standing in it. A live turn wrote "you move toward
+    a massive, barnacle-encrusted bulkhead" as the situation while Captain Vane
+    sat at 18 of 18 in the panel beside it, with two strike options in the
+    menu. The facts carried him the whole time.
+    """
+    import RP_GPT as core
+    from Core.AI_Dungeon_Master import next_situation_prompt
+
+    blueprint = core.blueprint_from_json({
+        "campaign_goal": "g", "pressure_name": "The Tide",
+        "acts": {"1": {"goal": "Open the vault", "intro_paragraph": "x",
+                       "pressure_evolution": "y"}},
+    })
+    state = core.GameState(
+        scenario=core.Scenario.APOCALYPSE, scenario_label="T",
+        player=core.Player(name="Wren"), blueprint=blueprint,
+        pressure_name="The Tide",
+    )
+
+    prompt = next_situation_prompt(
+        state, "failure", "force the hatch", False,
+        facts={"outcome": "failure",
+               "combat": {"foes_now": [{"name": "Captain Vane", "alive": True,
+                                        "hp": 18, "max_hp": 18}]}},
+    )
+
+    assert "combat.foes_now" in prompt
+    assert "put them in this paragraph" in prompt, (
+        "nothing tells the writer to mention a foe that is already there"
+    )
+    # And it must stay a placement, not an attack: the engine owns what a foe
+    # actually does on its turn.
+    assert "no action that" in prompt and "changes any state" in prompt

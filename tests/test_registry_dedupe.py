@@ -55,6 +55,16 @@ def _actor(name, role="npc", **kw):
     return core.Actor(name=name, kind=kw.pop("kind", "person"), role=role, **kw)
 
 
+def test_directory_setup_creates_a_brand_new_user_data_tree(tmp_path, monkeypatch):
+    root = tmp_path / "never-created" / "userdata" / "characters"
+    monkeypatch.setattr(registry, "base_dir", lambda: root)
+
+    registry.ensure_directories()
+
+    assert root.is_dir()
+    assert all((root / folder).is_dir() for folder in registry.ROLE_DIRS.values())
+
+
 # =============================
 # ------- IT MATCHES ----------
 # =============================

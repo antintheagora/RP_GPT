@@ -226,7 +226,10 @@ def _discover_portrait(folder: Path) -> Optional[Path]:
 
 
 def ensure_directories() -> None:
-    base_dir().mkdir(exist_ok=True)
+    # A first launch can point at an entirely new RP_GPT_USER_DATA tree. The
+    # role folders below know how to create parents, but this initial mkdir ran
+    # first and failed whenever the user-data root itself did not yet exist.
+    base_dir().mkdir(parents=True, exist_ok=True)
     for sub in ROLE_DIRS.values():
         (base_dir() / sub).mkdir(parents=True, exist_ok=True)
 

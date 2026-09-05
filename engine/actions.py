@@ -19,6 +19,7 @@ about. Neither is a different game.
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Dict, List, Optional
@@ -134,6 +135,14 @@ ITEM_STAT_TAGS: Dict[str, str] = {
     "charm": "CHA", "gift": "CHA", "token": "LUC",
 }
 
+# A closed, deliberately mundane vocabulary. These tags make an item capable
+# of treating a raw wound; prose such as an item's name or notes never grants
+# mechanics by implication.
+ITEM_TREATMENT_TAGS = frozenset({
+    "medicine", "medical", "medkit", "bandage", "first aid", "first-aid",
+    "first_aid", "healing",
+})
+
 
 @dataclass
 class MenuOption:
@@ -149,7 +158,11 @@ class MenuOption:
     note: str = ""      # why it is awkward, when it is
 
     def __post_init__(self) -> None:
-        if not self.stat:
+        # "Something else" is deliberately uncategorised. Giving it the
+        # generic INT default meant every described custom move overruled the
+        # Keeper's governing stat and became an Intelligence roll -- exactly
+        # the anti-build behaviour this escape hatch exists to prevent.
+        if not self.stat and self.verb is not Verb.OTHER:
             self.stat = DEFAULT_STAT.get(self.verb, "INT")
 
 
@@ -296,7 +309,17 @@ def approach_options(scene: Scene, stats=None) -> List[MenuOption]:
 
     values = {key: int(getattr(stats, key, 5)) if stats else 5
               for key in SPECIAL_KEYS}
-    ranked = sorted(SPECIAL_KEYS, key=lambda k: (-values[k], SPECIAL_KEYS.index(k)))
+
+    # A fixed SPECIAL-order tie break made an all-average hero see STR, PER
+    # and END at *every* obstacle; CHA, INT, AGI and LUC could never be quick
+    # approaches. Rotate only equal scores by a stable scene key. The same
+    # problem therefore keeps the same readable menu, while a new problem can
+    # surface a different equally-strong side of the character. Explicitly
+    # higher stats still always outrank lower ones.
+    scene_key = f"{scene.id}|{scene.name}".encode("utf-8", "replace")
+    offset = hashlib.sha256(scene_key).digest()[0] % len(SPECIAL_KEYS)
+    tie_order = list(SPECIAL_KEYS[offset:]) + list(SPECIAL_KEYS[:offset])
+    ranked = sorted(SPECIAL_KEYS, key=lambda k: (-values[k], tie_order.index(k)))
 
     room = min(APPROACHES_OFFERED + len(learned), APPROACHES_MAX)
     out = list(learned)
@@ -397,12 +420,13 @@ def _item_stat(tags: List[str]) -> str:  # noqa: E302 - grouped with its caller
 
 def _item_does_something(item, tags: List[str]) -> bool:
     """Whether the engine has any idea what using this would do."""
-    if any(int(getattr(item, field, 0) or 0)
-           for field in ("hp_delta", "attack_delta", "goal_delta", "pressure_delta")):
-        return True
-    if getattr(item, "special_mods", None):
-        return True
-    return any(tag in ITEM_STAT_TAGS for tag in tags)
+    for field in ("hp_delta", "goal_delta", "pressure_delta"):
+        try:
+            if int(getattr(item, field, 0) or 0):
+                return True
+        except (TypeError, ValueError):
+            continue
+    return any(tag in ITEM_TREATMENT_TAGS for tag in tags)
 
 
 def intent_from_option(option: MenuOption, described: str = "") -> Intent:
@@ -535,4 +559,5 @@ __all__ = [
     "ObserveResult", "apply_observation", "bearing_after_gear",
     "DEFAULT_STAT", "OBSERVE_STAT", "OBSERVE_LABEL", "VERB_LABEL",
     "APPROACH_PHRASE", "APPROACHES_OFFERED", "PARLEY_TARGETS",
+    "ITEM_TREATMENT_TAGS",
 ]

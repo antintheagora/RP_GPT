@@ -108,8 +108,17 @@ scale above is a word, and the numbers behind those words are not yours.
 """
 
 
+class KeeperUnavailable(RuntimeError):
+    """The fiction assessment could not be obtained or decoded.
+
+    The orchestration layer can surface this as a retryable, zero-cost
+    choice.  Keeping the exception engine-owned avoids coupling the rules to
+    a particular local-model client or transport.
+    """
+
+
 class ModelKeeper:
-    """Asks a GemmaClient. Falls back rather than failing a turn."""
+    """Ask a structured client for fiction facts before a turn can resolve."""
 
     def __init__(self, client, character_block: str = "", recall=None) -> None:
         self.client = client
@@ -146,27 +155,17 @@ class ModelKeeper:
                 schema=ASSESS_SCHEMA,
             )
             assessment = assessment_from_json(payload)
-        except Exception:
-            _log.exception("assessment failed; falling back to a neutral rating")
-            assessment = neutral_assessment(intent)
+        except Exception as exc:
+            # Silently substituting Sound for all seven approaches makes an
+            # Ollama outage adjudicate the game.  The engine must not invent
+            # facts on the model's behalf: report a typed, retryable boundary
+            # failure and let the UI spend no turn.
+            _log.exception("assessment failed before turn resolution")
+            raise KeeperUnavailable("the local Keeper did not answer") from exc
 
         if intent.stat_hint in SPECIAL_KEYS:
             assessment.stat = intent.stat_hint
         return assessment
-
-
-def neutral_assessment(intent: Intent) -> Assessment:
-    """What to use when the model is unreachable.
-
-    Everything Sound: a turn still resolves, the player is neither punished nor
-    rewarded for an outage, and the campaign continues rather than dying.
-    """
-    return Assessment(
-        stat=intent.stat_hint if intent.stat_hint in SPECIAL_KEYS else "STR",
-        bearings={key: Bearing.SOUND for key in SPECIAL_KEYS},
-        consequence=Consequence.COMPLICATION,
-        summary="",
-    )
 
 
 class StubKeeper:
@@ -197,4 +196,9 @@ class StubKeeper:
         )
 
 
-__all__ = ["ModelKeeper", "StubKeeper", "assess_prompt", "neutral_assessment"]
+__all__ = [
+    "KeeperUnavailable",
+    "ModelKeeper",
+    "StubKeeper",
+    "assess_prompt",
+]

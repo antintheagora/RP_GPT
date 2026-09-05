@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block content %}
+
+{# The one page in this project with a legal obligation behind it.
+
+   Two of the models in the painted hall are CC-BY 4.0, not CC0, which means
+   the credit has to travel with any render that contains them -- and renders
+   that contain them ship in the game. Until now that was recorded in
+   art/README.md, a file in the repository, and nowhere a player could reach.
+   art/README.md called that "a gap, not a decision". This is the gap closed.
+
+   Everything on this page is checked against the thing it describes rather
+   than remembered: the font licence out of vendor/fonts.css, the htmx and
+   Tailwind versions out of their own banners, the weight names out of
+   engine/comfy.py, the model tags out of Core/Config.py. #}
+
+<h1 class="credits-title">Credits</h1>
+<p class="credits-standfirst">
+  RP&#8209;GPT runs on your own machine. It writes with a language model you
+  host, draws with an image model you host, and asks the internet for nothing
+  &mdash; not a typeface, not a script, not a line of prose.
+</p>
+
+<section class="credits-section" aria-labelledby="credits-borrowed">
+  <h2 id="credits-borrowed">Borrowed work</h2>
+  <p class="credits-note">
+    Two models in the painted hall are not ours. They are used under the
+    <strong>Creative Commons Attribution 4.0</strong> licence, which asks for
+    exactly this: that the people who made them are named wherever their work
+    appears.
+  </p>
+  <p class="credits-note credits-quiet">
+    The licence is at <span class="credits-source">creativecommons.org/licenses/by/4.0/</span>,
+    written out rather than linked. This game never asks the internet for
+    anything, and a credits page is a poor place to make the first exception
+    &mdash; naming the author, the licence and the source is what CC&#8209;BY
+    actually asks for.
+  </p>
+  <dl class="credits-list">
+    <dt>Pigeon in Flight</dt>
+    <dd>
+      by <strong>restore50</strong> &middot; CC&#8209;BY&nbsp;4.0<br />
+      <span class="credits-source">sketchfab.com/3d-models/none-d135106ba138411fbe8d779b2fb90599</span>
+    </dd>
+    <dt>Black Panther</dt>
+    <dd>
+      by <strong>kenchoo</strong> &middot; CC&#8209;BY&nbsp;4.0<br />
+      <span class="credits-source">sketchfab.com/3d-models/black-panther-7fca11c89cca4362a525c891a8345112</span>
+    </dd>
+  </dl>
+</section>
+
+<section class="credits-section" aria-labelledby="credits-type">
+  <h2 id="credits-type">Typefaces</h2>
+  <dl class="credits-list">
+    <dt>Cinzel</dt>
+    <dd>headings &middot; SIL Open Font License 1.1</dd>
+    <dt>IM Fell English</dt>
+    <dd>body and prose &middot; SIL Open Font License 1.1</dd>
+  </dl>
+  <p class="credits-note">
+    Both are served from this machine rather than from a font host. Asking a
+    stranger's server for the typeface was the one thing left that made a game
+    with no network need the network to look like itself.
+  </p>
+</section>
+
+<section class="credits-section" aria-labelledby="credits-code">
+  <h2 id="credits-code">Code that is not ours</h2>
+  <dl class="credits-list">
+    <dt>htmx 1.9.10</dt>
+    <dd>every screen in this game is HTML the server sent &middot; Zero-Clause BSD</dd>
+    <dt>Tailwind CSS 3.4.19</dt>
+    <dd>compiled to one stylesheet, shipped, never fetched &middot; MIT</dd>
+    <dt>Flask</dt>
+    <dd>the server behind the browser window &middot; BSD 3-Clause</dd>
+  </dl>
+</section>
+
+<section class="credits-section" aria-labelledby="credits-models">
+  <h2 id="credits-models">Models it drives</h2>
+  <p class="credits-note">
+    These are separate programs on your machine, not part of the game. RP&#8209;GPT
+    talks to them and works without them &mdash; without a language model there is
+    no prose, and without ComfyUI there are simply no pictures.
+  </p>
+  <dl class="credits-list">
+    <dt>Gemma, through Ollama</dt>
+    <dd>writes the prose and plays every character. <code>gemma4:12b</code>
+        narrates; <code>gemma3:latest</code> is the Keeper, who rates the
+        fiction and never decides an outcome.</dd>
+    <dt>FLUX.2 Klein, through ComfyUI</dt>
+    <dd>draws the scenes, when it is running. <code>flux-2-klein-4b-fp8</code>
+        with a <code>qwen_3_4b</code> text encoder.</dd>
+  </dl>
+</section>
+
+<section class="credits-section" aria-labelledby="credits-made">
+  <h2 id="credits-made">Made for this game</h2>
+  <p class="credits-note">
+    Every frame, button, backdrop and scene is modelled in Blender and rendered
+    from source rather than drawn once and kept &mdash; so a change to the light
+    is a change to the light, not a repaint. The rules, the dice, the clocks and
+    the writing are the author's.
+  </p>
+  <dl class="credits-list">
+    <dt>Ashfall at the Gate</dt>
+    <dd>
+      title ambience made for RP&#8209;GPT by deterministic procedural synthesis
+      &middot; no samples or source recordings &middot; generator source included
+    </dd>
+  </dl>
+</section>
+
+<div class="credits-actions">
+  <a href="{{ url_for('landing') }}" class="u-button">Back</a>
+</div>
+
+{% endblock %}

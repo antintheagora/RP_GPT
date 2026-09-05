@@ -18,7 +18,7 @@
   <header class="sheet-head">
     <div>
       <p class="overline text-dust">Act {{ payload.act_index }} of {{ payload.act_count }}</p>
-      <h2 class="text-3xl font-semibold text-bone">{{ p.name }}</h2>
+      <h2 id="sheet-title" class="text-3xl font-semibold text-bone">{{ p.name }}</h2>
       {% if payload.campaign_goal %}
         <p class="text-sm text-tan mt-1">{{ payload.campaign_goal }}</p>
       {% endif %}
@@ -49,6 +49,10 @@
         {% if p.max_resolve %}
           <p class="text-sm text-dust">Resolve {{ p.resolve }} / {{ p.max_resolve }}</p>
         {% endif %}
+        <p class="text-sm {{ 'text-verdigris' if payload.fortune_ready else 'text-ash' }}">
+          Fortune {{ 'ready' if payload.fortune_ready else 'spent' }}
+          &middot; one reroll this campaign
+        </p>
 
         {% if cond and (cond.wounds.wounds or cond.scars or cond.virtues) %}
           <ul class="text-sm space-y-1 pt-2 border-t border-edge">

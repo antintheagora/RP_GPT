@@ -11,10 +11,13 @@ import json
 import random
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Any, Dict, List, Literal, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional
+
+if TYPE_CHECKING:
+    from engine.character import Condition
 
 # Image generation defaults, kept with the state they describe.
-ENABLE_TURN_IMAGE = True
+ENABLE_TURN_IMAGE = False
 IMG_WIDTH, IMG_HEIGHT = 768, 432
 PORTRAIT_IMG_WIDTH, PORTRAIT_IMG_HEIGHT = 300, 300
 IMG_TIMEOUT = 50
@@ -78,6 +81,10 @@ class Actor:
     portrait_path: Optional[str] = None
     profile_folder: Optional[str] = None
     profile_metadata: Dict[str, Any] = field(default_factory=dict)
+    # Stable ledger identity when one has been resolved. This used to be
+    # attached dynamically and vanished from every save, forcing durable
+    # per-person mechanics to fall back to a mutable display name.
+    entity_id: Optional[int] = None
 
 @dataclass
 class Player:
@@ -185,10 +192,47 @@ class ActState:
     # the Run is rebuilt from this -- so every observation's benefit and
     # the whole scene cache evaporated the moment a campaign was reloaded.
     obstacles:List[Dict[str,Any]]=field(default_factory=list)
+    # Current health for enemies in this act, keyed by the same name the
+    # scene uses. Actor.hp remains the authored maximum; putting current HP
+    # there would make a wounded foe rebuild as "7/7" instead of "7/20".
+    # Act-scoped on purpose: enemies are left behind when begin_act replaces
+    # the ActState, while the player's Condition belongs to the campaign.
+    foe_hp:Dict[str,int]=field(default_factory=dict)
+    # Foes escaped with Withdraw. They remain alive and retain their current
+    # HP, but must not be reconstructed as an active fight on the next bridge
+    # sync or after loading a save.
+    foe_disengaged:List[str]=field(default_factory=list)
+    # Mutable engine state that belongs to this act's current scene. A Run is
+    # rebuilt on resume, so leaving these only on Run silently granted another
+    # round of assists and companion protection, while discarding an earned
+    # preparation. A fresh ActState deliberately resets all three.
+    prepared:bool=False
+    assists_used:int=0
+    wound_taken_for_you:bool=False
+    # One free Observe belongs to each stable scene problem. The engine uses
+    # obstacle ids as scene/stage keys; persisting the spent keys prevents a
+    # reload from minting another free look, while a fresh ActState resets
+    # the allowance naturally.
+    free_observe_keys:List[str]=field(default_factory=list)
+    # Free conversation allowance per person and world-turn. Each value is
+    # ``{"turn": N, "used": M}``: closing at four exchanges and reopening
+    # therefore leaves one, not a fresh five. A consumed action advances N
+    # and naturally resets the allowance; saving/reloading cannot do so.
+    talk_usage:Dict[str,Dict[str,int]]=field(default_factory=dict)
+    # Tide definitions live in the authored ActPlan; only their mutable state
+    # belongs in a save. Keyed by the stable bridge Tide id so old saves with
+    # no snapshot continue to start each Tide at zero.
+    tide_state:Dict[str,Dict[str,int]]=field(default_factory=dict)
     situation:str=""
     actors:List[Actor]=field(default_factory=list)
     undiscovered:List[Actor]=field(default_factory=list)
     last_outcome:Optional[str]=None
+    # A resolved act boundary that has been checkpointed but has not yet
+    # crossed into the next act.  Recaps are optional model work and may be
+    # interrupted; persisting this marker lets resume finish the transition
+    # without replaying the winning/losing turn or stranding a full clock.
+    # Empty is the legacy/default state; the only live values are success/fail.
+    transition_pending:str=""
     custom_uses:int=0
 
 @dataclass
@@ -231,6 +275,29 @@ class GameState:
     pressure_name:str; mode:TurnMode=TurnMode.EXPLORE
     act:ActState=field(default_factory=lambda: ActState(1)); act_count:int=3
     running:bool=True; debug:bool=False; last_enemy:Optional[Actor]=None
+    # The engine's complete player condition. Older saves have no field and
+    # build_run reconstructs it from the legacy Player.hp value. Keeping the
+    # typed object here preserves Resolve, wounds, Rally damage, Scars and
+    # Virtues across both saves and the Run rebuild at an act boundary.
+    condition:Optional['Condition']=None
+    # A rolled turn may pause after an exact consequence is provisionally
+    # applied so the player can Resist it. Kept on campaign state (rather than
+    # only the web session) so refresh and save/resume cannot erase the bill
+    # or reroll the action. The concrete PendingResist type lives in turn.py
+    # to avoid making the data model depend on resolution rules.
+    pending_resist:Optional[Any]=None
+    # An armed Fortune roll pauses even earlier: both die Resolutions are
+    # already fixed, but no consequence or critical effect has landed. Keep
+    # the transaction and the campaign-scoped spend flag in the save so a
+    # refresh cannot reroll the reserved die or restore a spent intervention.
+    pending_luck:Optional[Any]=None
+    luck_reroll_used:bool=False
+    # Bargains interrupt even earlier, between the Keeper assessment and the
+    # dice. Persist the rated Intent and its staged Push/Fortune commitments so
+    # Continue returns to the same offer rather than silently discarding it.
+    # The concrete PendingOffer type lives in turn.py to avoid a model/rules
+    # import cycle and to keep the engine independent of any front end.
+    pending_bargain:Optional[Any]=None
     custom_stat:Optional[str]=None; combat_turn_already_counted:bool=False
     history:List[str]=field(default_factory=list)
     turn_narrative_cache:Optional[str]=None
@@ -251,6 +318,14 @@ class GameState:
     image_events: List[ImageEvent] = field(default_factory=list)
     world_metadata: Dict[str, Any] = field(default_factory=dict)
     world_folder: Optional[str] = None
+    # Prompt/runtime identity for this campaign. These are plain, sanitised
+    # strings rather than a Config object so saves never capture credentials,
+    # process settings or a live client. Empty defaults keep pre-field saves
+    # loadable and mean "use the current installation default" on resume.
+    world_text: str = ""
+    narrator_model: str = ""
+    keeper_model: str = ""
+    ollama_host: str = ""
     turns_per_act_override: Optional[int] = None
     # NEW: evolution focus + last printed paras (for option bias)
     last_result_para:str=""

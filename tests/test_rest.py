@@ -259,15 +259,32 @@ def test_a_night_is_reported_once():
 def test_camping_does_not_re_narrate_the_last_roll():
     """`_last_result` survived a rest, so the night re-ran scene evolution
     against a roll several turns old -- the scene described finding the thing
-    you had already found, while the clock still read zero."""
+    you had already found, while the clock still read zero.
+
+    The setup has to finish the turn before it can ask what the turn left
+    behind. A failed roll that lands a resistible consequence suspends the
+    turn on a Resist offer and sets `_last_result` only once that is answered,
+    so asserting straight after the action was a coin toss -- measured at 20%
+    over 300 runs, which is roughly how often this suite failed on nothing but
+    the dice. Answering the offer takes it to 0 in 400.
+
+    The token is not ceremony. A bare `resist:decline` is refused as a stale
+    control, which is what stops a re-submitted button answering a decision
+    the player has already moved past.
+    """
     import ui.webapp.game_service as gs
     from engine.actions import Verb
     from tests.test_menu_flow import _session
 
     session = _session()
     option = next(o for o in session.ensure_options() if o.verb is Verb.OTHER)
-    session.apply_choice(option.key, {"intent": "force the hatch"})
-    assert session._last_result is not None
+    outcome = session.apply_choice(option.key, {"intent": "force the hatch"})
+    if outcome.get("offered"):
+        resist = session.get_turn_payload().get("resist")
+        if resist:
+            session.apply_choice(gs.RESIST_DECLINE,
+                                 {"resist_token": resist["token"]})
+    assert session._last_result is not None, "the turn never finished"
 
     session.apply_choice(gs.REST)
     assert session._last_result is None, "the night still held an old roll"

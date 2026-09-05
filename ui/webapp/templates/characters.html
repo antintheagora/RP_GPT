@@ -1,5 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
+{# The page's only `h1`, for anyone navigating by heading. The visible
+   headings here are `h2` because that is the right size for a panel title,
+   and the same gap existed on the play screen: three of the six templates
+   had no `h1` at all. Hidden rather than drawn, so nothing changes on
+   screen. #}
+<h1 class="sr-only">Choose your character for {{ world.title }}</h1>
 <section class="creator-grid">
   <div class="ninebox u-box creator-panel">
     <div class="nf tl"></div>
@@ -19,9 +25,9 @@
         </div>
         <a href="{{ url_for('world_roster', slug=world.slug) }}" class="overline text-dust hover:text-bone">Back to roster</a>
       </div>
-      <p class="panel-subtle">Use an existing hero or craft a new one (builder coming soon).</p>
+      <p class="panel-subtle">Choose a saved hero whose story you want to continue in this world.</p>
       <div class="pc-actions">
-        <button class="u-button outline" type="button" disabled title="Hero builder coming soon">+ New character</button>
+        <a class="u-button outline w-full" href="{{ url_for('legacy_start') }}">Start with a new hero</a>
       </div>
       <div class="pc-list u-scroll scroll-fade">
         {% for player in players %}
@@ -57,18 +63,53 @@
         </div>
       </div>
       {% if selected %}
+      <div class="hero-launch">
+        <p id="hero-launch-note" class="panel-subtle">Confirm the optional local art settings, then begin as {{ selected.name }}.</p>
+        <form method="post" action="{{ url_for('begin_with_player', slug=world.slug, player_slug=selected.slug) }}"
+              class="launch-card"
+              aria-describedby="hero-launch-note"
+              data-waiting-text="The Keeper is binding your campaign&hellip;">
+          <label class="launch-option">
+            <input type="checkbox" name="images" value="1"
+                   {% if local_art %}checked{% else %}disabled{% endif %} />
+            <span>
+              <span class="launch-option-title">Local scene art</span>
+              <span class="launch-option-note">
+                {% if local_art %}
+                  ComfyUI is ready. Art stays on this computer.
+                {% else %}
+                  Start ComfyUI to enable it. No campaign text is sent online.
+                {% endif %}
+              </span>
+            </span>
+          </label>
+          <label class="launch-style">
+            <span>Art direction</span>
+            <select name="image_style">
+              {% for key, label, blurb in styles %}
+                <option value="{{ key }}" {% if key == chosen_style %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <button class="u-button w-full" type="submit"
+                  data-waiting-text="The Keeper is binding your campaign&hellip;">Begin your journey</button>
+        </form>
+      </div>
       <div class="portrait-preview">
         <div class="world-portrait-frame">
           <img class="world-portrait" src="{{ selected.portrait_url }}" alt="{{ selected.name }}" />
         </div>
         <p class="world-preview-copy">{{ selected.appearance or 'Describe your hero in the form on the right.' }}</p>
       </div>
-      <div class="portrait-actions">
-        <form method="post" action="{{ url_for('begin_with_player', slug=world.slug, player_slug=selected.slug) }}" class="flex-1 min-w-[180px]">
-          <button class="u-button w-full" type="submit">Begin your journey</button>
-        </form>
-        <button class="u-button outline flex-1 min-w-[180px]" type="button" disabled title="Portrait regen coming soon">Regenerate portrait</button>
-      </div>
+      {% if selected.scenario_label and selected.scenario_label|lower not in world.title|lower
+            and world.title|lower not in selected.scenario_label|lower %}
+        <p class="world-fit-note">
+          <strong>Continuity check:</strong> this profile is labelled
+          &ldquo;{{ selected.scenario_label }}&rdquo;, while you selected
+          &ldquo;{{ world.title }}&rdquo;. The campaign will use this world&rsquo;s
+          lore; update the profile label on the right if this is intentional.
+        </p>
+      {% endif %}
       {% else %}
       <p class="text-sm text-dust">Select a hero to preview their portrait.</p>
       {% endif %}
@@ -93,13 +134,29 @@
         </div>
       </div>
       {% if selected %}
-      <form method="post" action="{{ url_for('update_player_profile', slug=world.slug, player_slug=selected.slug) }}" class="creator-form u-scroll scroll-fade">
+      <p class="panel-subtle">Editing is optional. Changes are saved to this reusable hero profile.</p>
+      {% if profile_error %}
+      <details class="editor-disclosure hero-editor" open>
+      {% else %}
+      <details class="editor-disclosure hero-editor">
+      {% endif %}
+        <summary>Edit {{ selected.name }}</summary>
+      <form method="post" action="{{ url_for('update_player_profile', slug=world.slug, player_slug=selected.slug) }}"
+            class="creator-form u-scroll scroll-fade"
+            data-special-budget-form data-special-budget="{{ special_budget }}"
+            aria-describedby="special-budget-help special-budget-status{% if profile_error %} hero-profile-error{% endif %}">
         <input type="hidden" name="player" value="{{ selected.slug }}" />
+        {% if profile_error %}
+        <div id="hero-profile-error" class="setup-error special-error" role="alert" aria-live="assertive" tabindex="-1" data-profile-error>
+          <strong>{{ profile_error_title }}</strong>
+          <span>{{ profile_error }}</span>
+        </div>
+        {% endif %}
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block overline text-dust" for="f-name">Name</label>
             <div class="mt-1 u-input-shell">
-              <input class="u-input" name="name" value="{{ selected.name }}" id="f-name" />
+              <input class="u-input" name="name" value="{{ selected.name }}" id="f-name" required maxlength="80" />
             </div>
           </div>
           <div>
@@ -119,7 +176,7 @@
           <div>
             <label class="block overline text-dust" for="f-age">Age</label>
             <div class="mt-1 u-input-shell">
-              <input class="u-input" type="number" name="age" value="{{ selected.age }}" id="f-age" />
+              <input class="u-input" type="number" name="age" value="{{ selected.age }}" id="f-age" min="1" inputmode="numeric" />
             </div>
           </div>
           <div>
@@ -135,21 +192,50 @@
             <textarea class="u-input" rows="3" name="appearance" id="f-appearance">{{ selected.appearance }}</textarea>
           </div>
         </div>
-        <div>
-          <p class="block overline text-dust">SPECIAL stats</p>
+        <fieldset class="special-editor">
+          <legend class="block overline text-dust">SPECIAL stats</legend>
+          <div class="special-budget-copy">
+            <p id="special-budget-help" class="field-hint">Each score must be a whole number from {{ special_min }} to {{ special_max }}. Spend up to {{ special_budget }} points total. Every score shifts the rolls that use it &mdash; 5 is average, and each point either side is worth about a twentieth of your chance.</p>
+            <output id="special-budget-status"
+                    class="special-budget-status{% if invalid_special %} is-invalid{% elif special_points_used is not none and special_points_used > special_budget %} is-over-budget{% endif %}"
+                    role="status" aria-live="polite" aria-atomic="true" data-special-budget-status>
+              {% if invalid_special %}
+                Check the highlighted score{% if invalid_special|length != 1 %}s{% endif %}.
+              {% elif special_points_used is none %}
+                Check all seven scores.
+              {% elif special_points_used > special_budget %}
+                {{ special_points_used }} / {{ special_budget }} points used &middot; {{ special_points_used - special_budget }} over
+              {% else %}
+                {{ special_points_used }} / {{ special_budget }} points used &middot; {{ special_budget - special_points_used }} remaining
+              {% endif %}
+            </output>
+          </div>
           <div class="stat-grid">
             {% for stat in special_keys %}
+            {# The code alone told a player nothing. Seven abbreviations and a
+               rule about arithmetic was the whole instruction, on the single
+               most consequential screen in the game: an all-3 character wins
+               4.87% of campaigns and an all-8 one wins 40.53%. The name and
+               the job are `SPECIAL_MEANINGS` in server.py, and each line says
+               what is true today rather than what is designed. #}
             <label>
-              <span>{{ stat }}</span>
+              <span class="stat-code">{{ stat }}</span>
+              <span class="stat-name">{{ special_meanings[stat][0] }}</span>
               <div class="mt-1 u-input-shell">
-                <input class="u-input" type="number" name="special_{{ stat }}" value="{{ selected.special[stat] }}" />
+                <input class="u-input" type="text" inputmode="numeric" pattern="10|[1-9]" maxlength="2"
+                       id="special-{{ stat|lower }}" name="special_{{ stat }}" value="{{ selected.special[stat] }}"
+                       min="1" max="10" required data-special-score
+                       aria-describedby="special-budget-help special-budget-status special-what-{{ stat|lower }}"
+                       {% if stat in invalid_special %}aria-invalid="true"{% endif %} />
               </div>
+              <span class="stat-what" id="special-what-{{ stat|lower }}">{{ special_meanings[stat][1] }}</span>
             </label>
             {% endfor %}
           </div>
-        </div>
+        </fieldset>
         <button class="u-button w-full" type="submit">Save hero</button>
       </form>
+      </details>
       {% else %}
       <p class="text-sm text-dust">Select a hero on the left to edit their profile.</p>
       {% endif %}

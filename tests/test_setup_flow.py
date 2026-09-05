@@ -81,10 +81,83 @@ def test_config_is_built_from_the_authored_world(app):
     assert data.get("name")
 
 
+def test_authored_goal_pressure_and_role_reach_the_session_config(app, monkeypatch):
+    """The selection route is the only public path to its nested config
+    builder, so capture the value at the SessionStore boundary.
+    """
+    import ui.webapp.server as server
+
+    captured = {}
+
+    def capture_then_stop(_store, config):
+        captured.update(config)
+        raise server.GemmaError("captured before model generation")
+
+    monkeypatch.setattr(server.SessionStore, "create_session", capture_then_stop)
+    response = app.test_client().post(
+        "/worlds/Grimdark_fantasy/characters/Ant/begin")
+    assert response.status_code == 200
+
+    world_file = PROJECT_ROOT / "Worlds" / "Grimdark_fantasy" / "world.json"
+    authored = json.loads(world_file.read_text(encoding="utf-8-sig"))
+    for field in ("campaign_goal", "pressure_name", "player_role", "acts",
+                  "turns_per_act"):
+        assert captured[field] == authored[field]
+
+
 def test_shipped_worlds_all_have_what_the_config_needs():
     for world_file in sorted((PROJECT_ROOT / "Worlds").rglob("world.json")):
         data = json.loads(world_file.read_text(encoding="utf-8-sig"))
         assert data.get("name"), f"{world_file.parent.name} has no name"
+
+
+def test_roster_choices_are_user_preferences_not_authored_world_edits(
+    tmp_path, monkeypatch
+):
+    """Toggling a roster used to overwrite ``Worlds/*/world.json``."""
+    import Core.Paths as paths
+    import ui.webapp.server as server
+
+    shipped = tmp_path / "installation" / "Worlds"
+    world_dir = shipped / "Test_World"
+    world_dir.mkdir(parents=True)
+    world_file = world_dir / "world.json"
+    authored = {
+        "name": "Test World",
+        "campaign_goal": "Keep the beacon lit.",
+        "player_role": "Warden",
+        "lore_bible": "The beacon is the last warm light.",
+        "selected_companions": ["Seed_Companion"],
+        "selected_npcs": [],
+        "selected_enemies": [],
+        "allow_random_characters": True,
+    }
+    world_file.write_text(json.dumps(authored, indent=2), encoding="utf-8")
+    before = world_file.read_bytes()
+
+    monkeypatch.setattr(server, "WORLDS_DIR", shipped)
+    monkeypatch.setattr(paths, "USER_DATA", tmp_path / "user-data")
+    server.WORLD_CACHE.clear()
+
+    server._mutate_world(
+        "Test_World",
+        lambda data: data.update(
+            selected_companions=["Chosen_Companion"],
+            allow_random_characters=False,
+        ),
+    )
+
+    assert world_file.read_bytes() == before
+    preference_file = server._world_preferences_file("Test_World")
+    assert preference_file.is_relative_to((tmp_path / "user-data").resolve())
+    preferences = json.loads(preference_file.read_text(encoding="utf-8"))
+    assert preferences["selected_companions"] == ["Chosen_Companion"]
+    assert preferences["allow_random_characters"] is False
+
+    server.WORLD_CACHE.clear()
+    effective = server._get_world("Test_World")
+    assert effective["selected_companions"] == ["Chosen_Companion"]
+    assert effective["allow_random"] is False
 
 
 # ------------------------------------------------------------------- routing
@@ -115,5 +188,33 @@ def test_begin_no_longer_redirects_to_the_legacy_form(app, monkeypatch):
     response = app.test_client().post("/worlds/Grimdark_fantasy/characters/Ant/begin")
     # A model failure now renders an error in place rather than bouncing to
     # /legacy-start to re-collect everything.
-    assert response.status_code == 400
+    assert response.status_code == 200
     assert b"no model in tests" in response.data
+    assert b'role="alert"' in response.data
+    assert b"Campaign could not begin." in response.data
+    assert b"Begin your journey" in response.data
+    assert b"SPECIAL" in response.data
+    assert b'action="/start"' not in response.data
+
+
+def test_custom_setup_model_failure_is_visible_to_htmx_and_preserves_input(app, monkeypatch):
+    import ui.webapp.server as server
+
+    def boom(*_a, **_k):
+        raise server.GemmaError("Ollama is not answering")
+
+    monkeypatch.setattr(server.SessionStore, "create_session", boom)
+    response = app.test_client().post("/start", data={
+        "scenario": "custom",
+        "custom_label": "The Glass Orchard",
+        "player_name": "Mara",
+        "world_notes": "The moon has already fallen.",
+    })
+    body = response.data.decode("utf-8")
+
+    assert response.status_code == 200, "hx-boost swaps handled errors only on a success status"
+    assert 'role="alert"' in body
+    assert "Ollama is not answering" in body
+    assert 'value="The Glass Orchard"' in body
+    assert 'value="Mara"' in body
+    assert "The moon has already fallen." in body

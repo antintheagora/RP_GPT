@@ -351,6 +351,52 @@ body.is-thinking .thinking-bar {
   display: none;
 }
 
+.chapter-transition {
+  position: fixed;
+  inset: 0;
+  z-index: 85;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: radial-gradient(circle at center, rgba(52, 37, 22, 0.72), rgba(5, 4, 4, 0.94));
+  opacity: 0;
+  transition: opacity 220ms ease;
+}
+.chapter-transition[hidden] { display: none; }
+.chapter-transition.is-showing { opacity: 1; }
+.chapter-transition-card {
+  width: min(44rem, 100%);
+  padding: clamp(1.5rem, 5vw, 3.5rem);
+  border: 1px solid rgba(216, 178, 106, 0.55);
+  background: rgba(13, 10, 9, 0.94);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.7);
+  text-align: center;
+  transform: translateY(1rem) scale(0.985);
+  transition: transform 420ms ease;
+}
+.chapter-transition.is-showing .chapter-transition-card { transform: none; }
+.chapter-transition-card span {
+  display: block;
+  color: #b7a78a;
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+.chapter-transition-card strong {
+  display: block;
+  margin-top: 0.6rem;
+  color: #fdf5e4;
+  font: 500 clamp(1.35rem, 4vw, 2.4rem)/1.3 Cinzel, Georgia, serif;
+}
+.chapter-transition-card button {
+  min-height: 40px;
+  margin-top: 1.25rem;
+  padding: 0.45rem 1rem;
+  border: 1px solid #51443a;
+  background: #171311;
+  color: #e6dccb;
+}
+
 .sheet-panel {
   width: min(1180px, 100%);
   max-height: 100%;
@@ -466,7 +512,7 @@ body.is-thinking .thinking-bar {
 .sheet-portrait img {
   display: block;
   width: 100%;
-  /* Portraits come back square from the image service. Cover rather than
+  /* Portraits come back square from the local renderer. Cover rather than
      contain so a stray aspect ratio crops instead of letterboxing. */
   aspect-ratio: 1 / 1;
   object-fit: cover;
@@ -1285,6 +1331,41 @@ textarea.u-input {
   background: linear-gradient(to top, rgba(11, 9, 8, 0.95) 60%, transparent);
 }
 
+.roster-scope-note {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0.75rem 0;
+  padding: 0.7rem;
+  border-left: 2px solid rgba(216, 178, 106, 0.55);
+  background: rgba(20, 17, 16, 0.58);
+  color: #b7a78a;
+  font-size: 0.82rem;
+}
+
+.roster-scope-note .u-button {
+  min-height: 38px;
+  padding-top: 0.4rem;
+  padding-bottom: 0.4rem;
+}
+
+[data-roster-list][data-show-all="false"] [data-world-member="false"] {
+  display: none;
+}
+
+/* The empty-state line belongs to the filtered view only. With the global
+   registry showing, the section is full of people and a note saying nobody
+   has been chosen would be answering a question nobody asked. */
+[data-roster-list][data-show-all="true"] [data-world-empty] {
+  display: none;
+}
+
+.roster-empty {
+  margin: 0.15rem 0 0.6rem;
+  color: #9d8c6c;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
 .roster-filter {
   display: flex;
   align-items: baseline;
@@ -1560,7 +1641,37 @@ textarea.u-input {
   font-size: 0.75rem;
   color: rgba(230, 220, 203, 0.7);
 }
-/* ---- Continue cards: resume an unfinished campaign -------------------- */
+/* The world directory remains available during play, but choosing Worlds
+   must not turn the in-memory campaign into a one-way trip. This callout is
+   separate from saved runs because the live session is the stronger truth. */
+.active-campaign-return {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  margin: 0 0 1.5rem;
+  padding: clamp(1rem, 2.5vw, 1.4rem);
+  border: 1px solid rgba(216, 178, 106, 0.55);
+  border-left: 4px solid #d8b26a;
+  border-radius: 3px;
+  background: linear-gradient(105deg, rgba(11, 9, 8, 0.96), rgba(55, 38, 24, 0.9));
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.36);
+}
+.active-campaign-return h2 {
+  margin: 0.1rem 0 0.15rem;
+  color: #fdf5e4;
+  font-size: clamp(1.1rem, 2.4vw, 1.45rem);
+  line-height: 1.25;
+}
+.active-campaign-return p:last-child { color: #cbbd9e; font-size: 0.9rem; }
+.active-campaign-return-button { flex: 0 0 auto; min-height: 44px; text-align: center; }
+
+@media (max-width: 640px) {
+  .active-campaign-return { align-items: stretch; flex-direction: column; }
+  .active-campaign-return-button { width: 100%; }
+}
+
+/* ---- Continue cards: resume a run or revisit its ending --------------- */
 .continue-strip { margin: 0 0 1.5rem; }
 .continue-cards {
   display: grid;
@@ -1569,6 +1680,21 @@ textarea.u-input {
   margin-top: .5rem;
 }
 .continue-card { margin: 0; }
+.continue-older { margin-top: 12px; }
+.continue-older > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  padding: 8px 12px;
+  border: 1px solid rgba(216, 178, 106, .38);
+  color: #d8b26a;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.continue-older > summary:focus-visible { outline: 2px solid #b3311f; outline-offset: 2px; }
+.continue-older[open] > summary { margin-bottom: 8px; }
 .continue-button {
   width: 100%;
   text-align: left;
@@ -1585,7 +1711,32 @@ textarea.u-input {
 }
 .continue-button:hover { border-color: rgba(179, 49, 31, .9); background: rgba(28, 23, 21, .92); }
 .continue-button:focus-visible { outline: 2px solid #b3311f; outline-offset: 2px; }
-.continue-title { font-size: 15px; letter-spacing: .01em; }
+.continue-heading {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  width: 100%; min-width: 0;
+}
+.continue-title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 15px;
+  letter-spacing: .01em;
+}
+.continue-status {
+  flex: 0 0 auto;
+  padding: 2px 6px;
+  border: 1px solid rgba(216, 178, 106, .42);
+  border-radius: 999px;
+  color: #d8b26a;
+  font-size: 10px;
+  line-height: 1.2;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.continue-card.is-complete .continue-button { border-color: rgba(111, 143, 134, .52); }
+.continue-card.is-complete .continue-status {
+  border-color: rgba(111, 143, 134, .58);
+  color: #9db7af;
+}
 .continue-meta {
   font-size: 11px; letter-spacing: .09em; text-transform: uppercase;
   color: #9d8c6c;
@@ -1630,6 +1781,26 @@ textarea.u-input {
 .play-turn {
   min-width: 0;
 }
+
+.decision-jump {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  margin: 0 0 0.65rem;
+  padding: 0.55rem 0.85rem;
+  border: 1px solid rgba(216, 178, 106, 0.55);
+  border-radius: 3px;
+  background: linear-gradient(90deg, rgba(20, 17, 16, 0.96), rgba(55, 38, 24, 0.9));
+  color: #f0dfbe;
+  font-family: Cinzel, Georgia, serif;
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.decision-jump:hover { border-color: #d8b26a; color: #fff5de; }
 
 @media (min-width: 1024px) {
   .play-grid {
@@ -1710,11 +1881,85 @@ textarea.u-input {
   display: block;
 }
 
+.launch-card {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.75rem;
+  border: 1px solid #332a24;
+  background: rgba(20, 17, 16, 0.72);
+}
+
+.world-fit-note {
+  margin-top: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid rgba(216, 178, 106, 0.45);
+  background: rgba(216, 178, 106, 0.07);
+  color: #cbbd9e;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+.world-fit-note strong { color: #f1d49a; }
+
+.launch-option,
+.launch-style {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  color: #e6dccb;
+}
+
+.launch-option input { width: 20px; height: 20px; flex: none; accent-color: #d8b26a; }
+.launch-option-title { display: block; }
+.launch-option-note { display: block; color: #b7a78a; font-size: 0.8rem; line-height: 1.35; }
+.launch-style { align-items: center; justify-content: space-between; font-size: 0.85rem; }
+.launch-style select {
+  min-height: 36px;
+  max-width: 11rem;
+  border: 1px solid #51443a;
+  background: #171311;
+  color: #e6dccb;
+  padding: 0.3rem 0.5rem;
+}
+
+.scene-frame.is-pending::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(8, 7, 6, 0.05), rgba(8, 7, 6, 0.42));
+  pointer-events: none;
+}
+
+.scene-frame .scene-placeholder {
+  opacity: 0.88;
+  filter: saturate(0.82) contrast(1.05);
+}
+
 .scene-waiting {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  bottom: 12%;
+  width: min(32rem, calc(100% - 2rem));
+  transform: translateX(-50%);
+  padding: 0.65rem 0.9rem;
+  border: 1px solid rgba(216, 178, 106, 0.35);
+  background: rgba(9, 7, 6, 0.78);
+  text-align: center;
   font-size: 0.85rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: #8f7f64;
+}
+
+.scene-waiting strong,
+.scene-waiting span { display: block; }
+.scene-waiting strong { color: #e6dccb; font-weight: 600; }
+.scene-waiting span {
+  margin-top: 0.2rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  color: #b7a78a;
 }
 
 .play-panel {
@@ -1802,4 +2047,1452 @@ body.is-thinking .chronicle-feed {
 @keyframes chron-blink { 50% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
   .chronicle-live #chronicle::after { animation: none; }
+}
+
+/* ==========================================================================
+   PLAYABILITY AND ACCESSIBILITY PASS
+   ========================================================================== */
+
+/* IM Fell is excellent for a short marginal note and tiring for a whole
+   campaign. Keep the carved display face for headings, but give paragraphs,
+   controls, and narration a book face available on every offline platform. */
+body.font-body {
+  font-family: Georgia, "Times New Roman", serif;
+  /* 18px at the standard 16px root, but responsive to the user's Large and
+     Largest root-size choices instead of pinning the narrative in pixels. */
+  font-size: 1.125rem;
+  line-height: 1.6;
+}
+
+h1, h2, h3,
+.panel-title,
+.settings-title {
+  font-family: Cinzel, Georgia, serif;
+}
+
+html[data-text-size="large"] { font-size: 112.5%; }
+html[data-text-size="largest"] { font-size: 125%; }
+
+:where(a, button, input, textarea, select, summary):focus-visible {
+  outline: 3px solid #ffbd6b;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 2px #0b0908;
+}
+
+.nine-content,
+.settings-panel,
+.u-button,
+button {
+  overflow-wrap: anywhere;
+}
+
+.thinking-status {
+  position: fixed;
+  z-index: 65;
+  top: 1rem;
+  left: 50%;
+  width: min(34rem, calc(100vw - 2rem));
+  transform: translate(-50%, -140%);
+  opacity: 0;
+  pointer-events: none;
+  padding: 0.65rem 1rem;
+  border: 1px solid rgba(255, 189, 107, 0.55);
+  border-radius: 3px;
+  background: rgba(11, 9, 8, 0.96);
+  color: #fdf5e4;
+  text-align: center;
+  font-size: 0.9rem;
+  transition: transform 180ms ease, opacity 180ms ease;
+}
+
+body.is-thinking .thinking-status {
+  transform: translate(-50%, 0);
+  opacity: 1;
+}
+
+html.dialog-open,
+body.dialog-open,
+html.chapter-open,
+body.chapter-open { overflow: hidden; }
+
+.skip-link {
+  position: fixed;
+  z-index: 200;
+  top: 0.5rem;
+  left: 0.5rem;
+  transform: translateY(-160%);
+  padding: 0.65rem 0.9rem;
+  border: 2px solid #ffbd6b;
+  background: #0b0908;
+  color: #fdf5e4;
+}
+.skip-link:focus { transform: translateY(0); }
+
+.menu-tab,
+.sheet-tab {
+  min-height: 36px;
+  padding: 7px 14px;
+  font-size: 13px;
+}
+
+.sheet-tab { right: 96px; }
+
+/* The action panel is deliberately ordered by usefulness: immediate state,
+   the scene, and the decision first; reference material afterwards. */
+.turn-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.turn-header { order: 1; }
+.turn-clocks { order: 2; }
+.turn-vitals { order: 3; }
+.turn-situation { order: 4; font-size: 1.05rem; }
+.turn-decision { order: 5; }
+.turn-world-details { order: 6; }
+.turn-special { order: 7; }
+
+.turn-disclosure {
+  border: 1px solid #332a24;
+  border-radius: 3px;
+  background: rgba(20, 17, 16, 0.72);
+}
+
+.turn-disclosure > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 0.9rem;
+  color: #e6dccb;
+  cursor: pointer;
+  list-style: none;
+}
+
+.turn-disclosure > summary::-webkit-details-marker { display: none; }
+.turn-disclosure > summary::after {
+  content: "+";
+  flex: none;
+  color: #d8b26a;
+  font: 700 1.2rem/1 Georgia, serif;
+}
+.turn-disclosure[open] > summary::after { content: "\2212"; }
+
+.turn-disclosure-note {
+  margin-left: auto;
+  color: #b7a78a;
+  font-size: 0.8rem;
+  font-weight: 400;
+  text-align: right;
+}
+
+.turn-detail-grid,
+.turn-special-grid {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0 0.9rem 0.9rem;
+}
+
+.turn-action-grid,
+.talk-option-grid {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.turn-action-grid > *,
+.talk-option-grid > * {
+  min-width: 0;
+}
+
+.turn-action-grid button,
+.talk-option-grid button,
+.talk-leave {
+  min-height: 44px;
+}
+
+.turn-action-grid button p,
+.talk-option-grid button span,
+.talk-option-grid summary {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+
+.turn-action-option.is-disabled {
+  border-color: rgba(81, 68, 58, 0.7);
+  background: rgba(20, 17, 16, 0.52);
+}
+
+.turn-action-option.is-disabled button {
+  cursor: not-allowed;
+}
+
+.turn-action-option.is-disabled button > :not([id^="option-note-"]) {
+  color: #8f816d;
+}
+
+.talk-head-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.talk-head {
+  position: sticky;
+  z-index: 8;
+  top: 0.75rem;
+  margin: -0.35rem -0.35rem 0;
+  padding: 0.7rem;
+  border-bottom: 1px solid rgba(92, 154, 132, 0.45);
+  background: rgba(18, 24, 21, 0.97);
+  backdrop-filter: blur(5px);
+}
+
+.talk-leave {
+  padding: 0.55rem 0.8rem;
+  border: 1px solid rgba(92, 154, 132, 0.75);
+  border-radius: 3px;
+  background: rgba(20, 17, 16, 0.88);
+  color: #e6dccb;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.talk-push {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid rgba(92, 154, 132, 0.45);
+  border-radius: 3px;
+  background: rgba(20, 17, 16, 0.68);
+  color: #e6dccb;
+  cursor: pointer;
+}
+.talk-push input {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 0.2rem;
+  accent-color: #5c9a84;
+}
+.talk-push-title { display: block; font-weight: 600; }
+.talk-push-note { display: block; color: #b7a78a; font-size: 0.75rem; line-height: 1.35; }
+
+.composer-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.72fr) minmax(0, 1fr);
+  gap: 0.5rem;
+}
+
+.composer-actions-short { grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr); }
+.composer-actions > button { min-height: 44px; padding-inline: 0.6rem; }
+.composer-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: #a99a82;
+  font-size: 0.72rem;
+  line-height: 1.3;
+}
+.composer-meta [data-character-count] {
+  flex: none;
+  color: #cbbd9e;
+  font-variant-numeric: tabular-nums;
+}
+.composer-cancel,
+.composer-leave {
+  border: 1px solid #51443a;
+  border-radius: 3px;
+  background: rgba(20, 17, 16, 0.9);
+  color: #e6dccb;
+  font-weight: 600;
+}
+.composer-leave { border-color: rgba(92, 154, 132, 0.68); }
+
+@media (min-width: 820px) {
+  .turn-action-grid,
+  .talk-option-grid,
+  .turn-detail-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1100px) {
+  .turn-content {
+    display: grid;
+    grid-template-columns: minmax(0, 2.1fr) minmax(18rem, 1fr);
+    grid-template-areas:
+      "turn-head turn-head"
+      "turn-situation turn-clocks"
+      "turn-decision turn-vitals"
+      "turn-world turn-special";
+    align-items: start;
+  }
+  .turn-header { grid-area: turn-head; }
+  .turn-situation { grid-area: turn-situation; }
+  .turn-clocks {
+    grid-area: turn-clocks;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .turn-clocks > div { padding: 0.75rem; }
+  .turn-clocks .overline { font-size: 0.65rem; letter-spacing: 0.1em; }
+  .turn-clocks .text-lg { font-size: 0.95rem; line-height: 1.2; }
+  .turn-clocks .h-3 { height: 0.55rem; }
+  .turn-decision { grid-area: turn-decision; }
+  .turn-vitals {
+    grid-area: turn-vitals;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .turn-world-details { grid-area: turn-world; }
+  .turn-special { grid-area: turn-special; }
+}
+
+/* A modal must remain usable on a 320x568 device and when a laptop is split
+   beside another window. Its backdrop scrolls; its controls never live above
+   or below an unreachable centred rectangle. */
+.settings-overlay {
+  align-items: flex-start;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
+           max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+}
+
+.settings-panel {
+  position: relative;
+  width: min(34rem, 100%);
+  max-height: calc(100dvh - 2rem);
+  margin: auto;
+  overflow-y: auto;
+  padding: 1.5rem;
+  text-align: left;
+}
+
+.settings-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.settings-kicker {
+  color: #b7a78a;
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.settings-title { margin: 0.15rem 0 0; }
+
+.settings-x {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border: 1px solid #51443a;
+  border-radius: 3px;
+  background: #171311;
+  color: #fdf5e4;
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.settings-preferences {
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #332a24;
+}
+
+.settings-control {
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.55rem 0;
+}
+
+.settings-control-name { display: block; color: #e6dccb; }
+.settings-control select,
+.settings-toggle {
+  flex: none;
+  min-height: 40px;
+  border: 1px solid #51443a;
+  border-radius: 3px;
+  background: #171311;
+  color: #e6dccb;
+  padding: 0.4rem 0.65rem;
+}
+
+.settings-control input[type="checkbox"] {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  accent-color: #d8b26a;
+}
+
+.settings-volume { display: grid; grid-template-columns: auto minmax(8rem, 1fr); }
+.settings-volume input { width: 100%; accent-color: #d8b26a; }
+.settings-actions { flex-wrap: wrap; margin-bottom: 1rem; }
+.settings-actions > * { flex: 1 1 11rem; }
+.settings-actions .settings-form { margin-bottom: 0; }
+.settings-close { display: block; margin: 0 auto; min-height: 40px; }
+
+/* User preference mirrors prefers-reduced-motion, including the decorative
+   fog canvas which otherwise keeps moving behind every screen. */
+html.user-reduced-motion *,
+html.user-reduced-motion *::before,
+html.user-reduced-motion *::after {
+  scroll-behavior: auto !important;
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}
+
+@media (max-width: 768px) {
+  :root { --game-frame-thickness: clamp(20px, 7vw, 34px); }
+
+  .app-content {
+    padding-left: calc(var(--game-frame-thickness) + 0.35rem);
+    padding-right: calc(var(--game-frame-thickness) + 0.35rem);
+    padding-top: calc(var(--game-frame-thickness) + 1.4rem);
+    padding-bottom: calc(var(--game-frame-thickness) + 0.75rem);
+  }
+
+  .play-grid { gap: 0.9rem; }
+  .play-aside .play-panel { max-height: min(34vh, 280px); }
+  .turn-content { padding: 1.15rem !important; }
+  .turn-clocks {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .turn-clocks > div { padding: 0.65rem; }
+  .turn-clocks .overline { font-size: 0.62rem; letter-spacing: 0.08em; }
+  .turn-clocks .text-lg { font-size: 0.88rem; line-height: 1.15; }
+  .turn-clocks .h-3 { height: 0.5rem; }
+  /* HP and company remain on the same panel, but the current scene and its
+     exits arrive before this reference block in phone reading order. */
+  .turn-situation { order: 3; }
+  .turn-decision { order: 4; }
+  .turn-vitals { order: 5; grid-template-columns: minmax(0, 1fr); }
+  .turn-world-details { order: 6; }
+  .turn-special { order: 7; }
+  .turn-disclosure-note { display: none; }
+  .talk-head { flex-direction: column; }
+  .talk-head-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .talk-head-actions .text-right {
+    text-align: left;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+  .talk-head-actions form { order: -1; }
+  .talk-leave { width: 100%; white-space: normal; }
+  /* A focused composer has to survive the virtual keyboard. The old phone
+     layout stacked all three controls under a 258px sticky talk header; at a
+     320x360 visual viewport not even the textarea remained visible. */
+  .talk-head { position: static; top: auto; }
+  .composer-actions { grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); }
+  .composer-actions .composer-leave { grid-column: 1 / -1; }
+  .composer-actions-short { grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); }
+  .composer-actions > button {
+    padding-inline: 0.3rem;
+    font-size: 0.95rem;
+    line-height: 1.25;
+  }
+  .settings-panel { padding: 1.1rem; border-radius: 8px; }
+}
+
+@media (max-width: 420px) {
+  .game-frame-shell { opacity: 0.78; }
+  .menu-tab, .sheet-tab { top: 4px; }
+  .menu-tab { right: 5px; }
+  .sheet-tab { right: 88px; }
+  .settings-control { align-items: flex-start; }
+  .settings-volume { grid-template-columns: minmax(0, 1fr); gap: 0.35rem; }
+  .turn-content { padding: 0.9rem !important; }
+  .talk-surface { padding: 0.85rem !important; }
+  .talk-option-grid details { padding-inline: 0.65rem !important; }
+}
+
+/* ---- Non-play workflow and compact layout -------------------------------
+   The 320x568 audit found three independent scroll containers on roster and
+   hero selection. The launch button rendered at y=1438 inside a panel ending
+   at y=1043; at 1280x720 it was still at y=766 below a panel ending at 618.
+   Lists and editors now flow into the panel's one desktop scroller, and into
+   the document on narrow screens. Optional material uses native disclosures. */
+.worlds-grid .u-scroll,
+.roster-grid .u-scroll,
+.creator-grid .u-scroll,
+.roster-grid .character-form,
+.creator-grid .creator-form {
+  max-height: none;
+  overflow: visible;
+  mask-image: none;
+  padding-right: 0;
+}
+
+.world-panel,
+.roster-panel,
+.creator-panel {
+  max-height: calc(100dvh - var(--game-frame-thickness) * 2 - 2rem);
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.worlds-grid .panel-subtle,
+.roster-grid .panel-subtle,
+.creator-grid .panel-subtle,
+.worlds-grid .world-preview-copy,
+.roster-grid .world-preview-copy,
+.creator-grid .world-preview-copy {
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.worlds-grid .u-button,
+.roster-grid .u-button,
+.creator-grid .u-button,
+.legacy-setup .u-button {
+  font-size: 0.85rem;
+  line-height: 1.3;
+  letter-spacing: 0.04em;
+}
+
+.panel-heading { flex-wrap: wrap; }
+
+.roster-filter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.roster-filter-label {
+  grid-column: 1 / -1;
+  color: #cbbd9e;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.workflow-next {
+  margin-bottom: 1rem;
+  padding: 0.8rem;
+  border: 1px solid rgba(216, 178, 106, 0.45);
+  background: rgba(216, 178, 106, 0.07);
+}
+
+.workflow-next .panel-subtle { margin-bottom: 0.65rem; }
+
+.editor-disclosure,
+.setup-disclosure {
+  margin-top: 0.75rem;
+  border: 1px solid #51443a;
+  background: rgba(20, 17, 16, 0.68);
+}
+
+.editor-disclosure > summary,
+.setup-disclosure > summary {
+  min-height: 44px;
+  padding: 0.65rem 0.8rem;
+  color: #e6dccb;
+  cursor: pointer;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.editor-disclosure > summary span,
+.setup-disclosure > summary span {
+  color: #b7a78a;
+  font-size: 0.85rem;
+  font-weight: 400;
+}
+
+.editor-disclosure[open] > summary,
+.setup-disclosure[open] > summary {
+  border-bottom: 1px solid #332a24;
+}
+
+/* The forms below declare their own flex/grid display. Without an author
+   rule, that can override the browser's built-in closed-details hiding and
+   leave a thousand-pixel form painted outside a 230px collapsed panel. */
+.editor-disclosure:not([open]) > :not(summary),
+.setup-disclosure:not([open]) > :not(summary) {
+  display: none;
+}
+
+.editor-disclosure .character-form,
+.editor-disclosure .creator-form,
+.setup-disclosure-body {
+  padding: 0.9rem;
+}
+
+.setup-disclosure-body {
+  display: grid;
+  gap: 1rem;
+}
+
+.roster-rules .panel-subtle { margin: 0; padding: 0.8rem 0.8rem 0; }
+.roster-rules form { padding: 0.8rem; }
+
+.field-hint {
+  color: #b7a78a;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.special-editor {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.special-budget-copy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem 0.8rem;
+  margin: 0.3rem 0 0.75rem;
+}
+
+.special-budget-copy .field-hint { margin: 0; }
+
+.special-budget-status {
+  flex: 0 0 auto;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid rgba(216, 178, 106, 0.45);
+  border-radius: 3px;
+  background: rgba(10, 8, 7, 0.62);
+  color: #e8d8b8;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.35;
+}
+
+.special-budget-status.is-over-budget,
+.special-budget-status.is-invalid {
+  border-color: rgba(246, 126, 92, 0.75);
+  color: #f6b08c;
+}
+
+.special-error {
+  padding: 0.7rem 0.8rem;
+  border: 1px solid rgba(246, 126, 92, 0.7);
+  border-radius: 3px;
+  background: rgba(79, 23, 17, 0.38);
+  color: #ead8ca;
+  line-height: 1.45;
+}
+
+.u-input[aria-invalid="true"] {
+  color: #ffd5c2;
+  outline: 2px solid rgba(246, 126, 92, 0.8);
+  outline-offset: 1px;
+}
+
+.hero-launch {
+  margin: 0.5rem 0 1.25rem;
+}
+
+.hero-launch .panel-subtle { margin-bottom: 0.65rem; }
+
+/* The decorative portrait frame extends 30px beyond the image. Give that
+   overhang real space so it cannot cover the panel heading or launch card. */
+.worlds-grid .world-preview,
+.roster-grid .portrait-preview,
+.creator-grid .portrait-preview {
+  margin-top: 2rem;
+}
+
+.setup-intro {
+  display: grid;
+  gap: 0.35rem;
+  padding: 1rem;
+  border: 1px solid #51443a;
+  border-radius: 3px;
+  background: rgba(11, 9, 8, 0.92);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.38);
+}
+
+.setup-intro > a { justify-self: start; margin-bottom: 0.5rem; }
+.setup-intro .panel-subtle { margin: 0.25rem 0 0; font-size: 1rem; }
+
+.setup-error {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.setup-error strong { color: #f6b08c; }
+.setup-guide-list { list-style: disc; padding-left: 1.2rem; }
+.setup-guide-list li::marker { color: #d8b26a; }
+
+@media (min-width: 1024px) {
+  .setup-guide-column {
+    position: sticky;
+    top: calc(var(--game-frame-thickness) + 1rem);
+    align-self: start;
+  }
+}
+
+@media (max-width: 1023px) {
+  .world-panel,
+  .roster-panel,
+  .creator-panel {
+    max-height: none;
+    overflow: visible;
+    overscroll-behavior: auto;
+    scrollbar-gutter: auto;
+  }
+
+  /* The global registry can contain more than a hundred profiles. Once a
+     player explicitly opens that exceptional list, confine it to one clear
+     scroller instead of making the page tens of thousands of pixels tall. */
+  [data-roster-list][data-show-all="true"] {
+    max-height: min(70dvh, 32rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 0.25rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .roster-grid .character-form .grid-cols-2,
+  .creator-grid .creator-form .grid-cols-2,
+  .creator-grid .creator-form .grid-cols-3 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .launch-style {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .launch-style select { width: 100%; max-width: none; }
+}
+
+@media (max-width: 420px) {
+  .world-panel,
+  .roster-panel,
+  .creator-panel,
+  .legacy-setup .u-box {
+    --box-slice: 36px;
+    --box-padding: 1.75rem;
+    --box-gap: 3px;
+    --button-width: 14px;
+    --button-padding-y: 0.55rem;
+    --selector-width: 14px;
+    --selector-gap: 6px;
+    --input-width: 8px;
+    --input-gap: 4px;
+  }
+
+  .roster-body { gap: 0.5rem; padding: 0.4rem; }
+  .roster-body img { width: 40px; height: 40px; }
+  .roster-entry { gap: 0.4rem; padding-inline: 0; }
+  .special-budget-copy { align-items: stretch; }
+  .special-budget-status { flex-basis: 100%; }
+  .worlds-grid .u-button,
+  .roster-grid .u-button,
+  .creator-grid .u-button,
+  .legacy-setup .u-button {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 360px) {
+  .legacy-setup .scenario-options {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   The play screen fits the window.
+
+   Measured before this block, on a campaign mid-act:
+
+     viewport            first action button      below the fold by
+     1280 x 720          y = 1086                 366 px
+     1920 x 1080         y = 1314                 234 px
+
+   So on every ordinary screen you arrived at the play screen and could not
+   see a single thing you were able to do. The grid was
+
+       "scene aside"
+       "turn  turn"
+
+   and `scene` is `aspect-ratio: 16/9` across 2.15fr of the width -- 1096px
+   wide, so 617px tall -- which put the decision panel underneath a picture
+   taller than half the window. There is no viewport where that fits: header,
+   16:9 plate, status, situation and menu come to about 1960px.
+
+   Somebody had already noticed and added `.decision-jump`, a link that
+   scrolls you to the menu. That is a sign a layout is wrong, not a fix.
+
+   What this does instead is what CODEBASE_OVERVIEW has described all along --
+   "each scrolls on its own inside the decorative frame". The grid becomes
+   exactly the height of the space inside the stone border, the journal
+   becomes a full-height column beside it, and the two left-hand areas split
+   what is left: the picture takes what it may, and the decision panel takes
+   the rest and scrolls inside itself.
+
+   Guarded on height as well as width. Below 640px of viewport the fixed
+   layout would leave the decision area too short to be worth reading, so
+   short windows and phones keep scrolling the document as before.
+   --------------------------------------------------------------------------- */
+@media (min-width: 1024px) and (min-height: 640px) {
+  .play-grid {
+    /* The decision takes the wide column and the whole height; the picture
+       and the journal share the narrow one.
+
+       The first arrangement tried here kept the picture across the top and
+       gave the decision what was left, which came to 287px of visible panel
+       against 707px of header, clocks, vitals, situation and stat block
+       before the menu even begins. Measured: "What do you do?" started at
+       707px inside a 287px window, so the fixed layout had simply moved the
+       problem from the document scrollbar to the panel's own.
+
+       There is no way to have a 16:9 plate across the wide column *and* the
+       menu on screen -- the plate alone is 617px of a 789px frame. So the
+       plate moves to the narrow column, where 510px of width makes it 287px
+       tall, and the decision gets all 789px. */
+    grid-template-areas:
+      "turn scene"
+      "turn aside";
+    grid-template-rows: auto minmax(0, 1fr);
+    align-items: stretch;
+    /* Height comes from the flex parent below rather than from
+       `calc(100vh - frame)`, because the grid is not the only thing inside
+       the frame. The live chronicle sits above it and is 276px of a 1080
+       screen the moment a turn produces anything, so a grid that claimed the
+       whole inner height pushed itself off the bottom and the page went back
+       to scrolling -- at exactly the moment the player is reading the result. */
+    min-height: 0;
+  }
+
+  /* The play screen is the height of the window, and its two stacked parts
+     divide it: the chronicle takes what it needs up to its own cap, the grid
+     takes the rest. `:has` keeps this off every other page, all of which want
+     `.app-content` to grow with its content as before. */
+  .app-content:has(> .play-grid) {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+
+  .app-content:has(> .play-grid) > .chronicle-feed {
+    flex: 0 0 auto;
+  }
+
+  .app-content:has(> .play-grid) > .play-grid {
+    flex: 1 1 auto;
+  }
+
+  /* `.play-turn` holds the jump link and the panel. Only the panel scrolls,
+     so the link stays put at the top of the area. `min-height: 0` is what
+     lets a grid child be shorter than its content; without it the panel
+     grows and pushes the grid back to its old height. */
+  .play-turn {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  /* Scroll the content, not the frame -- the same arrangement the journal
+     uses, and for the same reason. Putting `overflow-y` on `#turn-panel`
+     scrolls the nine-slice box itself, so the bottom edge of the stone ends
+     up a thousand pixels below the visible area and the panel has no bottom.
+     Measured that way first: the frame was 1362px inside a 311px window. */
+  .play-turn > #turn-panel {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .play-turn > #turn-panel > .ninebox {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .play-turn > #turn-panel .nine-content {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  /* The journal no longer needs to be lifted out of flow. That trick existed
+     to stop a tall log setting the height of a row shared with the picture;
+     the row height is the container's now, so the log can simply fill it. */
+  .play-aside {
+    position: static;
+    align-self: stretch;
+    min-height: 0;
+  }
+
+  .play-aside > .play-panel {
+    position: static;
+    inset: auto;
+    height: 100%;
+    max-height: none;
+    overflow: hidden;
+  }
+
+  /* The jump link now scrolls the panel rather than the page, because the
+     panel is the scroll container and `#current-decision` is inside it.
+
+     Whether it is worth showing depends entirely on height. Measured on this
+     campaign: at 1080 the menu heading sits at y 450 with all three actions
+     on screen, and a link offering to take you somewhere you are already
+     looking is noise. At 720 the same heading is at y 717 against a 720 fold
+     -- the frame alone takes 204px of that window -- so the link is the
+     fastest way to the thing the panel exists for. */
+  .play-turn > .decision-jump {
+    display: none;
+  }
+}
+
+/* 1024px of window height is where the menu clears the fold at rest.
+   Measured on the same campaign: at 1080 all three actions are on screen
+   without touching anything, at 900 none of them are and the heading sits at
+   y 749. So the link shows below that line and gets out of the way above it. */
+@media (min-width: 1024px) and (min-height: 640px) and (max-height: 1023px) {
+  .play-turn > .decision-jump {
+    display: flex;
+    flex: 0 0 auto;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   The turn content splits on the width of its column, not of the window.
+
+   `@media (min-width: 1100px)` above turns `.turn-content` into
+
+       "turn-head       turn-head"
+       "turn-situation  turn-clocks"
+       "turn-decision   turn-vitals"
+       "turn-world      turn-special"
+
+   which is a good layout and was written when `.play-turn` spanned the whole
+   grid -- about 1630px at 1920. It now occupies one column of it, so the rule
+   fires on a container that cannot hold it. Measured at 1280x720: the window
+   satisfies `min-width: 1100px`, the container is 704px, and the columns come
+   out 305px and 288px because the right one has `minmax(18rem, 1fr)` under
+   it. The action cards were being laid out 305px wide and 1268px tall.
+
+   A container query asks the question the layout actually cares about. 900px
+   is where the two columns stop fighting: 18rem is pinned for the right one,
+   so anything less leaves the decision under 620px, which is below the two
+   card widths it wants.
+   --------------------------------------------------------------------------- */
+@media (min-width: 1024px) and (min-height: 640px) {
+  .play-turn {
+    container-type: inline-size;
+    container-name: decision;
+  }
+}
+
+@container decision (max-width: 899px) {
+  .turn-content {
+    display: flex;
+    flex-direction: column;
+    /* The grid rule sets `align-items: start`, which in a column flex box
+       means every child sizes to its own content instead of the column --
+       measured as blocks 402, 456, 284, 353 and 609px wide inside one 728px
+       container. */
+    align-items: stretch;
+  }
+
+  /* And they must not shrink. `.nine-content` is a fixed height with the
+     content taller than it, so flex-shrink took height off whatever would
+     give it: the situation, which had just been given `overflow-y: auto`,
+     collapsed from 305px to 34px. Items keep their height; the panel
+     scrolls. */
+  .turn-content > * {
+    flex: 0 0 auto;
+  }
+}
+
+/* A collapsed disclosure is a row, not a card. Both of these sat at 82px shut
+   -- 164px of a 515px panel spent on two things nobody had opened. The
+   summary already guarantees a 44px touch target; the rest was padding. */
+.turn-disclosure:not([open]) > summary {
+  min-height: 44px;
+  padding-top: 0.45rem;
+  padding-bottom: 0.45rem;
+}
+
+/* The situation is also the first entry in the journal beside it, word for
+   word. In the fixed layout it gets a share of the panel rather than as much
+   as it likes -- measured at 305px of a 491px window on a narrow column,
+   which left nothing for the menu the panel exists to show. */
+@media (min-width: 1024px) and (min-height: 640px) {
+  .turn-situation {
+    max-height: min(22vh, 190px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+
+/* The vitals read as a heads-up display in the fixed layout, not as two
+   cards. 231px of a 491px panel went on a name, four short lines and a
+   companion, which is most of the room the menu needed. Padding and leading
+   only -- every line still says exactly what it said. */
+@media (min-width: 1024px) and (min-height: 640px) {
+  .turn-vitals { gap: 0.6rem; }
+  .turn-vitals > div { padding: 0.65rem 0.8rem; }
+  .turn-vitals .overline { margin-bottom: 0.1rem; }
+  .turn-vitals .text-lg { font-size: 1rem; line-height: 1.2; }
+  .turn-vitals p { margin: 0; }
+  .turn-vitals .text-sm { font-size: 0.82rem; line-height: 1.35; }
+  .turn-vitals ul { margin-top: 0.2rem; }
+  .turn-vitals ul > li + li { margin-top: 0.1rem; }
+}
+
+/* The two reference sections in the menu. Collapsed by default: a player who
+   wants the glossary wants it once, and a menu that opens onto forty lines of
+   definitions is a worse menu for everyone else. */
+.settings-help {
+  border-top: 1px solid #332a24;
+  padding-top: 0.85rem;
+  margin-top: 0.35rem;
+}
+
+.settings-help > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 44px;
+}
+
+.settings-help > summary::-webkit-details-marker { display: none; }
+
+.settings-help > summary::after {
+  content: "+";
+  color: #d8b26a;
+  font: 700 1.2rem/1 Georgia, serif;
+}
+
+.settings-help[open] > summary::after { content: "\2212"; }
+
+.settings-keys,
+.settings-glossary {
+  margin: 0.5rem 0 0.2rem;
+  display: grid;
+  gap: 0.55rem 0.9rem;
+}
+
+/* Keys get two columns because the key is short and fixed-width; the glossary
+   gets one, because a term and its definition on one line reads as a table of
+   jargon rather than as an explanation. */
+.settings-keys { grid-template-columns: auto minmax(0, 1fr); align-items: baseline; }
+.settings-glossary { grid-template-columns: minmax(0, 1fr); }
+
+.settings-keys dt,
+.settings-glossary dt {
+  margin: 0;
+  color: #e6dccb;
+  font-family: Cinzel, Georgia, serif;
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+}
+
+.settings-glossary dt { margin-top: 0.35rem; }
+.settings-glossary dt:first-of-type { margin-top: 0; }
+
+.settings-keys dd,
+.settings-glossary dd {
+  margin: 0;
+  color: #b7a78a;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.settings-keys kbd {
+  display: inline-block;
+  min-width: 2.6rem;
+  padding: 0.15rem 0.45rem;
+  border: 1px solid rgba(216, 178, 106, 0.5);
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  background: rgba(20, 17, 16, 0.9);
+  color: #f0dfbe;
+  font: 600 0.78rem/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  text-align: center;
+}
+
+/* The failure banner. Same geometry as `.thinking-status` -- fixed to the top
+   of the frame, centred, the width of a readable line -- and deliberately a
+   different colour, because one of them is the game working and the other is
+   the game refusing.
+
+   It is a separate element rather than a variant of that one, and the reason
+   is `pointer-events`. The thinking banner sets `none`, correctly -- it is a
+   status message and must never swallow a click aimed at the game behind it.
+   This banner carries a link and a dismiss button, so it has to take clicks.
+   Sharing a class would have meant one of the two being wrong. */
+.shell-alert {
+  position: fixed;
+  z-index: 70;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(34rem, calc(100vw - 2rem));
+  padding: 0.7rem 1rem;
+  border: 1px solid rgba(179, 49, 31, 0.8);
+  border-left-width: 3px;
+  border-radius: 3px;
+  background: rgba(30, 11, 8, 0.97);
+  color: #f3e4d4;
+  font-size: 0.9rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.shell-alert[hidden] { display: none; }
+
+.shell-alert-text { margin: 0 0 0.5rem; line-height: 1.45; }
+
+.shell-alert-actions {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.9rem;
+}
+
+.shell-alert-link {
+  color: #f0dfbe;
+  border-bottom: 1px solid rgba(216, 178, 106, 0.7);
+  text-decoration: none;
+}
+
+.shell-alert-link[hidden] { display: none; }
+.shell-alert-link:hover { color: #fff5de; border-bottom-color: #d8b26a; }
+
+.shell-alert-close {
+  min-height: 32px;
+  padding: 0 0.6rem;
+  border: 1px solid rgba(216, 178, 106, 0.45);
+  border-radius: 3px;
+  background: transparent;
+  color: #d9c9ad;
+  font: inherit;
+  cursor: pointer;
+}
+
+.shell-alert-close:hover { border-color: #d8b26a; color: #fff5de; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .shell-alert { animation: shell-alert-in 180ms ease-out; }
+  @keyframes shell-alert-in {
+    from { opacity: 0; transform: translate(-50%, -0.6rem); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+  }
+}
+
+/* ---- The last page ---------------------------------------------------
+   Three colourways for three endings, because "The line holds" and "you
+   died" arriving in the same rust-coloured box is the game shrugging at the
+   only outcome the player spent hours on. The accent is the only thing that
+   differs; the structure is identical, so a win and a death are recognisably
+   the same document. */
+.ending {
+  --ending-accent: #b3311f;
+  border: 1px solid color-mix(in srgb, var(--ending-accent) 70%, transparent);
+  border-top-width: 3px;
+  border-radius: 2px;
+  background: linear-gradient(180deg,
+              color-mix(in srgb, var(--ending-accent) 12%, transparent),
+              rgba(20, 17, 16, 0.85) 55%);
+  padding: 1.5rem 1.35rem 1.25rem;
+  display: grid;
+  gap: 1.1rem;
+}
+
+/* brass for a win, rust for a campaign lost, ash for a character lost.
+
+   The first draft reached for a muted violet, which is the one thing this
+   palette does not allow: `test_the_stylesheet_has_no_blue_left_in_it`
+   refuses any colour whose blue channel leads its red and green, and that one
+   did by thirteen. The test reads the whole file, comments included, so the
+   offending value cannot be quoted here either -- which is right, since a hex
+   in a comment is one copy-paste away from being a hex in a rule.
+
+   Ash is the palette's own answer for something spent. */
+.ending-won { --ending-accent: #d8b26a; }
+.ending-lost { --ending-accent: #b3311f; }
+.ending-died { --ending-accent: #8f7f64; }
+/* Retirement is neither a win nor a loss: four Scars and the character
+   "stops being playable and becomes a real NPC in your world" (MECHANICS
+   1.5). Verdigris, which the palette already uses for someone speaking --
+   the nearest thing it has to a life continuing off-screen. */
+.ending-retired { --ending-accent: #6f8f86; }
+
+.ending-kicker { color: var(--ending-accent); }
+
+.ending-title {
+  margin: 0;
+  font-family: Cinzel, Georgia, serif;
+  font-size: clamp(1.25rem, 2.4vw, 1.7rem);
+  line-height: 1.25;
+  color: #f5ead7;
+  text-wrap: balance;
+}
+
+.ending-tally {
+  margin: 0;
+  display: grid;
+  gap: 0.75rem 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  padding-top: 0.9rem;
+  border-top: 1px solid #332a24;
+}
+
+.ending-tally div { display: grid; gap: 0.15rem; }
+.ending-tally dt {
+  font: 600 0.66rem/1 Cinzel, Georgia, serif;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #9d8c6c;
+}
+.ending-tally dd { margin: 0; color: #e6dccb; font-size: 0.95rem; }
+
+.ending-marks ul,
+.ending-company ul {
+  margin: 0.35rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+}
+
+/* The company reads as a list of people and where you left them, so the name
+   and the regard sit at opposite ends of the line rather than running
+   together as one phrase. */
+.ending-company li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px dotted #332a24;
+  padding-bottom: 0.15rem;
+}
+
+.ending-actions { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+
+/* ---- For the screen reader only --------------------------------------
+   `sr-only` is a Tailwind utility and it is not in the vendored build: the
+   compiled stylesheet contains no `.sr-only` rule at all. Fifteen elements
+   in the templates carry the class and every one of them was fully visible.
+   The composer on each action card has a `<label class="sr-only">Describe
+   what you try</label>` above a textarea whose placeholder already reads
+   "What do you actually try?", so opening any "Describe it yourself" showed
+   the same instruction twice, and there are fourteen of those on a combat
+   turn.
+
+   Defining it here rather than chasing the Tailwind build: this is one rule,
+   it is the standard one, and a utility this load-bearing should not be able
+   to vanish because a scanner did not see the class in a file it looked at.
+
+   The `:not(:focus)` pair is what lets a skip link be invisible until it is
+   tabbed to, which is the one case where sr-only content must become real. */
+.sr-only:not(:focus):not(:active) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* The campaign facts at the top of the menu. Two columns so the labels line
+   up and the eye runs down the values, which is what someone returning to one
+   of fifty saves is actually scanning for. */
+.settings-facts {
+  margin: 0 0 0.35rem;
+  padding-bottom: 0.9rem;
+  border-bottom: 1px solid #332a24;
+  display: grid;
+  gap: 0.35rem 1rem;
+}
+
+.settings-facts > div {
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1fr);
+  gap: 1rem;
+  align-items: baseline;
+}
+
+.settings-facts dt {
+  font: 600 0.66rem/1.5 Cinzel, Georgia, serif;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #9d8c6c;
+}
+
+.settings-facts dd { margin: 0; color: #e6dccb; font-size: 0.9rem; }
+
+/* ---------------------------------------------------------------------------
+   Credits.
+
+   A reading page, not a control panel: one column at a comfortable measure
+   rather than the full width of the frame, because the borrowed-work section
+   is the part with a licence behind it and a line of attribution stretched
+   across 1200px is a line nobody finishes.
+   --------------------------------------------------------------------------- */
+.credits-title {
+  font-family: Cinzel, serif;
+  font-size: 1.9rem;
+  color: rgb(216 178 106);
+  margin-bottom: 0.35rem;
+}
+
+.credits-standfirst {
+  max-width: 58ch;
+  color: rgb(230 220 203);
+  line-height: 1.7;
+  margin-bottom: 2rem;
+}
+
+.credits-section {
+  max-width: 62ch;
+  margin-bottom: 2rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgba(51, 42, 36, 0.9);
+}
+
+.credits-section h2 {
+  font-family: Cinzel, serif;
+  font-size: 0.85rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgb(157 140 108);
+  margin-bottom: 0.9rem;
+}
+
+.credits-note {
+  color: rgb(168 154 128);
+  line-height: 1.65;
+  margin-bottom: 1rem;
+}
+
+.credits-list {
+  display: grid;
+  /* The name column sizes to its longest name and stops. A repeating
+     `auto 1fr` on the whole grid let one long source URL in the right-hand
+     column drag every name in the left one out of alignment. */
+  grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
+  gap: 0.55rem 1.25rem;
+  align-items: baseline;
+}
+
+.credits-list dt {
+  font-family: Cinzel, serif;
+  color: rgb(230 220 203);
+  white-space: nowrap;
+}
+
+.credits-list dd {
+  color: rgb(168 154 128);
+  line-height: 1.55;
+  min-width: 0;
+}
+
+/* The two Sketchfab URLs are long enough to push the page sideways on a
+   narrow window, and a horizontal scrollbar on a credits page is absurd. */
+.credits-source {
+  font-size: 0.78rem;
+  color: rgb(143 127 100);
+  overflow-wrap: anywhere;
+}
+
+.credits-list a,
+.credits-note a {
+  color: rgb(216 178 106);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.credits-actions {
+  margin-top: 2.5rem;
+}
+
+/* Below roughly a phone's width the two columns stop being two columns --
+   a name column that is `max-content` wide and a URL beside it do not both
+   fit, and the result was a 4-character-wide description column. */
+@media (max-width: 560px) {
+  .credits-list {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.15rem;
+  }
+  .credits-list dd {
+    margin-bottom: 0.6rem;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   The seven scores, with names on them.
+
+   This grid used to be seven three-letter codes and a number each. The name
+   and the sentence under it are the difference between choosing and guessing:
+   a character with 3 in everything wins 4.87% of campaigns and one with 8
+   wins 40.53%, and that decision was being made from an abbreviation.
+
+   `auto-fit` at 16rem rather than a fixed column count, because the sentence
+   needs the width and a seven-across grid of them is unreadable at any size.
+   --------------------------------------------------------------------------- */
+.stat-grid {
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 0.9rem 1.1rem;
+  align-items: start;
+}
+
+.stat-grid label {
+  display: grid;
+  /* The code and the name share a baseline; the input and the sentence stack
+     under both. A flex row put the sentence beside the input and squeezed it
+     to four characters wide. */
+  grid-template-columns: auto 1fr;
+  gap: 0.15rem 0.5rem;
+}
+
+.stat-code {
+  font-family: Cinzel, serif;
+  letter-spacing: 0.12em;
+  color: rgb(216 178 106);
+}
+
+.stat-name {
+  color: rgb(168 154 128);
+  font-size: 0.85rem;
+  align-self: baseline;
+}
+
+.stat-grid label > .u-input-shell {
+  grid-column: 1 / -1;
+}
+
+.stat-what {
+  grid-column: 1 / -1;
+  color: rgb(143 127 100);
+  font-size: 0.8rem;
+  line-height: 1.45;
+  /* Long words in a narrow column push the page sideways otherwise. */
+  overflow-wrap: anywhere;
 }

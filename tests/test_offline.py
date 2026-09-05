@@ -134,6 +134,17 @@ def test_the_registry_path_is_absolute_and_asked_for_late():
     assert Character_Registry.base_dir().is_absolute()
 
 
+def test_the_player_editor_never_writes_to_the_shipped_character_tree():
+    """A saved hero is runtime state just as surely as a met NPC is."""
+    from ui.webapp import server
+
+    player_root = Path(server.PLAYER_ROOT).resolve()
+    assert not player_root.is_relative_to(ROOT), (
+        f"the live player editor points inside the installation: {player_root}"
+    )
+    assert player_root.is_relative_to(Path(server.CHARACTERS_ROOT).resolve())
+
+
 def test_git_is_told_to_ignore_it():
     ignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
     assert "Characters/" in ignore

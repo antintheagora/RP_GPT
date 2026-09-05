@@ -815,3 +815,137 @@ def test_the_client_on_the_state_never_reaches_the_save():
         pressure_name="p")
     state.gemma = object()
     assert "gemma" not in encode(state)
+
+
+# =============================
+# -- NOBODY REMEMBERS ---------
+# ---- SOMEBODY ELSE'S LIFE ---
+# =============================
+
+def test_one_person_is_never_handed_another_persons_history():
+    """The worst shape a memory bug can take.
+
+    When someone had little history of their own, `for_person` searched the
+    whole ledger for something relevant and skipped only rows belonging to
+    *this* person -- so rows belonging to other people came straight back as
+    this person's memory, and in a conversation the NPC said it in the first
+    person. Measured: Mira, with one memory of her own, was told she
+    remembered "Kael called you a coward at the bridge".
+
+    What the search is actually reaching for is the ownerless row -- a thing
+    that happened in the world, recorded against nobody on purpose so that
+    anyone who was there can raise it.
+    """
+    from ledger import callbacks
+    from ledger.identity import resolve_or_create
+
+    with LedgerStore(":memory:") as store:
+        kael = resolve_or_create(store, "Kael").entity_id
+        mira = resolve_or_create(store, "Mira").entity_id
+
+        store.record("betrayal", "Kael called you a coward at the bridge",
+                     entity_id=kael, act=1, turn=3)
+        store.record("gift", "Mira thanked you for the bread",
+                     entity_id=mira, act=1, turn=4)
+
+        remembered = callbacks.for_person(store, mira, "Mira",
+                                          searching_for="bridge")
+        summaries = [c.summary for c in remembered]
+        assert "Mira thanked you for the bread" in summaries
+        assert "Kael called you a coward at the bridge" not in summaries, \
+            "that happened to Kael, not to Mira"
+
+
+def test_someone_with_no_history_can_still_raise_what_the_world_saw():
+    """The fallback is not removed, only pointed at the right rows. A world
+    event is recorded against nobody so that anyone present can bring it up."""
+    from ledger import callbacks
+    from ledger.identity import resolve_or_create
+
+    with LedgerStore(":memory:") as store:
+        rook = resolve_or_create(store, "Rook").entity_id
+        store.record("death", "The bridge came down in the night",
+                     entity_id=None, act=1, turn=2)
+
+        remembered = callbacks.for_person(store, rook, "Rook",
+                                          searching_for="bridge")
+        assert [c.summary for c in remembered] == ["The bridge came down in the night"]
+
+
+def test_someone_with_their_own_history_is_not_topped_up_from_the_world():
+    """"Only reach past their own history when they have none" is what the
+    comment says and now what the code does -- it used to reach whenever they
+    had fewer than two, which is most people most of the time."""
+    from ledger import callbacks
+    from ledger.identity import resolve_or_create
+
+    with LedgerStore(":memory:") as store:
+        sable = resolve_or_create(store, "Sable").entity_id
+        store.record("talk", "Sable told you about the archive",
+                     entity_id=sable, act=1, turn=1)
+        store.record("scene", "A bridge stood here once", entity_id=None,
+                     act=1, turn=2)
+
+        remembered = callbacks.for_person(store, sable, "Sable",
+                                          searching_for="bridge")
+        assert [c.summary for c in remembered] == ["Sable told you about the archive"]
+
+
+def test_what_happened_to_someone_reads_differently_from_what_they_saw():
+    """`Callback.theirs` was computed on every callback and read by nothing.
+
+    Both consumers joined every summary with a single space and handed the
+    result over as one undifferentiated string, so a narrator told
+    "Mira: Mira thanked you for the bread The bridge came down in the night"
+    had no way to know only the first of those was hers -- and the whole
+    reason the ownerless world row exists is that anyone present can raise it.
+    The bare space also ran two sentences together into one that was not a
+    sentence, because summaries do not end in full stops.
+    """
+    from ledger import callbacks
+    from ledger.identity import resolve_or_create
+
+    with LedgerStore(":memory:") as store:
+        rook = resolve_or_create(store, "Rook").entity_id
+        store.record("death", "the bridge came down in the night",
+                     entity_id=None, act=1, turn=2)
+
+        found = callbacks.for_person(store, rook, "Rook", searching_for="bridge")
+        phrased = callbacks.phrase_for(found)
+
+        assert "Was there when" in phrased, phrased
+        assert phrased.endswith("."), "a memory is a sentence"
+
+
+def test_someone_speaks_of_their_own_history_plainly():
+    from ledger import callbacks
+    from ledger.identity import resolve_or_create
+
+    with LedgerStore(":memory:") as store:
+        sable = resolve_or_create(store, "Sable").entity_id
+        store.record("betrayal", "Sable left you at the gate",
+                     entity_id=sable, act=1, turn=1)
+        store.record("gift", "Sable gave you the last of the water",
+                     entity_id=sable, act=2, turn=3)
+
+        phrased = callbacks.phrase_for(
+            callbacks.for_person(store, sable, "Sable"))
+
+        assert "Was there when" not in phrased
+        assert "Was also there when" not in phrased
+        assert phrased == ("Sable left you at the gate; "
+                           "Sable gave you the last of the water.")
+
+
+def test_also_is_only_used_when_there_is_something_to_be_also_to():
+    """It read "Rook: Was also there when..." for someone with no history of
+    their own, which implies a first thing that is not there."""
+    from ledger.callbacks import Callback, phrase_for
+
+    only_witnessed = [Callback(entity_id=1, name="Rook", summary="the bridge fell",
+                               act=1, turn=1, theirs=False)]
+    both = [Callback(entity_id=1, name="Rook", summary="Rook fed you",
+                     act=1, turn=1, theirs=True)] + only_witnessed
+
+    assert phrase_for(only_witnessed).startswith("Was there when")
+    assert "Was also there when" in phrase_for(both)

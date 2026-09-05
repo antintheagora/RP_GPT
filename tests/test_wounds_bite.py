@@ -103,7 +103,7 @@ def _resolution(wound_penalty, roll_value):
     assessment = Assessment(
         stat="STR", bearings={k: Bearing.SOUND for k in SPECIAL_KEYS},
         base_difficulty=11, consequence=Consequence.HARM)
-    return resolve(assessment, 5, PositionFacts(), luck=1,
+    return resolve(assessment, 5, PositionFacts(),
                    wound_penalty=wound_penalty, rng=Fixed(1))
 
 
@@ -249,18 +249,49 @@ def test_a_night_treats_the_worst_of_it():
     run.condition.wounds.take("A cracked rib", 1, cap=1, stat="END")
     assert all(w.state is WoundState.RAW for w in run.condition.wounds.wounds)
 
-    # Seed-independent, because the healing roll runs first and a wound that
-    # closes on the night is not there to be treated. What has to be true
-    # either way is that nothing you can see to yourself is still raw in the
-    # morning -- raw is the only state that can worsen.
-    take_rest(run, rng=_random.Random(3))
+    # This said it was seed-independent and was not. A night treats exactly
+    # one wound, so "nothing is still raw in the morning" needed the *other*
+    # wound to close on the healing roll -- a dice outcome, which passed only
+    # because the healing chances were a rung too generous. With the ladder
+    # corrected it fails on seed 3. The rule being tested is in the name of
+    # the test: a night treats the worst of it. So take the dice out entirely
+    # and watch which wound the beat is spent on.
+    class _NeverHeals(_random.Random):
+        def random(self):
+            return 1.0
 
-    left_raw = [w for w in run.condition.wounds.wounds
-                if w.state is WoundState.RAW and w.level <= 2]
-    assert not left_raw, f"{[w.name for w in left_raw]} went untended"
-    treated = [w for w in run.condition.wounds.wounds
-               if w.state is WoundState.TREATED]
-    assert len(treated) <= 1, "one beat, one wound -- a night is not a hospital"
+    take_rest(run, rng=_NeverHeals(3))
+
+    by_name = {w.name: w for w in run.condition.wounds.wounds}
+    assert by_name["A twisted ankle"].state is WoundState.TREATED,         "the worse of the two is the one the night is spent on"
+    assert by_name["A cracked rib"].state is WoundState.RAW,         "one beat, one wound -- a night is not a hospital"
+
+
+def test_a_wound_gets_the_night_it_is_actually_resting():
+    """The counter used to go up before the roll, so every wound was handed
+    the *second* night's chance on its first night and the whole ladder shifted
+    a rung. MECHANICS 1.2: a level-1 wound closes 40% of the time at the first
+    rest and 60% at the second. The code was rolling 60% then 80%.
+    """
+    from engine.character import Wound, heal_chance
+
+    wound = Wound(name="A cracked rib", level=1, stat="END")
+    assert wound.rests_carried == 0
+    assert heal_chance(wound) == pytest.approx(0.40), "the first night is the first night"
+
+
+def test_the_healing_ladder_matches_the_spec_night_by_night():
+    """Measured across 400 campaigns each, the error was worth two thirds of a
+    night on a level-1 wound and closed 64% of them on the first night where
+    the spec asks for 40%."""
+    from engine.character import Wound, heal_chance
+
+    for level, expected in ((1, [0.40, 0.60, 0.80, 1.0, 1.0]),
+                            (2, [0.20, 0.35, 0.50, 0.65, 0.80])):
+        wound = Wound(name="A hurt", level=level, stat="END")
+        for night, want in enumerate(expected, start=1):
+            assert heal_chance(wound) == pytest.approx(want), (level, night)
+            wound.rests_carried += 1
 
 
 def test_a_treated_wound_can_no_longer_worsen():
@@ -293,3 +324,40 @@ def test_a_night_alone_is_not_help_enough_for_the_worst_wounds():
 
     assert not result.treated
     assert run.condition.wounds.wounds[0].state is WoundState.RAW
+
+
+def test_a_full_wound_track_does_not_undo_treatment():
+    """A treated wound cannot worsen -- that is the entire reason a healer is
+    worth finding, and there is a test above named after it. A full track that
+    took another hit used to take the worst wound it could see, deepen it and
+    reset it to RAW, which handed back a wound the player had already paid to
+    have seen to.
+    """
+    track = WoundTrack()
+    tended = track.take("A crushed leg", 3, cap=3, stat="STR")
+    track.treat(tended)
+    raw = track.take("A split palm", 2, cap=2, stat="STR")
+    track.take("A bruised rib", 1, cap=1, stat="END")
+    assert track.full
+
+    worsened = track.take("A torn shoulder", 2, cap=2, stat="STR")
+
+    assert worsened is raw, "the untended wound takes it"
+    assert raw.level == 3
+    assert tended.state is WoundState.TREATED
+    assert tended.level == 3, "and the treated one is not touched at all"
+
+
+def test_a_track_of_nothing_but_treated_wounds_still_takes_the_hit():
+    """The harm has to go somewhere. When every slot is already seen to, one
+    deepens -- but it is not dragged back to raw for it."""
+    track = WoundTrack()
+    for name, level in (("A crushed leg", 3), ("A split palm", 2), ("A bruised rib", 1)):
+        track.treat(track.take(name, level, cap=level, stat="STR"))
+    assert track.full
+
+    worsened = track.take("A torn shoulder", 2, cap=2, stat="STR")
+
+    assert worsened.name == "A crushed leg", "the worst of them"
+    assert worsened.level == 4
+    assert worsened.state is WoundState.TREATED

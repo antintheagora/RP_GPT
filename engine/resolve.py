@@ -31,7 +31,8 @@ from enum import Enum
 from typing import Dict, List, Optional, Tuple
 
 from engine.affinity import ASSIST_TARGET_BONUS
-from engine.dice import Effect, Outcome, Roll, roll_against
+from engine.character import PUSH_BONUS
+from engine.dice import Effect, Outcome, Roll, resolve_roll, roll_against
 from engine.model import SPECIAL_KEYS
 
 # =============================
@@ -489,11 +490,12 @@ def resolve(
     stat_value: int,
     facts: PositionFacts,
     *,
-    luck: int = 5,
     take_bargain: bool = False,
     push: bool = False,
     assist: bool = False,
     wound_penalty: int = 0,
+    raw_roll: Optional[int] = None,
+    lucky: bool = False,
     rng: Optional[random.Random] = None,
 ) -> Resolution:
     """Roll one action. Pure apart from the RNG, which is injectable.
@@ -524,7 +526,7 @@ def resolve(
     if take_bargain and assessment.bargain:
         target += assessment.bargain.target_bonus
     if push:
-        target -= 3
+        target += PUSH_BONUS
     # A wound you are carrying, if it bears on this. MECHANICS has said -2
     # since the beginning; nothing read Wound.penalty, so until now taking a
     # wound cost you narration and the Director's attention and not one point
@@ -536,7 +538,15 @@ def resolve(
         target += ASSIST_TARGET_BONUS
     target = max(2, min(20, target))
 
-    result = roll_against(target, assessment.stat, luck=luck, rng=rng)
+    # A supplied face is how the turn engine preserves both sides of an
+    # explicit Fortune decision. It is still resolved here, against the same
+    # computed target and position; callers cannot supply an outcome or an
+    # effect. Ordinary actions draw exactly one die.
+    result = (
+        resolve_roll(raw_roll, target, assessment.stat, lucky=lucky)
+        if raw_roll is not None
+        else roll_against(target, assessment.stat, rng=rng)
+    )
 
     segments = SEGMENTS_BY_EFFECT.get(result.effect, 0) if result.succeeded else 0
     # Desperate pays for the risk: a gamble, not only a punishment.

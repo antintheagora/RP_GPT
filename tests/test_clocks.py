@@ -367,11 +367,19 @@ def test_what_a_tide_did_reaches_the_narrator():
     for _ in range(20):
         # Not Observe: `advance_turn` routes looking around down a branch
         # that never touches the Tides, which is why the first version of this
-        # test watched a Tide sit at 0/4 for twenty turns.
-        option = next(o for o in session.ensure_options() if o.verb is Verb.PARLEY)
-        session.apply_choice(option.key, {})
-        if tide.fired >= len(tide.moves):
-            break
+            # test watched a Tide sit at 0/4 for twenty turns.
+            option = next(o for o in session.ensure_options() if o.verb is Verb.PARLEY)
+            session.apply_choice(option.key, {})
+            pending = session.get_turn_payload().get("resist")
+            if pending is not None:
+                import ui.webapp.game_service as gs
+
+                session.apply_choice(
+                    gs.RESIST_DECLINE,
+                    {"resist_token": pending["token"]},
+                )
+            if tide.fired >= len(tide.moves):
+                break
 
     added = session.state.history[before:]
     assert tide.fired, "the Tide never moved, so this proves nothing"
@@ -380,3 +388,63 @@ def test_what_a_tide_did_reaches_the_narrator():
     )
     if tide.spent:
         assert any("the quarter belongs to them" in line for line in added)
+
+
+# =============================
+# -- THE TWO CLOCKS ARE -------
+# ---- RACING EACH OTHER ------
+# =============================
+
+def test_the_two_clocks_are_never_the_same_size_whatever_was_asked_for():
+    """Equal clocks are the easy setting the measurement above deleted.
+
+    10/10 wins 71% where 10/8 wins 51%, and the blueprint schema offered the
+    model 10 or 12 for the project and 8 or 10 for the danger -- so 10/10 was
+    one of four combinations, near enough a coin flip per act, and arrived
+    without anything checking it.
+    """
+    from engine.clocks import racing_pair
+
+    for asked_project in range(1, 15):
+        for asked_danger in range(1, 15):
+            project, danger = racing_pair(asked_project, asked_danger)
+            assert danger < project, (asked_project, asked_danger, project, danger)
+
+
+def test_the_coin_flip_the_blueprint_could_hand_over_lands_on_the_measured_pair():
+    from engine.clocks import racing_pair
+
+    assert racing_pair(10, 10) == (10, 8)
+    assert racing_pair(12, 12) == (12, 10)
+    # A pair that was already a race is left exactly alone.
+    assert racing_pair(10, 8) == (10, 8)
+    assert racing_pair(12, 8) == (12, 8)
+
+
+def test_a_world_asking_for_very_short_acts_still_gets_a_race():
+    """The authored path had the same hole from the other end: a world with
+    `turns_per_act` of 4 produced `max(4, 4 - 2)` and raced 4 against 4.
+    There is no legal size below 4, so the project clock goes up instead.
+    """
+    from engine.clocks import racing_pair, segments_for_turns
+
+    project = segments_for_turns(4)
+    assert racing_pair(project, project - 2) == (6, 4)
+
+
+def test_a_blueprint_that_asks_for_equal_clocks_is_corrected_on_the_way_in():
+    """The rule has to hold where the blueprint actually lands, not only in
+    the helper -- `build_run` is the one path a real act comes through."""
+    from test_menu_flow import _session
+    from engine.bridge import build_run
+
+    session = _session()
+    state = session.state
+    plan = state.blueprint.acts.get(state.act.index)
+    plan.project_clock = {"name": "Find the archive", "segments": 10}
+    plan.danger_clock = {"name": "The coven notices", "segments": 10}
+    state.turns_per_act_override = None
+    run = build_run(state)
+    project = run.clocks.get("project")
+    danger = run.clocks.get("danger")
+    assert (project.segments, danger.segments) == (10, 8)

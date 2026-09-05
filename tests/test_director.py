@@ -324,3 +324,102 @@ def test_the_pacing_line_never_claims_events():
         text = Director(stance=stance).describe().lower()
         assert "happening" not in text, text
         assert text.strip().endswith((".", "!"))
+
+
+# =============================
+# -- A NEW ACT DOES NOT -------
+# ---- INHERIT THE OLD --------
+# ---- ACT'S REASONS ----------
+# =============================
+
+def test_the_pacing_line_does_not_name_the_previous_acts_clock():
+    """The stance carries across an act boundary; the sentence must not.
+
+    `read()` freezes the danger clock's *name* into the sentence it produces,
+    and `build_run` carries the Director whole -- deliberately, because an act
+    boundary is not a reason for the world to forget how hard it was leaning.
+    `last_reading` rode along with it.
+
+    So the first screen of act two showed its own empty danger meter, "The tide
+    takes the glass waste 0 / 8", beside a line reading "The tide takes the
+    drowned steps is nearly on you" -- the previous act's clock, which no
+    longer exists, named as almost full. A player either trusts the sentence
+    and plays as though doomed, or trusts the bar and learns the sentence lies.
+
+    MECHANICS 13.2 makes this a spec violation rather than a matter of taste:
+    the Director reads "state that is already on screen" so the player "can
+    always see why the pressure changed". A clock on no screen is not that.
+    """
+    import RP_GPT as core
+    from engine.bridge import build_run
+    from engine.director import Director
+
+    import sys
+    sys.path.insert(0, "tests")
+    from test_menu_flow import _session
+
+    session = _session()
+    run = session.run
+    # Act one, with its danger clock nearly full -- which is what puts the
+    # clock's name into the sentence in the first place.
+    run.danger.name = "The tide takes the drowned steps"
+    run.danger.filled = run.danger.segments - 1
+    director = Director()
+    director.update(run)
+    assert "drowned steps" in " ".join(director.last_reading.why), (
+        "the setup did not produce the clause this test is about"
+    )
+
+    # A new act: the state keeps the Director and gets a fresh danger clock.
+    session.state.director = director
+    plan = session.state.blueprint.acts.get(session.state.act.index)
+    plan.danger_clock = {"name": "The tide takes the glass waste", "segments": 8}
+    session.state.act.clock_fill = {}
+    rebuilt = build_run(session.state)
+
+    said = " ".join(rebuilt.director.last_reading.why)
+    assert "drowned steps" not in said, (
+        f"act two still names act one's clock: {said!r}"
+    )
+    assert rebuilt.director.stance is director.stance, (
+        "the stance is meant to carry -- only the reasons are re-read"
+    )
+
+
+def test_refreshing_does_not_count_as_a_turn():
+    """Rebuilding a Run is not a turn, so it must not age the stance.
+
+    `update()` bumps `held_for` and can move the stance; the Director holds a
+    stance for two to three turns by design, and an act boundary calling
+    `update()` would quietly spend one of them.
+    """
+    from engine.director import Director
+
+    import sys
+    sys.path.insert(0, "tests")
+    from test_menu_flow import _session
+
+    run = _session().run
+    director = Director()
+    director.update(run)
+    held, stance = director.held_for, director.stance
+
+    director.refresh(run)
+
+    assert director.held_for == held
+    assert director.stance is stance
+
+
+def test_a_director_that_has_never_read_anything_stays_silent():
+    """Refreshing must not invent a reading where there was none -- a fresh
+    campaign has nothing to say about pacing yet."""
+    from engine.director import Director
+
+    import sys
+    sys.path.insert(0, "tests")
+    from test_menu_flow import _session
+
+    director = Director()
+    assert director.last_reading is None
+    director.refresh(_session().run)
+    assert director.last_reading is None

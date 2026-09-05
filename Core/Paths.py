@@ -25,7 +25,6 @@ WORLDS_DIR: Path = PROJECT_ROOT / "Worlds"
 #: game runs after the registry moved, to carry an existing one across. See
 #: CHARACTERS_DIR below for why it moved.
 SEED_CHARACTERS_DIR: Path = PROJECT_ROOT / "Characters"
-CONTENT_DIR: Path = PROJECT_ROOT / "content"
 
 
 # --- Writable, per user ------------------------------------------------------
@@ -64,10 +63,21 @@ CHARACTERS_DIR: Path = USER_DATA / "characters"
 IMAGES_DIR: Path = USER_DATA / "ui_images"
 JOURNALS_DIR: Path = USER_DATA / "journals"
 
+#: Where the gauntlet writes what it saw.
+#:
+#: Every round produces a full transcript of a played campaign, the HTML of
+#: each screen as a player would have received it, and the balance numbers --
+#: hundreds of files, all of them runtime output. Rule 4 of CLAUDE.md exists
+#: because six turns of play once produced twenty-four modified files in
+#: `git status`; a loop that plays thousands of turns would bury the repository
+#: entirely. It goes where the saves go.
+GAUNTLET_DIR: Path = USER_DATA / "gauntlet"
+
 
 def ensure_dirs() -> None:
     """Create the writable directories. Safe to call repeatedly."""
-    for d in (USER_DATA, SAVES_DIR, LOGS_DIR, IMAGES_DIR, JOURNALS_DIR):
+    for d in (USER_DATA, SAVES_DIR, LOGS_DIR, IMAGES_DIR, JOURNALS_DIR,
+              GAUNTLET_DIR):
         d.mkdir(parents=True, exist_ok=True)
 
 
@@ -85,7 +95,8 @@ def journal_path(campaign_id: str = "") -> Path:
 
 __all__ = [
     "PROJECT_ROOT", "ASSETS_DIR", "CHARACTERS_DIR", "SEED_CHARACTERS_DIR",
-    "WORLDS_DIR", "CONTENT_DIR",
+    "WORLDS_DIR",
     "USER_DATA", "SAVES_DIR", "LOGS_DIR", "IMAGES_DIR", "JOURNALS_DIR",
+    "GAUNTLET_DIR",
     "ensure_dirs", "journal_path",
 ]

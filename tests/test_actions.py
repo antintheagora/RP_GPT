@@ -146,6 +146,15 @@ def test_other_is_free_text_by_default():
     assert option.depth is Depth.DESCRIBE
 
 
+def test_something_else_does_not_force_every_custom_move_to_intelligence():
+    """The Keeper, not a hidden menu default, chooses the governing stat."""
+    option = next(o for o in build_menu(_scene(), _player()) if o.verb is Verb.OTHER)
+    intent = intent_from_option(option, "vault the rail before it closes")
+
+    assert option.stat == ""
+    assert intent.stat_hint == ""
+
+
 def test_observing_and_talking_do_not_cost_a_turn():
     """Free conversation was one of the best ideas already in the game."""
     assert not intent_from_option(MenuOption(Verb.OBSERVE, "look", detail="enemy")).costs_a_turn

@@ -1,5 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
+{# The page's only `h1`, for anyone navigating by heading. The visible
+   headings here are `h2` because that is the right size for a panel title,
+   and the same gap existed on the play screen: three of the six templates
+   had no `h1` at all. Hidden rather than drawn, so nothing changes on
+   screen. #}
+<h1 class="sr-only">World roster for {{ world.title }}</h1>
 <section class="roster-grid">
   <div class="ninebox u-box roster-panel">
     <div class="nf tl"></div>
@@ -20,28 +26,54 @@
         <a href="{{ url_for('landing') }}" class="overline text-dust hover:text-bone">Back to worlds</a>
       </div>
       <p class="panel-subtle">Toggle who travels with this world. Pick at least one companion to continue.</p>
+      <div class="roster-scope-note">
+        <p>Showing this world&rsquo;s cast first. The global registry may contain people from entirely different settings.</p>
+        <button type="button" class="u-button outline" data-roster-scope
+                aria-controls="roster-list" aria-pressed="false">Browse global registry</button>
+      </div>
       {# The registry is global and keeps everyone every campaign has ever
          generated -- a hundred and twenty-six names here, several of them
          near-duplicates and several of them factions. Scrolling that to find
          one person is not realistic. #}
       <label class="roster-filter">
-        <input type="search" placeholder="Filter by name or kind…" autocomplete="off"
+        <span class="roster-filter-label">Filter cast</span>
+        <input type="search" placeholder="Name or kind…" autocomplete="off"
                data-filter="#roster-list" data-filter-count="#roster-count" />
-        <span id="roster-count" class="roster-count"></span>
+        <span id="roster-count" class="roster-count" role="status" aria-live="polite"></span>
       </label>
-      <div id="roster-list" class="roster-list u-scroll scroll-fade">
+      <div id="roster-list" class="roster-list u-scroll scroll-fade"
+           data-roster-list data-show-all="false">
         {% for role, label in sections %}
         <p class="roster-heading" data-filter-group>{{ label }}</p>
+        {# A world whose cast has never been curated showed three headings
+           with nothing under any of them and no explanation. The `{% else %}`
+           on the loop below cannot help: it fires when the *global* registry
+           is empty, which `register_default_characters` guarantees never
+           happens. What is actually empty is the filtered view -- every row
+           is present and carrying `data-world-member="false"`, which the
+           stylesheet hides under the default scope. Measured on 'wife swap
+           reality show': 0 shown, 152 hidden, and the next panel telling the
+           player to choose a companion in a panel that looks like it holds
+           nobody. #}
+        {% if not (catalog[role] | selectattr('in_world') | list) %}
+        <p class="roster-empty" data-world-empty>
+          Nobody chosen for this world yet &mdash; switch to the global
+          registry below and use the <span aria-hidden="true">+</span> buttons
+          to add {{ label|lower }}.
+        </p>
+        {% endif %}
         {% for entry in catalog[role] %}
         <div class="roster-entry {% if char_param == role ~ ':' ~ entry.slug %}is-focused{% endif %}"
+             data-world-member="{{ 'true' if entry.in_world else 'false' }}"
              data-filter-item="{{ (entry.name ~ ' ' ~ (entry.kind or entry.role)) | lower }}">
           <form method="post" action="{{ url_for('toggle_roster_member', slug=world.slug) }}">
             <input type="hidden" name="role" value="{{ role }}" />
             <input type="hidden" name="character" value="{{ entry.slug }}" />
             <input type="hidden" name="char" value="{{ char_param or '' }}" />
-            <button class="roster-toggle {% if entry.slug in selections[role] %}is-selected{% endif %}" type="submit"
-              title="{% if entry.slug in selections[role] %}Remove{% else %}Add{% endif %} {{ entry.name }}">
-              <span>{% if entry.slug in selections[role] %}×{% else %}+{% endif %}</span>
+            <button class="roster-toggle {% if entry.in_world %}is-selected{% endif %}" type="submit"
+              aria-label="{% if entry.in_world %}Remove{% else %}Add{% endif %} {{ entry.name }}"
+              aria-pressed="{{ 'true' if entry.in_world else 'false' }}">
+              <span aria-hidden="true">{% if entry.in_world %}×{% else %}+{% endif %}</span>
             </button>
           </form>
           <a class="roster-body" href="{{ url_for('world_roster', slug=world.slug, char=role ~ ':' ~ entry.slug) }}">
@@ -84,12 +116,8 @@
         </div>
         <p class="world-preview-copy">{{ current.desc or 'Configure stats and bio on the right.' }}</p>
       </div>
-      <div class="portrait-actions">
-        <button class="u-button outline" disabled title="Coming soon">Regenerate portrait</button>
-        <button class="u-button outline" disabled title="Coming soon">New character</button>
-      </div>
       {% else %}
-      <p class="text-sm text-dust">No character selected. Add heroes via the desktop builder.</p>
+      <p class="text-sm text-dust">Select someone from the cast to preview their portrait and details.</p>
       {% endif %}
     </div>
   </div>
@@ -110,19 +138,38 @@
           <p class="panel-overline">Character info</p>
           <h2 class="panel-title">Customize details</h2>
         </div>
+      </div>
+      <div class="workflow-next">
+        <p id="roster-next-note" class="panel-subtle">
+          {% if can_continue %}
+            Your cast is ready. You can fine-tune a selected profile below, or continue now.
+          {% else %}
+            Select at least one companion in the first panel before continuing.
+          {% endif %}
+        </p>
+        <form method="get" action="{{ url_for('world_characters', slug=world.slug) }}" class="workflow-next-action">
+          <button class="u-button w-full" type="submit" aria-describedby="roster-next-note"
+                  {% if not can_continue %}disabled{% endif %}>Continue to your hero</button>
+        </form>
+      </div>
+      <details class="editor-disclosure roster-rules">
+        <summary>Roster rules</summary>
+        <p class="panel-subtle">Random characters can still appear during play unless you turn them off.</p>
         <form method="post" action="{{ url_for('toggle_random_characters', slug=world.slug) }}">
           <input type="hidden" name="allow_random" value="{% if world.allow_random %}0{% else %}1{% endif %}" />
           <input type="hidden" name="char" value="{{ char_param or '' }}" />
-          <button class="u-button outline" type="submit">{% if world.allow_random %}Disable{% else %}Allow{% endif %} random roster</button>
+          <button class="u-button outline w-full" type="submit">{% if world.allow_random %}Use only this cast{% else %}Allow surprise characters{% endif %}</button>
         </form>
-      </div>
+      </details>
       {% if current %}
+      <details class="editor-disclosure character-editor">
+        <summary>Edit {{ current.name }} <span>(optional)</span></summary>
       <form method="post" action="{{ url_for('update_character_profile', slug=world.slug, role=current.role, char_slug=current.slug) }}" class="character-form u-scroll scroll-fade">
         <input type="hidden" name="char" value="{{ char_param or '' }}" />
         <div>
           <label class="block overline text-dust" for="f-name">Name</label>
           <div class="mt-1 u-input-shell">
-            <input class="u-input" name="name" value="{{ current.name }}" id="f-name" />
+            <input class="u-input" name="name" value="{{ current.name }}" id="f-name" required maxlength="80" />
           </div>
         </div>
         <div class="grid grid-cols-2 gap-3">
@@ -187,16 +234,10 @@
         </div>
         <button class="u-button w-full mt-4" type="submit">Save character</button>
       </form>
+      </details>
       {% else %}
-      <p class="text-sm text-dust">Select someone from the left column to edit their profile.</p>
+      <p class="text-sm text-dust">Select someone from the first panel to edit their profile.</p>
       {% endif %}
-      {# Sticky, because it sat under a 520px character form inside a panel
-         that scrolls -- the only way forward from this screen was below the
-         fold of a nested scroller with the scrollbar masked out by
-         .scroll-fade. #}
-      <form method="get" action="{{ url_for('world_characters', slug=world.slug) }}" class="panel-footer">
-        <button class="u-button w-full" type="submit" {% if not can_continue %}disabled title="Select at least one companion"{% endif %}>Continue</button>
-      </form>
     </div>
   </div>
 </section>

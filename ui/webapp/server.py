@@ -1,6 +1,6 @@
-from __future__ import annotations
-
 """Flask + HTMX server for the PyWebview desktop shell."""
+
+from __future__ import annotations
 
 import json
 import os
@@ -21,8 +21,10 @@ from flask import (
 )
 from pathlib import Path
 
+import Core.Paths as runtime_paths
 from Core.Config import DEFAULT_MODEL
 from Core.Logging import get_logger
+from engine import comfy
 from engine.validation import repair, validate_world
 from Core.Character_Registry import (
     base_dir as _character_base_dir,
@@ -43,7 +45,10 @@ WORLDS_DIR = PROJECT_ROOT / "Worlds"
 # Absolute already, and no longer under the repo: the registry is
 # runtime state and lives with the saves.
 CHARACTERS_ROOT = _character_base_dir()
-PLAYER_ROOT = PROJECT_ROOT / "Characters" / "Player_Character"
+# Player sheets are edited by the player, so the adopted per-user registry is
+# their authority too.  Pointing this at the shipped seed tree made an ordinary
+# profile save overwrite installation content.
+PLAYER_ROOT = CHARACTERS_ROOT / "Player_Character"
 _log = get_logger("server")
 _log.info("project root %s | assets %s (exists=%s)", PROJECT_ROOT, ASSETS_DIR, ASSETS_DIR.exists())
 
@@ -61,12 +66,90 @@ ROSTER_SECTIONS = [
     ("enemy", "Enemies"),
 ]
 SPECIAL_STATS = ("STR", "PER", "END", "CHA", "INT", "AGI", "LUC")
+#: What each of the seven scores is called, and what spending a point on it
+#: actually buys. Keyed by the three-letter code the sheet shows.
+#:
+#: The character editor used to show seven bare abbreviations and one sentence
+#: of arithmetic -- "Each score must be a whole number from 1 to 10. Spend up
+#: to 49 points total." -- and nothing anywhere on the page said what any of
+#: them governed. The words Strength, Perception, Endurance, Charisma,
+#: Intelligence, Agility and Luck did not appear anywhere in `ui/` at all;
+#: they existed only in engine internals and in MECHANICS.
+#:
+#: That is the single most consequential decision a player makes. The balance
+#: gate measures a 4.87% win rate for a character with 3 in everything against
+#: 40.53% for one with 8 -- an eightfold swing, decided entirely on this
+#: screen, by someone who has not been told what they are choosing between.
+#: And the same page already does the job properly for ten other terms in its
+#: menu glossary, so the standard was set and this fieldset simply fell below
+#: it.
+#:
+#: Each line is what is true *today*, not what is designed. MECHANICS 1.1
+#: lists jobs for INT (a named Study target), for PER (pre-commit hints) and
+#: for LUC (weighted encounters) that are not in the live turn path yet, and
+#: promising them here would be a lie told at the exact moment a player is
+#: deciding whether to buy them. `tests/test_character_editor_budget.py` holds
+#: the questions against MECHANICS 1.1 so the two cannot drift apart.
+SPECIAL_MEANINGS = {
+    "STR": ("Strength",
+            "How hard you hit, and whether you can handle a heavy weapon."),
+    "PER": ("Perception",
+            "How much you can learn about a problem before committing to it."),
+    "END": ("Endurance",
+            "How much punishment you can take, and how cheaply you can refuse it."),
+    "CHA": ("Charisma",
+            "Who stands with you, and how far your words move people."),
+    "INT": ("Intelligence",
+            "How well you work a problem out."),
+    "AGI": ("Agility",
+            "Whether you can get out of a fight, and how exposed you are if it goes wrong."),
+    "LUC": ("Luck",
+            "One reroll a campaign: armed before you roll, kept only if it is better."),
+}
+
+SPECIAL_MIN = 1
+SPECIAL_MAX = 10
+SPECIAL_BUDGET = 49
+WORLD_PREFERENCE_FIELDS = (
+    "allow_random_characters",
+    "selected_companions",
+    "selected_npcs",
+    "selected_enemies",
+)
 
 from .game_service import REST, GameSession, GemmaError, SessionStore
 
 
 def _world_dir(slug: str) -> Path:
     return WORLDS_DIR / slug
+
+
+def _world_preferences_file(slug: str) -> Path:
+    """Per-player roster choices for one shipped world.
+
+    World bibles are authored assets and must remain read-only.  Ask Paths for
+    USER_DATA at call time so isolated tests and portable installs can change
+    the root without re-importing the web server.
+    """
+    safe_slug = Path(slug).name
+    if not safe_slug or safe_slug != slug or safe_slug in {".", ".."}:
+        raise ValueError(f"unsafe world slug: {slug!r}")
+    return Path(runtime_paths.USER_DATA) / "world_preferences" / f"{safe_slug}.json"
+
+
+def _load_world_preferences(slug: str) -> Dict[str, object]:
+    path = _world_preferences_file(slug)
+    if not path.exists():
+        return {}
+    try:
+        stored = json.loads(path.read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError) as exc:
+        _log.warning("could not read world preferences %s: %s", path, exc)
+        return {}
+    if not isinstance(stored, dict):
+        _log.warning("ignored non-object world preferences %s", path)
+        return {}
+    return {key: stored[key] for key in WORLD_PREFERENCE_FIELDS if key in stored}
 
 
 def _load_world_from_path(folder: Path) -> Optional[Dict]:
@@ -78,6 +161,27 @@ def _load_world_from_path(folder: Path) -> Optional[Dict]:
     except Exception as exc:
         print(f"WARN: Failed to read world file {world_file}: {exc}")
         return None
+
+    # Authored content is read-only, but an older or hand-written world can
+    # still contain the familiar model artefacts this validator recognises.
+    # Repair the in-memory view used for play; never write the correction back
+    # into the installation tree.
+    for field, issue in validate_world(data):
+        original = data.get(field)
+        fixed = repair(field, original) if isinstance(original, str) else None
+        if fixed:
+            _log.warning("world %s: repaired %s in memory (%s)", folder.name, field, issue)
+            data[field] = fixed
+        else:
+            _log.warning(
+                "world %s: %s %s and could not be repaired",
+                folder.name,
+                field,
+                issue,
+            )
+    # Roster choices belong to this player, not to the shipped world bible.
+    # Only the explicit preference fields may override authored content.
+    data.update(_load_world_preferences(folder.name))
     portrait_name = data.get("portrait") or "portrait.jpg"
     portrait_path = folder / portrait_name
     if not portrait_path.exists():
@@ -133,28 +237,63 @@ def _mutate_world(slug: str, mutator) -> None:
     if not world_path.exists():
         raise FileNotFoundError(f"Missing world.json for {slug}")
     data = json.loads(world_path.read_text(encoding="utf-8"))
+    data.update(_load_world_preferences(slug))
     mutator(data)
 
-    # Repair model artifacts before they reach disk. Grimdark_fantasy shipped
-    # with its pressure meter named "Here are a few options, keeping it to 1-3
-    # words an" because nothing checked what a model handed back. A field that
-    # cannot be salvaged is left as it was rather than replaced with a guess.
-    for field, issue in validate_world(data):
-        original = data.get(field)
-        fixed = repair(field, original) if isinstance(original, str) else None
-        if fixed:
-            _log.warning("world %s: repaired %s (%s)", slug, field, issue)
-            data[field] = fixed
-        else:
-            _log.warning("world %s: %s %s and could not be repaired", slug, field, issue)
-
-    world_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    preferences = {
+        key: data[key]
+        for key in WORLD_PREFERENCE_FIELDS
+        if key in data
+    }
+    preference_path = _world_preferences_file(slug)
+    preference_path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = preference_path.with_suffix(preference_path.suffix + ".tmp")
+    temporary.write_text(
+        json.dumps(preferences, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    os.replace(temporary, preference_path)
     _load_world_from_path(_world_dir(slug))
+
+
+def _roster_key(name: str) -> str:
+    """One shape for a roster pick, however it was written down.
+
+    The toggle on the roster screen stores a registry slug --
+    `Eira_Meadowlight` -- and the authored worlds that ship with the game
+    store display names: `Worlds/Grimdark_fantasy/world.json` selects
+    "Eira Meadowlight", "Sergeant Miller" and "super mutant". The membership
+    test compared `entry["slug"]` against that set literally, so every
+    multi-word name in every shipped world failed to match.
+
+    Measured: Grimdark fantasy silently lost 3 of its 9 authored cast and
+    The Wasteland 2 lost 3 of 7 -- including the companion Nira Quickstep,
+    half its party -- and that world sets `allow_random_characters` false,
+    so nothing came along to replace them. On the roster screen they simply
+    did not appear; at launch `actor_for` built a path that did not exist,
+    `_load_character_entry` returned None, and the actor was dropped with no
+    log line at all.
+
+    Normalising on comparison rather than migrating the files: the data is
+    not wrong, it is two spellings of the same thing, and a save or a world
+    written by an older build has to keep working either way.
+    """
+    return " ".join(str(name or "").replace("_", " ").split()).casefold()
 
 
 def _character_folder(role: str, slug: str) -> Path:
     sub = CHAR_ROLE_DIRS.get(role, CHAR_ROLE_DIRS["npc"])
-    return CHARACTERS_ROOT / sub / slug
+    root = CHARACTERS_ROOT / sub
+    direct = root / slug
+    if direct.exists():
+        return direct
+    # A pick stored as a display name. See `_roster_key`.
+    underscored = root / str(slug or "").replace(" ", "_")
+    if underscored.exists():
+        return underscored
+    # Neither exists: hand back the literal path, so a caller creating a new
+    # profile still gets the name it asked for.
+    return direct
 
 
 def _discover_portrait(folder: Path) -> Optional[Path]:
@@ -258,7 +397,10 @@ def _load_player_entry(folder: Path) -> Optional[Dict]:
     if not portrait_path or not portrait_path.exists():
         portrait_path = _discover_portrait(folder)
     special_raw = data.get("special") or {}
-    special = {stat: int(special_raw.get(stat, 5)) for stat in SPECIAL_STATS}
+    # Preserve legacy values for the editor to explain and correct. Range,
+    # type, and budget validation belong at save/launch authority boundaries;
+    # merely viewing a profile must never clamp it or fail on malformed text.
+    special = {stat: special_raw.get(stat, 5) for stat in SPECIAL_STATS}
     entry = {
         "slug": folder.name,
         "name": data.get("name") or folder.name.replace("_", " "),
@@ -312,6 +454,77 @@ def _update_player(slug: str, updates: Dict[str, object], special: Optional[Dict
     data["updated_at"] = time.time()
     meta_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
     _load_player_entry(folder)
+
+
+def _parse_special_score(raw: object) -> Optional[int]:
+    text = str(raw).strip()
+    if not text or any(char not in "0123456789" for char in text):
+        return None
+    return int(text)
+
+
+def _validate_special_submission(
+    form,
+    current: Dict[str, object],
+    *,
+    purpose: str = "saving",
+):
+    """Return parsed and display values without ever coercing a bad build.
+
+    The browser is only a convenience; hand-written requests must meet the
+    same range and campaign budget as the visible editor.  Keep the submitted
+    strings alongside the parsed values so a rejected form can show the player
+    exactly what needs correcting instead of snapping back to the saved sheet.
+    """
+    raw_values: Dict[str, str] = {}
+    parsed_values: Dict[str, int] = {}
+    invalid_stats: List[str] = []
+
+    for stat in SPECIAL_STATS:
+        if form is None:
+            # A stored launch sheet must actually contain all seven values;
+            # silently inventing a missing score would no longer be point-buy.
+            submitted = current.get(stat)
+        else:
+            submitted = form.get(f"special_{stat}")
+            if submitted is None:
+                submitted = current.get(stat, 5)
+        raw = str(submitted)
+        raw_values[stat] = raw
+        value = _parse_special_score(raw)
+        if value is None:
+            invalid_stats.append(stat)
+            continue
+        if not SPECIAL_MIN <= value <= SPECIAL_MAX:
+            invalid_stats.append(stat)
+            continue
+        parsed_values[stat] = value
+
+    if invalid_stats:
+        named = ", ".join(invalid_stats)
+        return (
+            parsed_values,
+            raw_values,
+            tuple(invalid_stats),
+            None,
+            f"Every SPECIAL score must be a whole number from {SPECIAL_MIN} to "
+            f"{SPECIAL_MAX}. Check {named}.",
+        )
+
+    total = sum(parsed_values.values())
+    if total > SPECIAL_BUDGET:
+        excess = total - SPECIAL_BUDGET
+        point_word = "point" if excess == 1 else "points"
+        return (
+            parsed_values,
+            raw_values,
+            (),
+            total,
+            f"This hero uses {total} of {SPECIAL_BUDGET} SPECIAL points. "
+            f"Reduce the total by {excess} {point_word} before {purpose}.",
+        )
+
+    return parsed_values, raw_values, (), total, None
 
 
 def create_app(store: Optional[SessionStore] = None) -> Flask:
@@ -393,8 +606,14 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
             abort(404)
         return send_from_directory(str(path.parent), path.name)
 
-    @app.get("/")
-    def landing():
+    def _landing_context(selected_slug: str | None = None):
+        """Build the complete world browser, including error re-renders.
+
+        Continue used to rebuild this page with ``worlds=[]`` after a damaged
+        save, so reporting one failure also removed every working way forward.
+        Keep the selected-world lookup here so both paths render the same
+        usable directory.
+        """
         catalog = _load_world_catalog()
         saved_runs = _saved_runs()
         virtual = {
@@ -418,25 +637,45 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
                 else url_for("static", filename="ui/World_Backdrop.png")
             )
             worlds.append(entry)
-        selected_slug = request.args.get("world") or (worlds[0]["slug"] if worlds else None)
+        selected_slug = selected_slug or request.args.get("world") or (worlds[0]["slug"] if worlds else None)
         selected = next((w for w in worlds if w["slug"] == selected_slug), worlds[0] if worlds else None)
-        return render_template(
-            "landing.html",
-            worlds=worlds,
-            selected=selected,
-            has_active=bool(_current_session()),
-            saved_runs=saved_runs,
-        )
+        return {
+            "worlds": worlds,
+            "selected": selected,
+            "has_active": bool(_current_session()),
+            "saved_runs": saved_runs,
+        }
 
-    def _saved_runs(limit: int = 6):
-        """Recent saves, newest first, for the Continue cards."""
+    @app.get("/")
+    def landing():
+        return render_template("landing.html", **_landing_context())
+
+    @app.get("/credits")
+    def credits():
+        """Who made the things this game is built out of.
+
+        There is a licence obligation under this one. Two of the models in the
+        painted hall are CC-BY 4.0, which asks that their authors are named
+        wherever the work appears -- and renders containing them ship in the
+        game. art/README.md has said for a while that the credit was recorded
+        "nowhere a player could see it" and called that a gap rather than a
+        decision. It takes no session and no campaign, so it works from the
+        menu mid-play and from the first screen alike.
+        """
+        return render_template("credits.html", title="Credits · RP-GPT")
+
+    def _saved_runs():
+        """All saves, newest first; the template folds older cards."""
         from engine.persistence import list_runs
 
         from Core.Paths import SAVES_DIR
 
         out = []
-        for run in list_runs(SAVES_DIR)[:limit]:
+        for run in list_runs(SAVES_DIR):
             summary = run.get("summary") or {}
+            # Missing means a save made before status was part of the summary,
+            # not a completed campaign. Keep those resumable by default.
+            running = summary.get("running", True) is not False
             out.append({
                 "path": run["path"],
                 "title": summary.get("scenario") or run.get("label") or "Campaign",
@@ -445,6 +684,8 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
                 "act_count": summary.get("act_count", 1),
                 "turn": summary.get("turn", 1),
                 "last_line": summary.get("last_line", ""),
+                "running": running,
+                "ending": summary.get("ending", ""),
                 "saved_at": run.get("saved_at", 0),
                 "saved_when": _when(run.get("saved_at", 0)),
             })
@@ -521,9 +762,12 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
             session = GameSession.resume(path)
         except Exception as exc:
             _log.exception("could not resume %s", path)
-            return render_template("landing.html", worlds=[], selected=None,
-                                   has_active=False, saved_runs=_saved_runs(),
-                                   error=f"That save could not be loaded: {exc}"), 200
+            context = _landing_context((request.form.get("world") or "").strip() or None)
+            context["error"] = (
+                "That campaign could not be loaded. Its save may have moved "
+                "or become incomplete. Choose another campaign or world below."
+            )
+            return render_template("landing.html", **context), 200
         _store().adopt(session)
         flask_session["session_id"] = session.id
         return redirect(url_for("play"))
@@ -534,6 +778,11 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
         if not world or world.get("is_virtual"):
             abort(404)
         catalog = _load_character_catalog()
+        selections = {
+            role: {_roster_key(pick)
+                   for pick in (world.get(WORLD_SELECTION_KEYS[role]) or [])}
+            for role, _ in ROSTER_SECTIONS
+        }
         display_catalog: Dict[str, List[Dict]] = {}
         for role, entries in catalog.items():
             display_catalog[role] = []
@@ -544,11 +793,13 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
                     if enriched.get("portrait_file")
                     else url_for("static", filename="ui/World_Backdrop.png")
                 )
+                # Decided once here rather than four times in the template,
+                # which compared a raw slug against a stored display name and
+                # so dropped every multi-word member. See `_roster_key`.
+                enriched["in_world"] = (
+                    _roster_key(enriched["slug"]) in selections.get(role, ())
+                )
                 display_catalog[role].append(enriched)
-        selections = {
-            role: set(world.get(WORLD_SELECTION_KEYS[role], []))
-            for role, _ in ROSTER_SECTIONS
-        }
         can_continue = bool(selections["companion"])
         char_param = request.args.get("char")
         current_entry = None
@@ -562,6 +813,17 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
                     if current_entry.get("portrait_file")
                     else url_for("static", filename="ui/World_Backdrop.png")
                 )
+        if not current_entry:
+            for role, _ in ROSTER_SECTIONS:
+                selected_entry = next(
+                    (entry for entry in display_catalog[role]
+                     if entry["in_world"]),
+                    None,
+                )
+                if selected_entry:
+                    current_entry = dict(selected_entry)
+                    char_param = f"{role}:{current_entry['slug']}"
+                    break
         if not current_entry:
             for role, _ in ROSTER_SECTIONS:
                 if display_catalog[role]:
@@ -652,49 +914,140 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
         char_param = request.form.get("char") or f"{role}:{char_slug}"
         return redirect(url_for("world_roster", slug=slug, char=char_param))
 
+    def _player_with_portrait(entry: Dict) -> Dict:
+        enriched = dict(entry)
+        enriched["portrait_url"] = (
+            url_for("player_portrait", slug=enriched["slug"])
+            if enriched.get("portrait_file")
+            else url_for("static", filename="ui/World_Backdrop.png")
+        )
+        return enriched
+
+    def _character_editor_context(
+        world: Dict,
+        selected_slug: Optional[str] = None,
+        *,
+        selected_override: Optional[Dict] = None,
+        profile_error: Optional[str] = None,
+        profile_error_title: str = "Hero could not be saved.",
+        invalid_special=(),
+    ) -> Dict:
+        players = [_player_with_portrait(entry) for entry in _load_player_catalog()]
+        selected_slug = selected_slug or (players[0]["slug"] if players else None)
+        selected_entry = selected_override
+        if selected_entry is None and selected_slug:
+            selected_entry = _get_player(selected_slug)
+        if selected_entry is not None:
+            selected_entry = _player_with_portrait(selected_entry)
+
+        shown_invalid = list(invalid_special)
+        special_points_used = None
+        if selected_entry:
+            scores = selected_entry.get("special") or {}
+            parsed_scores: List[int] = []
+            for stat in SPECIAL_STATS:
+                score = _parse_special_score(scores.get(stat, ""))
+                if score is None:
+                    if stat not in shown_invalid:
+                        shown_invalid.append(stat)
+                    continue
+                if not SPECIAL_MIN <= score <= SPECIAL_MAX and stat not in shown_invalid:
+                    shown_invalid.append(stat)
+                parsed_scores.append(score)
+            if not shown_invalid and len(parsed_scores) == len(SPECIAL_STATS):
+                special_points_used = sum(parsed_scores)
+
+        from Core.Config import DEFAULT_IMAGE_STYLE, OFFERED_IMAGE_STYLES
+
+        return {
+            "world": world,
+            "players": players,
+            "selected": selected_entry,
+            "selected_slug": selected_slug,
+            "special_keys": SPECIAL_STATS,
+            "special_meanings": SPECIAL_MEANINGS,
+            "special_min": SPECIAL_MIN,
+            "special_max": SPECIAL_MAX,
+            "special_budget": SPECIAL_BUDGET,
+            "special_points_used": special_points_used,
+            "invalid_special": tuple(shown_invalid),
+            "profile_error": profile_error,
+            "profile_error_title": profile_error_title,
+            "has_active": bool(_current_session()),
+            "local_art": comfy.available(),
+            "styles": OFFERED_IMAGE_STYLES,
+            "chosen_style": DEFAULT_IMAGE_STYLE,
+        }
+
+    def _character_editor_error_response(
+        world: Dict,
+        player_slug: str,
+        profile_error: str,
+        *,
+        selected_override: Optional[Dict] = None,
+        invalid_special=(),
+        profile_error_title: str = "Hero could not be saved.",
+    ) -> Response:
+        response = make_response(
+            render_template(
+                "characters.html",
+                **_character_editor_context(
+                    world,
+                    player_slug,
+                    selected_override=selected_override,
+                    profile_error=profile_error,
+                    profile_error_title=profile_error_title,
+                    invalid_special=invalid_special,
+                ),
+            ),
+            200,
+        )
+        # Boosted POST forms must leave a refreshable GET in the address bar,
+        # not their POST-only action URL.
+        response.headers["HX-Replace-Url"] = url_for(
+            "world_characters", slug=world["slug"], player=player_slug
+        )
+        return response
+
     @app.get("/worlds/<slug>/characters")
     def world_characters(slug: str):
         world = _get_world(slug)
         if not world or world.get("is_virtual"):
             abort(404)
-        players = _load_player_catalog()
-        display_players: List[Dict] = []
-        for entry in players:
-            enriched = dict(entry)
-            enriched["portrait_url"] = (
-                url_for("player_portrait", slug=enriched["slug"])
-                if enriched.get("portrait_file")
-                else url_for("static", filename="ui/World_Backdrop.png")
-            )
-            display_players.append(enriched)
-        selected_slug = request.args.get("player") or (display_players[0]["slug"] if display_players else None)
-        selected_entry = None
-        if selected_slug:
-            selected_entry = _get_player(selected_slug)
-            if selected_entry:
-                selected_entry = dict(selected_entry)
-                selected_entry["portrait_url"] = (
-                    url_for("player_portrait", slug=selected_entry["slug"])
-                    if selected_entry.get("portrait_file")
-                    else url_for("static", filename="ui/World_Backdrop.png")
-                )
         return render_template(
             "characters.html",
-            world=world,
-            players=display_players,
-            selected=selected_entry,
-            selected_slug=selected_slug,
-            special_keys=SPECIAL_STATS,
-            has_active=bool(_current_session()),
+            **_character_editor_context(world, request.args.get("player")),
         )
 
     @app.post("/worlds/<slug>/characters/<player_slug>/profile")
     def update_player_profile(slug: str, player_slug: str):
-        if not _get_world(slug):
+        world = _get_world(slug)
+        if not world:
             abort(404)
         entry = _get_player(player_slug)
         if not entry:
             abort(404)
+
+        parsed_special, raw_special, invalid_special, _, profile_error = (
+            _validate_special_submission(request.form, entry.get("special") or {})
+        )
+        if profile_error:
+            # This response is deliberately successful: the whole shell is
+            # hx-boosted, and HTMX does not swap a handled 4xx form response.
+            # More importantly, nothing below this branch has touched disk.
+            submitted = dict(entry)
+            submitted["special"] = raw_special
+            for field in ("name", "sex", "appearance", "clothing", "scenario_label", "age"):
+                if field in request.form:
+                    submitted[field] = request.form.get(field)
+            return _character_editor_error_response(
+                world,
+                player_slug,
+                profile_error,
+                selected_override=submitted,
+                invalid_special=invalid_special,
+            )
+
         updates: Dict[str, object] = {}
         for field in ("name", "sex", "appearance", "clothing", "scenario_label"):
             value = request.form.get(field)
@@ -706,18 +1059,8 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
                 updates["age"] = int(age_val)
             except Exception:
                 _log.debug("suppressed error in server", exc_info=True)
-        special_updates: Dict[str, int] = {}
-        for stat in SPECIAL_STATS:
-            field_name = f"special_{stat}"
-            value = request.form.get(field_name)
-            if value is None:
-                continue
-            try:
-                special_updates[stat] = int(value)
-            except Exception:
-                continue
         try:
-            _update_player(player_slug, updates, special_updates or None)
+            _update_player(player_slug, updates, parsed_special)
         except FileNotFoundError:
             abort(404)
         return redirect(url_for("world_characters", slug=slug, player=player_slug))
@@ -733,24 +1076,68 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
         unreachable from the game.
         """
         world = _get_world(slug)
-        player = _get_player(player_slug)
-        if not world or not player:
+        player_folder = _player_folder(player_slug)
+        player_file = player_folder / CHAR_META_FILE
+        if not world or not player_file.exists():
             abort(404)
+
+        # Re-read at this authority boundary. A catalog cache is appropriate
+        # for browsing, but never for deciding which stored build launches.
+        try:
+            stored_profile = json.loads(player_file.read_text(encoding="utf-8-sig"))
+        except (OSError, ValueError):
+            abort(404)
+        player = _load_player_entry(player_folder)
+        if not player:
+            abort(404)
+
+        stored_special = (
+            stored_profile.get("special")
+            if isinstance(stored_profile.get("special"), dict)
+            else {}
+        )
+        _, _, invalid_special, _, launch_error = _validate_special_submission(
+            None,
+            stored_special,
+            purpose="beginning the campaign",
+        )
+        if launch_error:
+            # Legacy sheets remain untouched and visible, but starting a game
+            # cannot bypass the same build contract enforced by the editor.
+            # This branch runs before cookies, model work, or session creation.
+            submitted = dict(player)
+            submitted["special"] = {
+                stat: stored_special.get(stat, "") for stat in SPECIAL_STATS
+            }
+            return _character_editor_error_response(
+                world,
+                player_slug,
+                launch_error,
+                selected_override=submitted,
+                invalid_special=invalid_special,
+                profile_error_title="Campaign could not begin.",
+            )
 
         flask_session["selected_world"] = slug
         flask_session["selected_player"] = player_slug
 
         try:
             config = _config_from_selection(slug, player_slug)
+            config["images"] = bool(request.form.get("images")) and comfy.available()
+            config["image_style"] = request.form.get("image_style") or ""
             session = _store().create_session(config)
         except GemmaError as exc:
-            return render_template(
-                "legacy_start.html",
-                error=str(exc),
-                previous={},
-                has_active=False,
-                default_model=DEFAULT_MODEL,
-            ), 400
+            # This player came through an authored world and roster. Sending a
+            # local-model error to Custom setup discarded that context and made
+            # Retry post a different campaign to /start. Keep the exact hero,
+            # SPECIAL sheet, roster and Begin form in place instead.
+            return _character_editor_error_response(
+                world,
+                player_slug,
+                str(exc),
+                selected_override=player,
+                profile_error_title="Campaign could not begin.",
+            )
 
         # Put the world's chosen roster into the opening scene, then re-derive
         # the engine from it. Seeding alone was not enough: the Run had
@@ -775,7 +1162,17 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
         return {
             "scenario": raw_world.get("scenario") or "custom",
             "label": label,
+            # The folder this campaign belongs to, carried in the config so
+            # the ledger opens beside the save rather than under the world's
+            # display name. See `GameSession.from_config`.
+            "world_folder": slug,
             "world_notes": raw_world.get("lore_bible") or "",
+            # These are authored facts, not flavour for the model to replace.
+            # Carry them all the way to the blueprint prompt and enforce the
+            # exact goal and pressure after generation.
+            "campaign_goal": raw_world.get("campaign_goal") or "",
+            "pressure_name": raw_world.get("pressure_name") or "",
+            "player_role": raw_world.get("player_role") or "",
             "acts": raw_world.get("acts"),
             "turns_per_act": raw_world.get("turns_per_act"),
             "player": {
@@ -808,6 +1205,18 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
         def actor_for(role: str, char_slug: str):
             entry = _load_character_entry(role, _character_folder(role, char_slug))
             if not entry:
+                # Silence here is what let a broken roster survive: the actor
+                # was dropped and the campaign simply began without them.
+                # Grimdark fantasy still selects "Sergeant Miller" as an
+                # enemy while the registry files that profile under NPC, and
+                # nothing anywhere said so. Roles are separate folders on
+                # purpose -- guessing across them could load a companion as
+                # a foe -- so this reports rather than repairs.
+                _log.warning(
+                    "world roster selects %s:%r and the registry has no such "
+                    "profile in that role; the campaign starts without them",
+                    role, char_slug,
+                )
                 return None
             return core.Actor(
                 name=entry["name"],
@@ -864,8 +1273,6 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
         different -- and true -- in each case.
         """
         from Core.Config import DEFAULT_IMAGE_STYLE, OFFERED_IMAGE_STYLES
-        from engine import comfy
-
         previous = previous or {}
         return {
             "has_active": bool(_current_session()),
@@ -898,18 +1305,70 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
             session = _current_session()
         except RuntimeError:
             session = None
+        local_art = comfy.available()
         if session is None:
-            return {"art_styles": None, "art_style": DEFAULT_IMAGE_STYLE}
+            return {
+                "art_styles": None,
+                "art_style": DEFAULT_IMAGE_STYLE,
+                "local_art": local_art,
+                "images_enabled": False,
+                "campaign_facts": None,
+            }
         return {
             "art_styles": OFFERED_IMAGE_STYLES,
             "art_style": getattr(session.state, "image_style", "") or DEFAULT_IMAGE_STYLE,
+            "local_art": local_art,
+            "images_enabled": bool(getattr(session.state, "images_enabled", False)),
+            # Read off the state rather than through `get_turn_payload`, which
+            # assembles the whole panel -- clocks, menu, party, the lot -- and
+            # runs on every render of every page that has a menu in it.
+            "campaign_facts": _campaign_facts(session),
+        }
+
+    def _campaign_facts(session) -> dict:
+        """What the menu says about the campaign you are in."""
+        from Core.Config import get_config
+
+        state = session.state
+        act = getattr(state, "act", None)
+        player = getattr(state, "player", None)
+        return {
+            "world": str(getattr(state, "scenario_label", "") or "").strip(),
+            "character": str(getattr(player, "name", "") or "").strip(),
+            "act": int(getattr(act, "index", 1) or 1),
+            "act_count": int(getattr(state, "act_count", 1) or 1),
+            "turn": int(getattr(act, "turns_taken", 0) or 0),
+            "running": bool(getattr(state, "running", True)),
+            "model": get_config().model,
         }
 
     @app.post("/style")
     def choose_style():
         """Change the look of a campaign already under way."""
         session = _require_session()
+        # This is the player's explicit retry point after starting ComfyUI.
+        # Bypass the normal offline cache here so the setting can recover now
+        # rather than after a cache window or another campaign turn.
+        local_art = comfy.available(refresh=True)
         session.set_image_style(request.form.get("image_style") or "")
+        # Only when the form actually carried the control.
+        #
+        # A browser omits a disabled checkbox from the POST, and the template
+        # disables "Local scene art" whenever ComfyUI looks unavailable -- a
+        # cached probe is enough, and the cache holds for a minute. So a
+        # player with pictures on who opened the menu to pick a different
+        # *look* posted no `images` field, this read that as "off", and wrote
+        # `images_enabled = False` to the save. Pictures stopped for the rest
+        # of the campaign with nothing on screen to say why, and the
+        # `refresh=True` probe one line above had often just proved ComfyUI
+        # was up.
+        #
+        # `images_present` is rendered beside the checkbox only when the
+        # checkbox is live, so its absence means "the player was not offered
+        # this control", which is different from "the player turned it off".
+        if request.form.get("images_present"):
+            session.set_images_enabled(
+                bool(request.form.get("images")) and local_art)
         return redirect(url_for("play"))
 
     @app.get("/legacy-start")
@@ -929,7 +1388,7 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
             # makes a checkbox the right control here: the absence of consent
             # reads as "no". Nothing posted `images` before, so the default
             # was taken every time and the answer was always yes.
-            "images": bool(form.get("images")),
+            "images": bool(form.get("images")) and comfy.available(),
             # The look. Validated against the table on the way in, so a
             # hand-posted value cannot put the campaign in a style that
             # does not exist.
@@ -946,12 +1405,16 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
         try:
             session = _store().create_session(config)
         except GemmaError as exc:
-            return (
-                render_template("legacy_start.html",
-                                **_setup_context(form.to_dict(flat=True), str(exc)),
-                                has_active=False, default_model=DEFAULT_MODEL),
-                400,
-            )
+            # The whole app is hx-boosted. HTMX deliberately does not swap a
+            # 4xx response, so returning a beautifully rendered error with a
+            # 400 status made it invisible and left the player on the setup
+            # form wondering whether the minute-long launch click worked.
+            # This is a handled, retryable local-service state: render it as a
+            # usable page and preserve every field they entered.
+            return render_template(
+                "legacy_start.html",
+                **_setup_context(form.to_dict(flat=True), str(exc)),
+            ), 200
         # Written before the player is shown anything. Generating a campaign
         # is a minute of a 12B model's time, and until now the run existed
         # only in memory until the first turn ended -- so closing the tab, or
@@ -972,9 +1435,27 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
 
     @app.get("/play")
     def play():
-        if not _current_session():
+        session = _current_session()
+        if not session:
             return redirect(url_for("landing"))
-        return render_template("play.html")
+        payload = session.get_turn_payload()
+        act_index = int(payload.get("act_index") or 1)
+        act_goal = str(payload.get("act_goal") or "").strip().rstrip(".")
+        chapter = f"Act {act_index}" + (f". {act_goal}." if act_goal else ".")
+        game_over = bool(payload.get("game_over"))
+        return render_template(
+            "play.html",
+            # A completed save is still opened through /play so its ending,
+            # journal and character sheet remain available.  It is not an
+            # act entry, though: replaying the chapter transition here used
+            # to cover the ending with a blank "Chapter turning" dialog.
+            initial_chapter="" if game_over else chapter,
+            chapter_key=f"{session.id}:{act_index}",
+            game_over=game_over,
+            # The document's only `h1`, read by anyone navigating by heading.
+            campaign=str(getattr(session.state, "scenario_label", "")
+                         or getattr(session, "label", "") or "Campaign"),
+        )
 
     @app.get("/ui/turn")
     def turn_panel():
@@ -1034,7 +1515,12 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
         # "menu" carries the option's own key -- attack:Rusty Knife,
         # observe:weakness, parley. The numeric codes below are the few
         # buttons that are not scene options.
-        if action in ("menu", "bargain"):
+        if request.form.get("leave_conversation"):
+            # A composer keeps this beside the player's text. `formnovalidate`
+            # lets Leave work even when the required textarea is empty, and
+            # this explicit flag wins over the option's hidden choice.
+            code = "talk:leave"
+        elif action in ("menu", "bargain", "resist", "luck"):
             code = request.form.get("choice")
         elif action == "rest":
             # Sleeping is not an attempt at anything, so it does not go
@@ -1061,6 +1547,14 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
             # box posts nothing, which is the right default for spending a
             # resource.
             "push": bool(request.form.get("push")),
+            # Fortune must be armed with the action, before its first die.
+            # Answer forms carry neither this field nor authority to add it.
+            "luck_armed": bool(request.form.get("luck_armed")),
+            # Identifies the one already-rolled consequence. A stale browser
+            # control may never answer a newer pending decision.
+            "resist_token": request.form.get("resist_token"),
+            # Same stale-control protection at the earlier Fortune boundary.
+            "luck_token": request.form.get("luck_token"),
         }
         result = session.apply_choice(code, payload)
         html = render_template("partials/log_panel.html", events=session.get_events(), payload=session.get_turn_payload())
@@ -1071,16 +1565,45 @@ def create_app(store: Optional[SessionStore] = None) -> Flask:
         """Serve a picture this run generated.
 
         Under the user data directory rather than the project, and scoped to
-        the run that made it. Both segments are resolved and checked against
-        the images root, so a crafted name cannot walk out of it.
+        the run that made it.
+
+        This used to compare `Path(IMAGES_DIR).resolve()` against
+        `target.resolve().parents` and 404 unless the root appeared there.
+        That is correct on a plain filesystem and wrong the moment a reparse
+        point sits anywhere above the images directory, because `resolve()`
+        follows it for the deeper path and not for the root: measured here,
+        the root came back as
+
+            C:/Users/<user>/AppData/Local/RP_GPT/ui_images
+
+        and the file directly beneath it as
+
+            C:/Users/<user>/AppData/Local/Packages/<app>/LocalCache/Local/
+            RP_GPT/ui_images/<run>/a03_t0002_turn.png
+
+        so containment was False for *every* picture and the scene panel
+        showed a broken image for the whole session. Redirected AppData is
+        not exotic -- OneDrive's Known Folder Move, roaming profiles and
+        packaged apps all produce it.
+
+        So the containment check is gone, and what replaces it is narrower
+        and does not depend on resolution at all. `run_id` must be a bare
+        path segment, and `send_from_directory` already refuses a `filename`
+        that climbs out of the directory it is given -- that is what
+        `werkzeug.security.safe_join` is for, and it was doing that job
+        underneath the broken check the whole time.
         """
         from Core.Paths import IMAGES_DIR
 
-        root = Path(IMAGES_DIR).resolve()
-        target = (root / run_id / filename).resolve()
-        if root not in target.parents or not target.is_file():
+        # A run id is minted by the engine as a hex uuid. Anything carrying a
+        # separator or a dot is not one, and is the only part of this URL that
+        # is used to build a directory.
+        if not run_id or not run_id.replace("-", "").isalnum():
             abort(404)
-        return send_from_directory(str(target.parent), target.name)
+        folder = Path(IMAGES_DIR) / run_id
+        if not folder.is_dir():
+            abort(404)
+        return send_from_directory(str(folder), filename)
 
     @app.post("/reset")
     def reset():

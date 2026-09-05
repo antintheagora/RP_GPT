@@ -1,51 +1,26 @@
-"""Pictures are the one thing that leaves this machine.
-
-The model is local, and the stylesheet, the fonts and htmx are vendored. The
-image prompt is not: it goes to an outside service, and it carries the
-player's own description of their character and whole paragraphs of the
-situation they are in.
-
-Two things were wrong with that. The service publishes every prompt and
-image it is given to a public feed unless told not to, and it was not being
-told. And there was no way to decline: no form posted `images`, so
-`config.get("images", True)` took its default every time and the answer was
-always yes.
-"""
+"""Scene art stays local, optional, asynchronous, and out of the turn path."""
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
 
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def test_the_prompt_is_not_published():
-    """Without `private=true` this service posts it to a public feed."""
-    from Core.Image_Gen import pollinations_url
-
-    url = pollinations_url("a gaunt ferryman in a tar-stained coat", 640, 360,
-                           seed=7)
-    query = parse_qs(urlparse(url).query)
-    assert query.get("private") == ["true"], (
-        "the player's character description and campaign situation are in "
-        "this prompt, and without private=true they are published"
-    )
-
-
-def test_every_url_the_game_builds_is_private():
-    """Including the stripped-down fallback, which is a second URL."""
-    from Core.Image_Gen import build_urls_with_fallbacks
-
-    for url in build_urls_with_fallbacks("a drowned hall", 640, 360, seed=3):
-        assert "private=true" in url, url
+def test_live_image_path_is_local_only():
+    service = (ROOT / "ui" / "webapp" / "game_service.py").read_text(
+        encoding="utf-8"
+    ).lower()
+    assert "comfy.render" in service
+    assert "pollinations" not in service
+    assert "download_image" not in service
+    assert "urlopen" not in service
 
 
 def test_the_player_can_say_no():
     """An unchecked box posts nothing, so absence of consent reads as no."""
     server = (ROOT / "ui" / "webapp" / "server.py").read_text(encoding="utf-8")
-    assert '"images": bool(form.get("images"))' in server, (
+    assert '"images": bool(form.get("images")) and comfy.available()' in server, (
         "/start must read the switch rather than take a default"
     )
 
@@ -61,9 +36,20 @@ def test_the_player_is_told_what_it_costs():
             ).read_text(encoding="utf-8")
     block = form[form.index('name="images"'):]
     block = block[:2000].lower()
-    assert "outside service" in block or "third party" in block
-    assert "sent" in block
-    assert "machine" in block, "say plainly that the rest of it is local"
+    assert "comfyui" in block
+    assert "nothing leaves" in block or "nothing will be sent" in block
+    assert "machine" in block or "computer" in block
+
+
+def test_both_launch_paths_disable_art_without_comfyui():
+    legacy = (ROOT / "ui" / "webapp" / "templates" / "legacy_start.html").read_text(
+        encoding="utf-8"
+    )
+    authored = (ROOT / "ui" / "webapp" / "templates" / "characters.html").read_text(
+        encoding="utf-8"
+    )
+    assert "{% if not local_art %}disabled{% endif %}" in legacy
+    assert "{% if local_art %}checked{% else %}disabled{% endif %}" in authored
 
 
 def test_saying_no_actually_stops_it():
@@ -87,7 +73,7 @@ def test_saying_no_actually_stops_it():
 # How fast they are asked for.
 # ---------------------------------------------------------------------------
 
-def test_the_worker_paces_itself():
+def test_the_worker_paces_itself(tmp_path):
     """Nothing throttled the live path at all.
 
     The one throttle this project had, `rate_limit_images`, was called from
@@ -106,7 +92,13 @@ def test_the_worker_paces_itself():
         stamps.append(time.monotonic())
         Path(out).write_bytes(b"x" * 2048)
 
-    worker = ImageWorker(directory=Path(__file__).parent / "_paced",
+    # `tmp_path`, not a directory inside the repository. This wrote three
+    # 2KB JPGs into `tests/_paced/` on every run -- tracked files, rewritten
+    # by the suite, so the tree was dirty after any test run and a real diff
+    # had to be picked out of them. That is precisely rule 4, and the rule
+    # exists because six turns of play once produced twenty-four modified
+    # files in `git status`.
+    worker = ImageWorker(directory=tmp_path / "paced",
                          fetch=fetch, min_interval=0.05)
     for index in range(3):
         worker.submit(ImageRequest(kind="scene", prompt=f"a hall {index}",

@@ -38,6 +38,7 @@
    scrollbar and no wheel. The game could be read but not played. #}
 <body class="bg-night text-parchment min-h-screen relative font-body" hx-boost="true" hx-target="this"
   hx-swap="innerHTML" hx-history-elt="true">
+  <a class="skip-link" href="#main-content">Skip to game content</a>
   <div class="fixed inset-0 -z-30 bg-cover bg-center opacity-90"
     style="background-image: url('{{ url_for('static', filename='ui/World_Backdrop.png') }}');"></div>
   <div class="fixed inset-0 -z-20 backdrop-overlay"></div>
@@ -45,16 +46,115 @@
 
   {# A menu you can only reach by guessing a keystroke is a menu nobody
      opens. The keystroke still works; this is so it is discoverable. #}
-  <button type="button" class="menu-tab" data-menu="toggle" title="Menu (Esc)">Menu</button>
+  <button type="button" class="menu-tab" data-menu="toggle" title="Menu (Esc)"
+          aria-controls="settings-overlay" aria-expanded="false">Menu</button>
 
   {# The world is thinking. Local inference takes fifteen to sixty seconds and
      the screen used to give no sign at all that a click had registered. #}
   <div class="thinking-bar" aria-hidden="true"></div>
+  <div id="thinking-status" class="thinking-status" role="status" aria-live="polite" aria-atomic="true">
+    <span>The world is considering what happens next&hellip;</span>
+  </div>
+
+
+  {# When an action does not go through.
+
+     There was no path for this at all. htmx fires `htmx:responseError` for
+     every 4xx and 5xx and nothing listened, so a refused action looked
+     exactly like a click that had not registered: the busy state cleared,
+     the panel did not change, and the screen said nothing.
+
+     Found by playing. A dev-server restart drops the in-memory session, the
+     next action comes back 409 "No active game session", and the player is
+     left clicking a menu that will never answer again. The save is intact
+     the whole time -- there is just nothing on screen that says so. #}
+  <div id="shell-alert" class="shell-alert" role="alert" aria-live="assertive" hidden>
+    <p class="shell-alert-text" data-alert-text></p>
+    <p class="shell-alert-actions">
+      <a class="shell-alert-link" href="{{ url_for('landing') }}" data-alert-continue hidden>Back to your campaigns</a>
+      <button type="button" class="shell-alert-close" data-alert-dismiss>Dismiss</button>
+    </p>
+  </div>
 
   <!-- Settings Overlay (Esc or the Menu button) -->
-  <div id="settings-overlay" class="settings-overlay hidden">
-    <div class="settings-panel">
-      <h2 class="settings-title">Menu</h2>
+  <div id="settings-overlay" class="settings-overlay hidden" data-dialog="settings"
+       role="dialog" aria-modal="true" aria-labelledby="settings-title" aria-hidden="true">
+    <div class="settings-panel" tabindex="-1">
+      <div class="settings-head">
+        <div>
+          <p class="settings-kicker">Pause &amp; preferences</p>
+          <h2 id="settings-title" class="settings-title">Menu</h2>
+        </div>
+        <button type="button" class="settings-x" data-menu="close" aria-label="Close menu">&times;</button>
+      </div>
+
+      {# Where you are, for a player coming back to one of fifty saves and
+         wanting to know which this is before they touch anything. All of it
+         is on the play screen somewhere already, except the model -- which is
+         nowhere, and is the single fact that explains why a turn takes the
+         time it does. #}
+      {% if campaign_facts %}
+        <dl class="settings-facts">
+          {% if campaign_facts.world %}
+            <div><dt>World</dt><dd>{{ campaign_facts.world }}</dd></div>
+          {% endif %}
+          {% if campaign_facts.character %}
+            <div><dt>Playing</dt><dd>{{ campaign_facts.character }}</dd></div>
+          {% endif %}
+          <div>
+            <dt>Progress</dt>
+            <dd>
+              {% if campaign_facts.running %}
+                Act {{ campaign_facts.act }} of {{ campaign_facts.act_count }},
+                turn {{ campaign_facts.turn }}
+              {% else %}
+                Finished, after {{ campaign_facts.turn }} turn{{ '' if campaign_facts.turn == 1 else 's' }}
+              {% endif %}
+            </dd>
+          </div>
+          <div><dt>Narrator</dt><dd>{{ campaign_facts.model }}</dd></div>
+        </dl>
+      {% endif %}
+
+      <section class="settings-preferences" aria-labelledby="comfort-settings-title">
+        <h3 id="comfort-settings-title" class="settings-label">Comfort &amp; sound</h3>
+        <label class="settings-control">
+          <span>
+            <span class="settings-control-name">Text size</span>
+            <span class="settings-style-note">Changes the interface without restarting your campaign.</span>
+          </span>
+          <select data-text-size aria-label="Interface text size">
+            <option value="standard">Standard</option>
+            <option value="large">Large</option>
+            <option value="largest">Largest</option>
+          </select>
+        </label>
+        <label class="settings-control">
+          <span>
+            <span class="settings-control-name">Reduce motion</span>
+            <span class="settings-style-note">Removes fog drift, sweeping loaders, and animated transitions.</span>
+          </span>
+          <input type="checkbox" data-reduced-motion />
+        </label>
+        <div class="settings-control settings-audio-control">
+          <span>
+            <span class="settings-control-name">Music</span>
+            <span class="settings-style-note" data-audio-status>Off until you choose to play it.</span>
+          </span>
+          <button type="button" class="settings-toggle" data-audio-toggle aria-pressed="false">Off</button>
+        </div>
+        <label class="settings-control settings-volume">
+          <span class="settings-control-name">Music volume</span>
+          <input type="range" min="0" max="100" step="5" value="35" data-audio-volume aria-label="Music volume" />
+        </label>
+        <label class="settings-control">
+          <span>
+            <span class="settings-control-name">Interface sounds</span>
+            <span class="settings-style-note">Quiet local cues for buttons and choices.</span>
+          </span>
+          <input type="checkbox" data-ui-sounds />
+        </label>
+      </section>
 
       {# The look, changeable mid-campaign. It is a taste decision and taste
          changes -- and unlike the model or the world bible, nothing already
@@ -73,6 +173,23 @@
               </span>
             </label>
           {% endfor %}
+          <label class="settings-control settings-image-toggle">
+            <span>
+              <span class="settings-control-name">Local scene art</span>
+              <span class="settings-style-note">
+                {% if local_art %}ComfyUI is ready; campaign prompts stay here.
+                {% else %}Start ComfyUI to enable art. There is no online fallback.{% endif %}
+              </span>
+            </span>
+            {# Only when the control is live. A disabled checkbox is omitted
+               from the POST, which is indistinguishable from unchecked -- so
+               `/style` needs a way to tell "not offered" from "turned off",
+               or picking a different look silently revokes pictures. #}
+            {% if local_art %}<input type="hidden" name="images_present" value="1" />{% endif %}
+            <input type="checkbox" name="images" value="1"
+                   {% if images_enabled %}checked{% endif %}
+                   {% if not local_art %}disabled{% endif %} />
+          </label>
           <button type="submit" class="u-button settings-btn">Use this look</button>
           <p class="settings-style-note">
             Pictures already drawn keep the style they were drawn in.
@@ -80,20 +197,92 @@
         </form>
       {% endif %}
 
+      {# Two references the player had no way to reach.
+
+         The keys were the sharper gap. Four exist, two are hinted on the
+         buttons that use them, and Space -- which dumps the rest of the
+         sentence the chronicle is pacing out -- was written, wired and
+         mentioned nowhere at all.
+
+         The glossary is the other half. Bearing, Position, Effect and the
+         rest are on screen every turn and defined only in MECHANICS.md,
+         which is a file in the repository, not something a player has. #}
+      <details class="settings-help">
+        <summary class="settings-label">Keys</summary>
+        <dl class="settings-keys">
+          <dt><kbd>Esc</kbd></dt>
+          <dd>Open or close this menu. Inside a written action it cancels the
+              box; with the character sheet open it closes the sheet first.</dd>
+          <dt><kbd>C</kbd></dt>
+          <dd>The character sheet. Not while you are writing an action --
+              there are Cs in that.</dd>
+          <dt><kbd>Space</kbd></dt>
+          <dd>Stop waiting. The narration is revealed at reading speed; this
+              gives you the rest of it at once, for this turn only.</dd>
+          <dt><kbd>Tab</kbd></dt>
+          <dd>Move between controls. While a dialogue is open it stays inside
+              it, so nothing behind can be reached by accident.</dd>
+        </dl>
+      </details>
+
+      <details class="settings-help">
+        <summary class="settings-label">The words this game uses</summary>
+        <dl class="settings-glossary">
+          <dt>Bearing</dt>
+          <dd>How well one approach suits one problem, from Ideal to Futile.
+              The Keeper rates all seven at once and the rating sticks: the
+              door is hard for the same reason on turn six as on turn one.</dd>
+          <dt>Position</dt>
+          <dd>How exposed you are if it goes wrong — Poised, Risky,
+              Desperate. It never changes your odds. It bounds how bad the
+              consequence may be, and it is always on screen.</dd>
+          <dt>Effect</dt>
+          <dd>How well it went, read off the face of the die rather than off
+              the margin. That is what lets an improbable success feel like
+              one.</dd>
+          <dt>Clock</dt>
+          <dd>A pressure you can count. <em>Your progress</em> fills as you
+              get somewhere; <em>closing in</em> fills as the world does.
+              Nothing ticks on a timer — something moved because you acted.</dd>
+          <dt>Tide</dt>
+          <dd>A force with a plan, moving while you are busy elsewhere. It
+              takes its next step on its own schedule.</dd>
+          <dt>Resolve</dt>
+          <dd>Nerve. Spend it to push for better odds, or to refuse a
+              consequence that has already landed. It runs out.</dd>
+          <dt>Fortune</dt>
+          <dd>One reroll for the whole campaign. Arm it before you act and
+              you see the first die before deciding to use it.</dd>
+          <dt>The Bargain</dt>
+          <dd>Better odds at a stated price. You are buying the odds, not the
+              outcome: the cost lands whether or not it works.</dd>
+          <dt>Affinity</dt>
+          <dd>What one person thinks of you. Reputation is what a faction has
+              heard. They move separately.</dd>
+          <dt>Scars and Virtues</dt>
+          <dd>Permanent marks, bad and good. Four scars and the character
+              retires.</dd>
+        </dl>
+      </details>
+
       <div class="settings-actions">
         <a href="{{ url_for('landing') }}" class="u-button" data-menu="close">Worlds</a>
-        <form method="post" action="{{ url_for('reset') }}" class="settings-form">
-          <button type="submit" class="u-button settings-btn">End this run</button>
-        </form>
+        <a href="{{ url_for('credits') }}" class="u-button" data-menu="close">Credits</a>
+        {% if art_styles %}
+          <form method="post" action="{{ url_for('reset') }}" class="settings-form"
+                data-confirm="Leave this campaign? Your latest save will remain available from Continue.">
+            <button type="submit" class="u-button settings-btn">Leave campaign</button>
+          </form>
+        {% endif %}
       </div>
-      <button class="settings-close" data-menu="close">Press Esc to close</button>
+      <button type="button" class="settings-close" data-menu="close">Close menu <span aria-hidden="true">&middot;</span> Esc</button>
     </div>
   </div>
 
   <!-- Main Content (centered within frame) -->
-  <div class="app-content">
+  <main id="main-content" class="app-content" tabindex="-1">
     {% block content %}{% endblock %}
-  </div>
+  </main>
 
   {# Overlays go out here, beside .app-content and never inside it.
 
@@ -105,6 +294,8 @@
      `pointer-events: none` on buttons inside .app-content, which would take
      an overlay's own close button with it. #}
   {% block overlays %}{% endblock %}
+  <audio id="ambient-audio" loop preload="none"
+         src="{{ url_for('static', filename='audio/title_theme.ogg') }}"></audio>
 </body>
 
 </html>

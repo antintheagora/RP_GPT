@@ -62,6 +62,43 @@ def segments_for_turns(turns: int) -> int:
     return min(LEGAL_SEGMENTS, key=lambda s: (abs(s - wanted), -s))
 
 
+def racing_pair(project_segments: int, danger_segments: int) -> tuple[int, int]:
+    """Two clock sizes that are actually a race, given two that were asked for.
+
+    The comment above this block has said since it was measured that the two
+    clocks must not be the same size, and until now nothing enforced it. The
+    blueprint schema offers the model 10 or 12 for the project and 8 or 10 for
+    the danger, so 10/10 -- one of the four combinations, near enough a coin
+    flip per act -- arrived and was taken as given. That is the setting the
+    measurement deleted: 10/10 wins 71% where 10/8 wins 51%, a twenty-point
+    swing, and nobody watching the screen would know which one they were
+    playing. The authored path had the same hole from the other end, where a
+    world asking for four turns an act got `max(4, 4 - 2)` and raced 4 against
+    4.
+
+    Both wanted sizes are pulled onto the legal ladder first, then the danger
+    clock is dropped to the rung below the project clock if it is not already
+    there. When the project is on the bottom rung there is no rung below, so
+    the project goes up instead of the danger going nowhere.
+    """
+    def legal(size: int) -> int:
+        try:
+            size = int(size)
+        except (TypeError, ValueError):
+            return ACT_SEGMENTS
+        return min(LEGAL_SEGMENTS, key=lambda s: (abs(s - size), s))
+
+    project = legal(project_segments)
+    danger = legal(danger_segments)
+    if danger < project:
+        return project, danger
+    below = [s for s in LEGAL_SEGMENTS if s < project]
+    if not below:
+        above = [s for s in LEGAL_SEGMENTS if s > project]
+        return (above[0] if above else project), project
+    return project, max(below)
+
+
 class ClockKind(str, Enum):
     PROJECT = "project"   # what you are trying to achieve
     DANGER = "danger"     # what is trying to happen to you
@@ -277,6 +314,6 @@ def _slug(name: str) -> str:
 
 __all__ = [
     "Clock", "ClockBoard", "ClockKind", "ClockTick",
-    "LEGAL_SEGMENTS", "SCENE_SEGMENTS", "ACT_SEGMENTS",
+    "LEGAL_SEGMENTS", "SCENE_SEGMENTS", "ACT_SEGMENTS", "racing_pair",
     "opposing_segments_for", "clock_from_json",
 ]

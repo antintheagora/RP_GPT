@@ -10,18 +10,29 @@
    are fetched off the turn, so there is a beat at the start of every act
    where there is nothing yet -- and a block that appears from nothing shoves
    the whole layout down as it arrives. #}
-<figure class="scene-frame">
+<figure class="scene-frame {{ 'is-pending' if not payload.image_url else '' }}">
   {% if payload.image_url %}
     {# `payload.situation[:120]` -- slicing None raises, and the situation is
        allowed to be empty. #}
+    {# Eager, and high priority. This is the largest thing on the play screen
+       and it is always above the fold, so `loading="lazy"` was deferring the
+       one image the page is actually about -- measured in a viewport that had
+       not composited yet, where the lazy image never started at all and the
+       panel sat empty over a valid 768x432 PNG that fetched in 382 KB. #}
     <img src="{{ payload.image_url }}"
-         alt="{{ (payload.situation or 'The scene')[:120] }}" loading="lazy" />
+         alt="{{ (payload.situation or 'The scene')[:120] }}"
+         loading="eager" fetchpriority="high" decoding="async" />
   {% else %}
+    <img class="scene-placeholder"
+         src="{{ url_for('static', filename='ui/scene_pending.png') }}"
+         alt="" aria-hidden="true" />
     <figcaption class="scene-waiting">
       {% if payload.images_enabled %}
-        The scene is being drawn.
+        <strong>The scene is being drawn.</strong>
+        <span>Local artwork will appear here when it is ready.</span>
       {% else %}
-        Pictures are off for this campaign.
+        <strong>The story leads.</strong>
+        <span>Local scene artwork is off for this campaign.</span>
       {% endif %}
     </figcaption>
   {% endif %}

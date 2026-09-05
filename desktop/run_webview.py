@@ -27,7 +27,6 @@ class FlaskThread(threading.Thread):
     def __init__(self, app, host: str, port: int):
         super().__init__(daemon=True)
         self.host = host
-        self.port = port
         # threaded=True is required for /chronicle/stream: an SSE connection
         # is held open for the life of the page, and a single-threaded server
         # would sit inside it and never serve another request.
@@ -35,7 +34,19 @@ class FlaskThread(threading.Thread):
         # This is only safe because the engine no longer captures stdout to
         # recover its output -- a process-global swap that two concurrent
         # requests would have corrupted. Events are collected thread-locally.
-        self._server = make_server(host, port, app, threaded=True)
+        try:
+            self._server = make_server(host, port, app, threaded=True)
+        except (OSError, SystemExit) as exc:
+            requested = f"port {port}" if port else "a local port"
+            raise RuntimeError(
+                f"RP-GPT could not open {requested} on {host}. "
+                "Close the program using that port or choose another "
+                "RP_GPT_WEB_PORT."
+            ) from exc
+        # Port 0 asks the operating system for a free port and avoids the
+        # probe-then-bind race.  Werkzeug exposes the port it actually bound;
+        # the window must navigate there rather than back to the requested 0.
+        self.port = int(self._server.server_port)
         self._ctx = app.app_context()
         self._ctx.push()
 
@@ -50,13 +61,28 @@ class FlaskThread(threading.Thread):
 
 def main() -> None:
     host = os.environ.get("RP_GPT_WEB_HOST", "127.0.0.1")
-    port = int(os.environ.get("RP_GPT_WEB_PORT", "5173"))
+    raw_port = os.environ.get("RP_GPT_WEB_PORT", "").strip()
+    try:
+        port = int(raw_port) if raw_port else 0
+    except ValueError as exc:
+        raise SystemExit(
+            "RP_GPT_WEB_PORT must be 0 (automatic) or a whole number from 1 to 65535."
+        ) from exc
+    if port < 0 or port > 65535:
+        raise SystemExit(
+            "RP_GPT_WEB_PORT must be 0 (automatic) or a whole number from 1 to 65535."
+        )
     store = SessionStore()
     app = create_app(store)
-    server = FlaskThread(app, host, port)
+    try:
+        server = FlaskThread(app, host, port)
+    except RuntimeError as exc:
+        raise SystemExit(str(exc)) from exc
     server.start()
     try:
-        webview.create_window("RP-GPT", f"http://{host}:{port}", width=1280, height=900)
+        webview.create_window(
+            "RP-GPT", f"http://{host}:{server.port}", width=1280, height=900
+        )
         webview.start()
     finally:
         server.shutdown()

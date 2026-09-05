@@ -30,33 +30,107 @@ along it is.*
 The plan opened with **"the game does not run"** and **"0% wins over 5,000
 campaigns."** Both are fixed.
 
-The game runs, saves, resumes, streams its prose as it is written, and is
-winnable **50.7%** of the time at average stats — 27% for a weak character,
-85% for a strong one played well. `python RP_GPT.py`'s pygame stack is gone;
-the Flask/HTMX surface is the game. 1,015 tests run with no GPU, no Ollama and
-no network.
+The game runs, saves, resumes, and streams typed game events over SSE while a
+turn is running. Ollama prose itself is **not** token-streamed on the live path:
+`.text()` and `.json()` finish first, then the completed prose event is paced by
+the browser at reading speed. The deterministic simulator's current
+**no-Fortune** approximation wins **4.87% / 14.37% / 40.53%** of campaigns for
+weak, average, and strong diagnostic profiles; four average-profile seed
+cohorts span **12.15–14.45%**. It is regression-only, omits major live player
+agency, and is not a live tuning verdict. `python RP_GPT.py`'s pygame stack is gone; the
+Flask/HTMX surface is the game. The final integrated run was **1,584 passed in
+118.37 seconds**, with no GPU, Ollama or network.
 
-**Phases 0, 1 and 2 are done. Phase 3 has not started.**
+The deterministic `GameSession` path now plays both winning and losing
+three-act campaigns from creation to an immutable ending, including every act
+boundary and save/resume. A real loopback-Ollama smoke is deliberately smaller:
+`gemma4:12b` plus `gemma3:latest` completed one generated act in seven consumed
+turns, with Bargain, Talk/Leave, explicit save/resume, free Observe and Resist.
+That is real integration evidence, not a three-act local-model release claim.
+
+**And it is genuinely local now.** The last two outbound paths are closed:
+every stylesheet, typeface and script the page loads is vendored, and pictures
+are drawn on this machine by ComfyUI running FLUX.2 Klein. The former online
+image fallback is deleted; without ComfyUI, local art stays off and no campaign
+text is sent elsewhere.
 
 | Phase | | State |
 |---|---|---|
 | **0** | Foundation & Truth | ✅ done |
 | **1** | The Engine Breathes | ✅ done |
 | **2** | The Game Becomes a Game | ✅ done |
-| **3** | The World Remembers | ⬜ not started — the next phase |
-| **4** | The Chronicle | ⬜ not started, partly overtaken (see below) |
-| **5** | The Plate Press | ⬜ not started |
+| **3** | The World Remembers | 🟡 begun — identity and memory exist; the save has not moved |
+| **4** | The Chronicle | 🟡 begun out of order — see below |
+| **5** | The Plate Press | 🟡 begun out of order — the local renderer landed early |
 | **6** | Vigil | ⬜ not started |
 
-Two Phase-2 items landed differently from the plan and are worth naming:
+## The live model, durability and canon paths
+
+The present call path is smaller than the historical seven-call turn, but it
+is not a fixed "two calls per turn" contract:
+
+- campaign setup uses the Narrator client for one schema-constrained blueprint
+  call;
+- the first action against an unrated obstacle uses the separate Keeper client
+  for one schema-constrained fiction assessment, then caches it; a Keeper
+  outage is a typed zero-cost retry, never a neutral adjudication;
+- after Python rolls and applies the result, a moved situation normally adds
+  one Narrator call; a Director beat, conversation reply, portrait description
+  or act recap adds a call only on its own path;
+- ComfyUI is a third, local image model on a background worker. There is no
+  online image fallback and the turn does not wait for the plate.
+
+Narrator and Keeper model tags, the Ollama origin and world text are sanitised
+into `GameState` and restored on resume; credentials and clients are not saved.
+For an actually consumed action, bridge synchronisation and a deterministic
+canonical `Turn fact` enter history before optional model work. `state.json` is
+atomically checkpointed there and saved again at the request boundary. Save
+failure produces a de-duplicated visible warning while keeping the in-memory
+turn. A persisted act-transition marker lets resume cross a completed
+non-final act without replaying the final action if the process stopped during
+optional recap work.
+
+The journal no longer asks a model for durable lore: it renders only the
+canonical turn fact. Situation and recap prose is validated before display or
+persistence and rejected whole if it introduces an unknown title-cased name.
+That is a grounding guard, not NER. Lower-case invented facts can still evade
+it; physical portrait prose remains durable cosmetic `Actor.desc`; and model
+dialogue remains in memory only as an attributed quotation. A complete
+structured prose-to-canon contract is still Phase-3 work.
+
+Three Phase-2 items landed differently from the plan and are worth naming:
 
 - **The Director was built.** The plan called it "designed but unscheduled"
   ([§7 Phase 2 task 9](#phase-2--the-game-becomes-a-game-)). It exists, with
   hysteresis: a stance holds for a minimum number of turns so a campaign has
   peaks and troughs instead of a thermostat's flat line.
-- **Resistance as an interrupt** shipped as the **Bargain** offer flow
-  (`PendingOffer`) rather than a `PendingResist` yield. Same shape — the turn
-  stops between the Keeper and the dice — different name.
+- **The Bargain interrupt shipped** as `PendingOffer`: the turn stops between
+  Keeper assessment and the dice, and Take/Refuse resumes the exact staged
+  intent without a second assessment.
+- **Resistance also shipped** as its own typed `PendingResist` post-result
+  interrupt. The exact provisional wound, clock movement or named item loss is
+  synchronised and saved with the decision; Take/Decline uses that saved token
+  without another Keeper call, roll or turn. Stale, duplicate, altered-target
+  and unaffordable answers cannot mutate the standing result.
+
+## Where Phase 3 actually stands
+
+Four of its twelve tasks are built and wired into a live game:
+
+- ✅ **`ledger/store.py`** — SQLite, entities, aliases, an append-only event
+  log, FTS5 over the summaries. **But not the save file.** `state.json` still
+  is. That was deliberate: swapping the persistence layer and adding memory in
+  one step means neither can be verified on its own.
+- ✅ **`ledger/ops.py` + `validator.py`** — the closed op list and the world
+  invariants, called from `engine/blueprint.py` on every campaign built.
+- ✅ **`ledger/identity.py::resolve_or_create`** — a name is now a label
+  attached to an identity rather than the identity itself.
+- ✅ **`ledger/callbacks.py`** — theirs before the world's, two items, hard cap.
+
+Still open: the four-phase turn, `context/compiler.py`, the Sentinel, the
+scheduler, the legacy migration, rewind, the Oracle, and the typed location
+table. The definition-of-done tests in [§7](#phase-3--the-world-remembers--in-progress)
+have not been run against a real 50-turn playthrough.
 
 ## What Phase 4 still needs, after the fact
 
@@ -65,62 +139,113 @@ The plan's Phase 4 assumed the play screen would be thrown away and rebuilt as
 screen was unusable:
 
 - ✅ The frame clamp, `.htmx-request` (**B27**), the palette, the loading
-  state, keyboard escape, the live chronicle pacing layer.
+  state, keyboard escape, the typed-event live chronicle and its pacing layer,
+  the character sheet as an overlay, accessible/skippable act title
+  transitions, and **task 4 in full: zero external requests**, with
+  `tests/test_offline.py` holding it there.
+- ✅ A basic local comfort-audio layer: opt-in theme playback, persisted music
+  volume and optional interface sounds, all behind the browser's user-gesture
+  boundary. Its bundled ambience is deterministic, sample-free synthesis with
+  generator source in `art/`; it is not an adaptive score or per-channel mixer.
+- ✅ The current play surface now has the intended two-thirds scene/one-third
+  rail top row, a full-width decision region below, phone source order that puts
+  decisions before history, a focused first-viewport choice jump, and measured
+  zero horizontal overflow across 320px, 390px and 1280px state matrices.
+  Settings, character sheet and act cards manage focus and isolate the page.
+- ✅ The reusable character editor enforces seven integer SPECIAL scores from
+  1–10 and a maximum total of 49, with a live used/remaining counter and
+  fail-closed server validation.
 - ⬜ **Still open:** `codex.html` itself (the leaf-and-rail layout, 80% prose),
-  vendoring htmx and the fonts so there are **zero external requests**, Session
-  Zero as an interview, the Chronicle view, the Chronicler's Margin, audio,
-  and accessibility (landmarks, focus trap, `:focus-visible`).
+  Session Zero as an interview, the Chronicle view, the Chronicler's Margin,
+  adaptive scene/act audio, and deeper native accessibility proof (screen
+  reader, 200% zoom, Windows high contrast and physical touch devices).
 
 `fog.js` was scheduled for deletion in Phase 4. It is still there, now
 honouring `prefers-reduced-motion` and its own frame limit. Deleting it is
 still the plan; it is not urgent.
 
+## Known mechanics and model-quality gaps
+
+The latest stat audit says not to tune the global clock math around these yet:
+the headless simulator rewards picking the hidden best approach and omits much
+of each stat's intended identity. LUC's explicit, tokened, saved Fortune
+interrupt now replaces the repeated hidden passive; encounter weighting and the
+critical-failure downgrade remain separate deferred jobs. INT has no named
+target-specific Study; PER does not gate pre-commit hints; Push cannot spend
+Resolve to raise effect; Assist is automatic and offers no companion choice;
+and AGI lacks its planned initiative and out-of-combat exits. Those are
+implementation gaps, not evidence that the base win-rate band should move.
+
+The real one-act smoke stayed grounded in engine facts and persisted no unknown
+proper names, but it also showed ordinary generation quality defects:
+`theed-heavy`, `theed-corroded`, underscores leaking into prose,
+`Maintenanceer Elias`, a clock Resist narrated as though its reverted tick had
+remained, and an ending recap that implied the beacon could now be restored
+instead of plainly saying the goal was complete. The two truth defects are
+fixed: narration now receives the net per-clock result after Resist and skips a
+model prose call for a net-zero accepted clock Resist; the final-success prompt
+explicitly says the act, project and campaign goals are achieved. A validated
+recap becomes the terminal situation, while recap outage or grounding rejection
+falls back to one persisted engine-authored completion sentence. The malformed
+words, underscores and NPC title remain open. Prompt/output cleanup and a full
+real-model three-act browser run remain release evidence still to gather.
+
+## And a subsystem the plan never had
+
+**`art/` — every plate and backdrop in the game as Blender source rather than
+as pixels.** It is not in any phase because it was not foreseen. It exists
+because hand-painted plates cannot agree with each other and a stretched
+painted edge smears, and both are fixed by modelling rather than by repainting.
+One material function is shared by the button, the frame, the crypt wall and
+the drowned monoliths. See `art/README.md`.
+
+Four of its scenes are still broken enough not to ship, and the flooded cavern
+has never rendered anything but black.
+
 ## The bug list
 
-Of the 28 verified defects in [§8](#8-verified-bug-list), **B01–B24, B27 and
-B28 are fixed.** The stragglers:
+Of the 28 verified defects in [§8](#8-verified-bug-list), **all are fixed
+except one, which is fixed in the place that matters and not everywhere.**
 
-| # | State |
+| # | How it closed |
 |---|---|
-| **B23** | `generate_turn_image` no longer runs, but the function and its re-export are still on disk. Dead code, not an active bug. |
-| **B25** | Fixed at the source — `desc` is no longer filled with personality — but the **82 existing profiles** where `desc == personality` have never been migrated. |
-| **B26** | `personality_roll()` is still a `random.choice` over ten labels, uncorrelated with the character, still driving dialogue tone. |
+| **B23** | The dead `generate_turn_image` path and its re-export are deleted. |
+| **B25** | The 68 profiles where `desc` held a copy of `personality` were cleared by `tools/migrate_profiles.py`, so the portrait prompt stops asking for a close-up of "Greedy, opportunistic". |
+| **B26** | `personality_roll()` no longer rolls: `engine/traits.py` reads the archetype off the character's own words, and only falls back to random when nothing anywhere says anything. |
+
+**B26 has one live call site that still rolls.** `Core/Random_Encounters.py`
+calls `personality_roll()` with no arguments when an undiscovered actor joins
+the scene, so the haystack is empty and it falls straight through to
+`random.choice`. `handle_post_turn_beat` is imported by `game_service.py`, so
+this runs during play. The actor has a name, a kind and a bio sitting right
+there; passing them is the whole fix.
 
 ## What is actually next
 
 In the order I would do it.
 
-1. **Phase 3, the ledger.** The single largest remaining piece and the one the
-   game most visibly lacks: nothing remembers anything across an act boundary
-   except through the save file. The roster still shows 126 characters
-   including six Elaras. This is 60–90 hours and should not be compressed.
+1. **Finish Phase 3.** The memory exists; the turn does not yet use it in the
+   shape the plan describes, and the save file has not moved. The remaining
+   eight tasks are the larger half.
 
-2. **Reach a fight.** Combat is fully built, fully tested, and in twelve turns
-   of real play across three acts it never once started. One enemy spawned, on
-   the turn an act ended, and the rollover deleted it. That path is fixed, but
-   *nobody has ever seen the combat menu in a live game.* Until someone has,
-   treat it as unverified.
+2. **Prove the ledger in a long game.** The definition of done is behavioural,
+   not structural: twenty Ironclad captains resolving to three officers, and an
+   NPC landing an unprompted callback to something twenty turns old. Neither has
+   been observed in a real 50-turn playthrough.
 
-3. **The two open rulings** — see [MECHANICS](MECHANICS.md):
-   - Whether failing from **Poised** should cost the turn. It currently does.
-     The spec's wording ("the action simply does not happen") can be read
-     either way. One line, either direction.
-   - **Stat traits leaking into dialogue as nicknames.** An NPC opened with
-     "Step back, giant" — the character block's Strength line read as a form
-     of address.
+3. **Fix the four Blender scenes**, and build the flooded cavern that has only
+   ever rendered black. The pipeline is good; four of its outputs are not.
 
-4. **The remaining narration leaks.** B25's 82 stale profiles and B26's random
-   personality are both *content* bugs that survive every code fix, because
-   they are baked into files on disk.
+4. **`border-image-repeat: round`.** The rendered frames still stretch rather
+   than tile, which is the last of the smearing. It needs a seamless tile, and a
+   seamless tile needs more than a periodic texture.
 
-5. **Close the "runs on your own machine" gap.** Two things break it, and
-   neither is hard:
-   - The page fetches Tailwind, htmx and two Google fonts from the internet on
-     every load. With no connection it renders unstyled and `hx-boost` stops
-     working. Vendor all three ([§7 Phase 4 task 4](#phase-4--the-chronicle--partly-done-early-out-of-order)).
-   - Scene pictures come from pollinations.ai, and although every campaign
-     carries an `images_enabled` flag, **nothing on screen ever sets it** — to
-     play without them you edit `engine/model.py`.
+5. **`ENTITY_MUST_EXIST_AND_BE_ALIVE` needs a live caller.** The invariant is
+   written and tested and only ever runs with `world=None`, which makes it a
+   no-op. It is the one validator that is not yet doing its job.
+
+Two things that were on this list and are done: the game is fully local, and
+both open rulings are settled (see [MECHANICS §14](MECHANICS.md#14-resolved-and-still-open)).
 
 ## The lesson, recorded because it keeps repeating
 
@@ -260,11 +385,18 @@ Worse, the blueprint template is malformed by construction: `Core/AI_Dungeon_Mas
 
 `requirements-web.txt` declares two packages. The real third-party set is five: **pygame is not declared anywhere**, and `certifi` is imported in three files and **is not installed** (verified) — each import is wrapped in a `try/except` that sets `certifi = None`, so TLS verification for image downloads silently degrades.
 
-### The game is not local
+### Historical baseline: the game was not local
 
-**100% of images come from `https://image.pollinations.ai`** (`Core/Image_Gen.py:256–258`) — anonymous, no key, no seed, no model selection, no local fallback. `private` is never set, so **every prompt and image is published to a public feed by default** — including the player's character description and full campaign situation paragraphs. Rate-limited at ~1 request/15s on the anonymous tier, against code that fires four in a burst at startup. "Regenerate portrait" returns a **byte-identical file** because the URL is a pure function of the prompt: `Characters/Player_Character/Antonius/portrait_2..8.jpg` are seven identical copies.
+At the start of this plan, **100% of images came from
+`https://image.pollinations.ai`** — anonymous, no key, no seed, no model
+selection, no local fallback. Prompts could be published to a public feed.
+That transport and its downloader are now deleted; this paragraph remains as
+the privacy defect the local-only renderer fixed.
 
-The web UI additionally loads **four external CDNs** (`fonts.googleapis.com`, `fonts.gstatic.com`, `cdn.tailwindcss.com` — the browser-JIT Play CDN, unpinned — and `unpkg.com/htmx`). Offline, the only working UI renders as unstyled HTML with dead buttons.
+The web UI additionally loaded **four external CDNs**
+(`fonts.googleapis.com`, `fonts.gstatic.com`, `cdn.tailwindcss.com`, and
+`unpkg.com/htmx`). Those assets are now vendored and the offline contract is
+tested.
 
 ## 1.4 Dead weight — the deletion list, sized
 
@@ -482,7 +614,7 @@ Then, **during the player's reading time** (15–30 s of idle GPU per turn), the
 | `intercepted_io` (`game_service.py:109–125`) | `engine/events.py` typed bus → SSE |
 | `Core/Journal.py` + `Helpers.journal_lore_line` + `world_journal.txt` | `ledger.jsonl` beat events, per-run |
 | `Core/Helpers.py:15–48` `sanitize_prose` | Fix the cause: stop passing numbers the prompt then forbids. Keep only a preamble stripper. |
-| `Core/Image_Gen.py` Pollinations transport | `media/backend.py` interface + `ComfyBackend`. Keep `download_image`'s validation verbatim. |
+| `Core/Image_Gen.py` Pollinations transport | **Done differently:** transport and downloader deleted; `engine/comfy.py` is the sole local runtime backend, with art off when unavailable. |
 | `Worlds/*/world.json`, `Characters/*/*.json` as **authority** | Same files as **authored seed input** (`content/`) and **export views**; `saves/<world>/<run>/world.db` is truth |
 
 ---
@@ -851,7 +983,10 @@ Also fix the truncation order: `compress_and_sanitize` (`Image_Gen.py:65–74`) 
 
 ### Character consistency — the actual mechanism
 
-There is currently **none.** Not even a seed. `pollinations_url` passes only width, height, `nologo`. Three stacked mechanisms, strongest first:
+There is still **no persistent character-consistency mechanism.** The local
+ComfyUI path does not store and reuse a canonical per-character seed or
+condition later plates on a portrait. Three stacked mechanisms, strongest
+first:
 
 1. **Stored per-character seed.** Written on first generation, reused forever. Even alone, this is a large stability improvement — and it fixes the confirmed bug where "Regenerate portrait" returns a **byte-identical file** (seven identical copies in `Antonius/`).
 2. **Reference-image conditioning.** Once a character has a canonical portrait, every subsequent image of them **conditions on that image** rather than re-describing them in words. 🔍 FLUX-family multi-reference input or an edit model (Qwen-Image-Edit / FLUX Kontext) — *"same person, now in the ruined chapel, holding a lantern."* **Verify what fits in the VRAM budget from [§4.6](#46-the-image-model-constraint).**
@@ -999,10 +1134,10 @@ Three volume sliders that actually work. And **author the four SFX that `Core/Ma
 ## PHASE 2 — The Game Becomes a Game ✅
 ### *"Visible odds, real dice, named consequences, filling clocks. And it is winnable."*
 
-> **Done.** 50.7% win rate at average stats, from 0%. The Director was built
-> after all, and Resistance-as-an-interrupt shipped as the Bargain offer flow.
-> One number in the definition of done was wrong and had to be re-measured:
-> see the act-length note below.
+> **Done.** The clock-race gate is near even at average stats, from 0%, and the
+> Director was built after all. Bargain and Resistance now have separate typed
+> pause/resume interrupts. One number in the definition of done was wrong and
+> had to be re-measured: see the act-length note below.
 
 **Effort: 50–70 hours**
 
@@ -1022,7 +1157,12 @@ Three volume sliders that actually work. And **author the four SFX that `Core/Ma
 
 ### Definition of done
 - Every action shows **stat · Bearing hint · position** before commitment; the target and roll are shown **after**, per the odds-visibility setting (default: after only).
-- 5,000 simulated campaigns → **35–55% win rate** at budget-average SPECIAL (from **0%**). *(Met: 50.7%.)*
+- The 5,000-campaign harness remains a **regression gate**, not a live win-rate
+  target. Its current no-Fortune approximation measures **4.87% / 14.37% /
+  40.53%** for weak, average, and strong diagnostic profiles, with four average
+  seed cohorts spanning **12.15–14.45%**. It omits major live agency, so these
+  figures demonstrate comparative reachability and catch regressions; they do
+  not establish the desired live-game win rate.
 - **An act lasts 7–10 turns.** *Added after the fact.* The gate as written
   measured only whether a campaign could be **won**, and ran every trial with
   every approach rated Dire — the pessimistic case. It proved the game was not
@@ -1036,19 +1176,19 @@ Three volume sliders that actually work. And **author the four SFX that `Core/Ma
 
 ---
 
-## PHASE 3 — The World Remembers ⬜ **next**
+## PHASE 3 — The World Remembers ◐ **in progress**
 ### *"An NPC mentions something you had forgotten. And it is right."*
 
 **Effort: 60–90 hours** *(the largest phase; do not compress it)*
 
 ### Tasks, in order
 
-1. **`ledger/schema.sql` + `store.py`.** SQLite, bitemporal facts, append-only events, FTS5 over summaries. `saves/<world>/<run>/world.db` becomes the save.
-2. **`ledger/ops.py` + `validator.py`.** The closed op enum, the world invariants. Each invariant kills a confirmed bug: `SPECIAL_MOD_KEYS_WHITELIST` (B10), `DERIVED_STATS_RECOMPUTED_NOT_ACCUMULATED` (B09), `ENTITY_MUST_EXIST_AND_BE_ALIVE` (B04), `ACT_KEYS_NORMALIZED_1_TO_N` (B06). Every rejected op is logged as `kind='validator_reject'` — **that table is your prompt-quality dataset.**
-3. **`ledger/identity.py::resolve_or_create`** — the four-tier cascade + engine-assigned names + the per-world name ledger. **Delete `scan_for_new_actor`.** Role becomes a field.
+1. ✅ *(bar the migration)* **`ledger/schema.sql` + `store.py`.** SQLite, bitemporal facts, append-only events, FTS5 over summaries. `saves/<world>/<run>/world.db` becomes the save.
+2. ✅ **`ledger/ops.py` + `validator.py`.** The closed op enum, the world invariants. Each invariant kills a confirmed bug: `SPECIAL_MOD_KEYS_WHITELIST` (B10), `DERIVED_STATS_RECOMPUTED_NOT_ACCUMULATED` (B09), `ENTITY_MUST_EXIST_AND_BE_ALIVE` (B04), `ACT_KEYS_NORMALIZED_1_TO_N` (B06). Every rejected op is logged as `kind='validator_reject'` — **that table is your prompt-quality dataset.**
+3. ✅ **`ledger/identity.py::resolve_or_create`** — the four-tier cascade + engine-assigned names + the per-world name ledger. **Delete `scan_for_new_actor`.** Role becomes a field.
 4. **The four-phase turn.** Wire Propose → Validate → Commit → Narrate. Delete `Core/Scene_Evolution.py`.
 5. **`context/compiler.py`** — four zones, hard budgets, a `CompileReport` naming every dropped element. Move all 25 prompts to `prompts/*.md`. **Unit-test that Zone 0 compiles byte-identically twice.**
-6. **`ledger/callbacks.py`** — the SQL query, the ranking, the two-item cap in Zone 3.
+6. ✅ **`ledger/callbacks.py`** — the SQL query, the ranking, the two-item cap in Zone 3.
 7. **`chronicle/sentinel.py`** — the contradiction audit, scheduled the instant narration streams so it overlaps with reading. HARD severity → one regeneration with the contradiction quoted; the swap lands via HTMX OOB on the paragraph's element id, so the reader sees a sentence *settle.*
 8. **`engine/scheduler.py`** — the reading-time thread pool. Beat compression, audit, next assessment, Warden directive, next plate. Generation counter drops stale speculative results.
 9. **`tools/migrate_v0.py`** — walk the 139 `character.json` through the resolution gate into a quarantine table with `provenance='generated-legacy'`. Promote the 8 hand-authored entries to `content/`.
@@ -1080,7 +1220,7 @@ Three volume sliders that actually work. And **author the four SFX that `Core/Ma
 1. **Delete `play.html`, `turn_panel.html`, `log_panel.html`.** Build `codex.html`: `<main class="leaf">` + `<aside class="rail">`.
 2. **`static/codex.css`** — the palette, the type scale, rubrication, the ninebox retained for widgets. **Delete `fog.js`**, `.scroll-fade`, the red text-shadow. Fix the frame clamp and make it recede while reading.
 3. **`static/chronicle.js`** — the pacing layer, the sentence holds, the in-voice status line driven by `tag=`, `Space` to dump, `prefers-reduced-motion`.
-4. **Vendor everything.** htmx, two woff2 subsets, compiled Tailwind (or drop it). **Zero external requests.**
+4. ✅ **Vendor everything.** htmx, two woff2 subsets, compiled Tailwind. **Zero external requests**, held there by `tests/test_offline.py`.
 5. **Session Zero as an interview.** `GET/POST /session-zero`, seven streamed questions, Keeper-side schema extraction, generated frontispiece. Delete the last of the legacy forms.
 6. **The Desk.** Continue card, dispatch slot, inherit drop target.
 7. **The Chronicle view** — the bound book, causal links as hyperlinks, every fact clickable to provenance.
@@ -1105,7 +1245,7 @@ Three volume sliders that actually work. And **author the four SFX that `Core/Ma
 
 ### Tasks, in order
 
-1. **`media/backend.py`** — the `ImageBackend` interface. `ComfyBackend` (POST `/prompt`, subscribe `/ws` for **real progress events**, pull `/view`). **Delete Pollinations.** Keep `download_image`'s validation verbatim.
+1. ◐ **The local renderer.** Landed early, as `engine/comfy.py` rather than `media/backend.py`: POST `/prompt`, poll `/history`, pull `/view`, driving FLUX.2 Klein 4B. Pollinations and `download_image` are deleted; if ComfyUI is unavailable, art stays off. Still owed: the `/ws` subscription for real progress events, and the `ImageBackend` interface if a second local backend ever arrives.
 2. **`media/gpu_arbiter.py`** — evict the **Keeper** (3.34 GB), not the Narrator, when the image model loads. Generate the next plate during reading time.
 3. **Style Bible** per world; replace the four divergent style strings. Fix the truncation order and the framing grammar.
 4. **Character consistency** — stored seeds, then reference conditioning. Route `kind == "portrait"` correctly. Content-address the cache.
@@ -1153,9 +1293,9 @@ Three volume sliders that actually work. And **author the four SFX that `Core/Ma
 | **0** ✅ | Foundation & Truth | 25–40 | It runs. It saves nothing yet, but it finishes. Creation flows ported. |
 | **1** ✅ | The Engine Breathes | 40–60 | Streaming prose, one pipeline, save/load, the wizard works |
 | **2** ✅ | The Game Becomes a Game | 75–100 | Bearing, degrees of success, clocks, combat rebuilt, **winnable** |
-| **3** ⬜ | The World Remembers | 80–115 | The ledger, standing & factions, callbacks, no more Elaras |
+| **3** ◐ | The World Remembers | 80–115 | The ledger, standing & factions, callbacks, no more Elaras |
 | **4** ◐ | The Chronicle | 60–80 | It stops looking like software |
-| **5** ⬜ | The Plate Press | 40–60 | It illustrates itself; faces persist |
+| **5** ◐ | The Plate Press | 40–60 | It illustrates itself; faces persist |
 | **6** ⬜ | Vigil 🔮 | 40–60 | The world moves while you sleep |
 | | **Total** | **365–520** | |
 

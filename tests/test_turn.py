@@ -15,6 +15,7 @@ from engine.actions import Depth, Intent, ObserveTarget, Verb
 from engine.character import Condition, WeaponWeight
 from engine.clocks import Clock, ClockBoard, ClockKind
 from engine.model import SPECIAL_KEYS
+from engine.dice import Outcome
 from engine.resolve import Assessment, Bearing, Consequence
 from engine.scene import Foe, Obstacle, Scene
 from engine.tides import Tide, TideBoard
@@ -84,6 +85,29 @@ def test_the_model_is_asked_for_facts_not_outcomes():
     assert result.resolution.roll.target >= 2
 
 
+def test_a_custom_action_keeps_the_keeper_s_governing_stat():
+    """Visible "Something else" used to stamp every free-form move INT."""
+
+    class AgilityKeeper(StubKeeper):
+        def assess(self, intent, scene, obstacle):
+            assessment = super().assess(intent, scene, obstacle)
+            assessment.stat = "AGI"
+            return assessment
+
+    result = advance_turn(
+        _run(),
+        Intent(
+            verb=Verb.OTHER,
+            depth=Depth.DESCRIBE,
+            text="vault the rail before it closes",
+        ),
+        AgilityKeeper(),
+        rng=random.Random(1),
+    )
+
+    assert result.resolution.stat == "AGI"
+
+
 def test_an_obstacle_is_rated_once_and_then_trusted():
     """The scene cache. Re-rating every turn would make a place feel unstable."""
     run = _run()
@@ -134,13 +158,19 @@ def test_failure_fills_theirs():
     pytest.fail("expected a clean failure in 80 rolls at Futile")
 
 
-def test_nothing_moves_a_clock_except_an_outcome():
-    """Axiom A3 at the pipeline level."""
+def test_a_free_observe_can_only_move_a_clock_from_its_outcome():
+    """Free means no turn cost, not immunity from a failed roll."""
     run = _run()
-    before = (run.project.filled, run.danger.filled)
-    advance_turn(run, _intent(verb=Verb.OBSERVE, observe=ObserveTarget.ENVIRONMENT),
-                 StubKeeper(), rng=random.Random(1))
-    assert (run.project.filled, run.danger.filled) == before, "observing is free"
+    result = advance_turn(
+        run,
+        _intent(verb=Verb.OBSERVE, observe=ObserveTarget.ENVIRONMENT),
+        StubKeeper(),
+        rng=random.Random(1),
+    )
+
+    assert result.free_observe and not result.consumed_turn
+    assert run.project.filled == 0, "information cannot complete the project"
+    assert run.danger.filled == 1, "the failed outcome still has a consequence"
 
 
 def test_filling_the_project_clock_completes_the_act():
@@ -234,21 +264,61 @@ def test_pressing_forward_wins_back_the_rally():
 # -------- OBSERVING ----------
 # =============================
 
-def test_observing_is_free_and_changes_a_number():
-    run = _run(exits=["alley"])
-    door = run.scene.obstacle("door")
-    advance_turn(run, _intent(), StubKeeper(bearing=Bearing.UPHILL), rng=random.Random(1))
-    before = door.bearing_for("AGI")
-
+def test_the_first_observe_is_free_and_changes_a_number():
     for seed in range(40):
+        run = _run(exits=["alley"])
+        door = run.scene.obstacle("door")
+        door.rate({key: Bearing.UPHILL for key in SPECIAL_KEYS}, 12)
+        before = door.bearing_for("AGI")
         result = advance_turn(
             run, _intent(verb=Verb.OBSERVE, stat="PER", observe=ObserveTarget.ENVIRONMENT),
             StubKeeper(bearing=Bearing.IDEAL), rng=random.Random(seed),
         )
         if result.observation and door.bearing_for("AGI") is not before:
-            assert not result.consumed_turn, "observing must stay free"
+            assert result.free_observe
+            assert not result.consumed_turn
             return
     pytest.fail("observing never improved anything")
+
+
+def test_repeat_observes_cost_turns_without_farming_project_progress():
+    class HighRoll:
+        def randint(self, _low, _high):
+            return 20
+
+        def random(self):
+            return 1.0
+
+        def choice(self, values):
+            return list(values)[0]
+
+    run = _run()
+    intent = _intent(
+        verb=Verb.OBSERVE,
+        stat="PER",
+        observe=ObserveTarget.ENVIRONMENT,
+    )
+
+    first = advance_turn(run, intent, StubKeeper(), rng=HighRoll())
+    second = advance_turn(run, intent, StubKeeper(), rng=HighRoll())
+
+    assert first.free_observe and not first.consumed_turn
+    assert not second.free_observe and second.consumed_turn
+    assert run.turn == 1
+    assert run.project.filled == 0
+
+
+def test_a_new_obstacle_stage_grants_one_new_free_observe():
+    from engine.turn import free_observe_available
+
+    run = _run()
+    run.free_observe_keys.append("obstacle:door")
+    assert not free_observe_available(run)
+
+    run.scene.obstacle("door").resolved = True
+    run.scene.add(Obstacle(id="stage2", name="The inner lock"))
+
+    assert free_observe_available(run)
 
 
 def test_pulling_back_from_poised_skips_the_consequence_not_the_turn():
@@ -291,6 +361,122 @@ def test_a_poised_failure_is_visible_to_pacing():
             assert run.director.outcomes[-1] is True
             return
     pytest.fail("never failed from Poised in 120 rolls")
+
+
+def test_poised_withdrawal_blocks_every_consequence_but_records_the_turn():
+    """No danger, Tide move, Resolve loss, harm, or companion injury leaks."""
+
+    class CleanFailure:
+        def randint(self, _low, _high):
+            return 2
+
+        def random(self):
+            return 1.0
+
+        def choice(self, values):
+            return list(values)[0]
+
+    tide = Tide(
+        id="watch", name="The Watch", wants="catch you",
+        moves=["locks the gate", "calls the hounds"],
+    )
+    run = _run(exits=["alley"], tides=[tide])
+    run.prepared = True
+    run.companions = [("Sister Marrow", 60)]
+    before = (
+        run.condition.hp,
+        run.condition.resolve,
+        run.danger.filled,
+        tide.clock.filled,
+    )
+
+    result = advance_turn(
+        run, _intent(),
+        StubKeeper(
+            bearing=Bearing.UPHILL,
+            consequence=Consequence.HARM,
+            surprise=True,
+        ),
+        rng=CleanFailure(),
+    )
+
+    assert result.resolution.can_withdraw and result.withdrew
+    assert result.consumed_turn and run.turn == 1
+    assert run.director.outcomes[-1] is True
+    assert result.assisted_by == "Sister Marrow"
+    assert not result.ticks
+    assert not result.tide_moves
+    assert not result.damage and not result.wound
+    assert not result.companion_hurt
+    assert (
+        run.condition.hp,
+        run.condition.resolve,
+        run.danger.filled,
+        tide.clock.filled,
+    ) == before
+
+
+@pytest.mark.parametrize("level", [2, 3])
+def test_poised_natural_one_does_not_worsen_or_kill_existing_harm(level):
+    """Backing out means the action never bears on the raw wound either."""
+    class NaturalOne:
+        def randint(self, _low, _high):
+            return 1
+
+        def random(self):
+            return 1.0
+
+        def choice(self, values):
+            return list(values)[0]
+
+    stats = {key: 5 for key in SPECIAL_KEYS}
+    stats["AGI"] = 8
+    run = _run(exits=["alley"], stats=stats)
+    wound = run.condition.wounds.take(
+        "A torn shoulder", level, cap=level, stat="STR"
+    )
+    before_hp = run.condition.hp
+
+    result = advance_turn(
+        run,
+        _intent(stat="STR"),
+        StubKeeper(consequence=Consequence.HARM, surprise=True),
+        rng=NaturalOne(),
+    )
+
+    assert result.resolution.can_withdraw and result.withdrew
+    assert result.consumed_turn
+    assert wound.level == level
+    assert not result.wound_worsened
+    assert not result.died and not result.game_over
+    assert run.condition.hp == before_hp
+    assert run.danger.filled == 0
+
+
+def test_a_poised_fail_forward_still_teaches_what_the_attempt_revealed():
+    class CloseFailure:
+        def randint(self, _low, _high):
+            return 12
+
+        def random(self):
+            return 1.0
+
+        def choice(self, values):
+            return list(values)[0]
+
+    run = _run(exits=["alley"])
+    run.prepared = True
+    result = advance_turn(
+        run, _intent(),
+        StubKeeper(bearing=Bearing.UPHILL, surprise=True),
+        rng=CloseFailure(),
+    )
+
+    assert result.resolution.can_withdraw
+    assert result.resolution.roll.outcome.value == "fail_forward"
+    assert result.learned
+    assert result.consumed_turn
+    assert not result.ticks
 
 
 # =============================
@@ -545,6 +731,35 @@ def test_it_says_nothing_when_there_is_nothing_to_say():
     assert not result.exposure
 
 
+def test_high_agility_can_reposition_in_a_live_combat_scene():
+    """Bridge-built scenes have foes but no authored exit list.
+
+    Requiring an exit made AGI's unique +1 position job reachable only in
+    hand-built tests, never in an actual combat created from campaign actors.
+    """
+    low_stats = {key: 5 for key in SPECIAL_KEYS}
+    high_stats = {**low_stats, "AGI": 8}
+
+    low = advance_turn(
+        _run(hostiles=["a ghoul"], stats=low_stats),
+        _intent(stat="AGI"), StubKeeper(bearing=Bearing.SOUND),
+        rng=random.Random(1),
+    )
+    high = advance_turn(
+        _run(hostiles=["a ghoul"], stats=high_stats),
+        _intent(stat="AGI"), StubKeeper(bearing=Bearing.SOUND),
+        rng=random.Random(1),
+    )
+
+    assert low.resolution.position.value == "risky"
+    assert high.resolution.position.value == "poised"
+    assert high.resolution.position_score == low.resolution.position_score + 1
+    assert any(
+        "you can move if it goes wrong" in reason
+        for reason in high.resolution.position_why
+    )
+
+
 def test_the_reasons_match_the_position_that_was_computed():
     """A reason list that disagrees with the position is worse than none."""
     for seed in range(40):
@@ -558,3 +773,166 @@ def test_the_reasons_match_the_position_that_was_computed():
             continue
         for reason in result.resolution.position_why:
             assert reason in result.exposure, "a reason went missing"
+
+
+# =============================
+# --- SURPRISE ENDS ON CONTACT-
+# =============================
+
+def test_surprise_does_not_survive_the_start_of_a_fight():
+    """A fight begins because the opposition found you.
+
+    `surprise` is the one Keeper boolean not cached on the obstacle, so it is
+    asked again every turn, and the merge into PositionFacts is an OR -- the
+    Keeper can add it and nothing could take it away. Seen on turn six of a
+    live fight with a foe who had walked into view the turn before: the
+    position line still read "+1 they do not know you are there".
+    """
+    run = _run(hostiles=["Captain Vane"])
+    assert run.scene.in_combat, "the fixture has to actually be a fight"
+
+    result = advance_turn(run, _intent(), StubKeeper(surprise=True))
+
+    assert "they do not know you are there" not in " ".join(
+        result.resolution.position_why
+    ), "surprise was granted against a foe already standing in front of you"
+
+
+def test_surprise_still_counts_before_anyone_has_found_you():
+    """The clamp is about contact, not about distrusting the Keeper."""
+    run = _run()
+    assert not run.scene.in_combat
+
+    result = advance_turn(run, _intent(), StubKeeper(surprise=True))
+
+    assert "they do not know you are there" in " ".join(
+        result.resolution.position_why
+    )
+
+
+# =============================
+# ---- A VIRTUE IS EARNED -----
+# ------ BY THE ROLL ----------
+# =============================
+
+class _Cornered(StubKeeper):
+    """Reports the one fact that reaches Desperate on its own."""
+
+    def assess(self, intent, scene, obstacle):
+        assessment = super().assess(intent, scene, obstacle)
+        assessment.cornered = True
+        return assessment
+
+
+class _AlwaysTwenty(random.Random):
+    def randint(self, a, b):
+        return 20 if (a, b) == (1, 20) else super().randint(a, b)
+
+
+def test_a_natural_twenty_from_desperate_earns_a_virtue_mid_act():
+    """MECHANICS 1.4 lists exactly two Virtue triggers and this is one of
+    them; 2.5 says Desperate is where it lives.
+
+    `earns_virtue` implemented both clauses correctly, and the only call to it
+    sat inside `if project and project.full:` with `filled_project=True`
+    hard-coded, because the branch already guaranteed it. So the clause was
+    only ever *asked* on the turn that happened to complete the act. Measured
+    with the project clock at 1 of 6: `critical_success`, `desperate`, and no
+    Virtue. Virtues are the whole of advancement here -- no XP, no levels.
+    """
+    run = _run()
+    run.project.filled = 1
+
+    result = advance_turn(run, _intent(), _Cornered(bearing=Bearing.SOUND),
+                          rng=_AlwaysTwenty(7))
+
+    assert result.resolution.position.value == "desperate"
+    assert result.resolution.roll.outcome is Outcome.CRITICAL_SUCCESS
+    assert not run.project.full, "the fixture has to be mid-act"
+    assert result.virtue is not None, "a long shot taken and won paid nothing"
+    assert run.condition.virtues == [result.virtue]
+
+
+def test_an_ordinary_success_earns_nothing():
+    """The other half of "strictly mechanical": it must not fire constantly."""
+    run = _run()
+
+    result = advance_turn(run, _intent(), StubKeeper(bearing=Bearing.SOUND))
+
+    assert result.virtue is None
+    assert run.condition.virtues == []
+
+
+def test_a_virtue_is_awarded_once_on_the_turn_that_also_ends_the_act():
+    """Lifting the check out of the act-completion branch must not double it."""
+    run = _run()
+    run.project.filled = run.project.segments - 1
+
+    result = advance_turn(run, _intent(), _Cornered(bearing=Bearing.SOUND),
+                          rng=_AlwaysTwenty(7))
+
+    assert run.project.full and result.act_complete
+    assert len(run.condition.virtues) == 1
+
+
+# =============================
+# --- A CORPSE IS NOT THE -----
+# ------ WAY FORWARD ----------
+# =============================
+
+class _AlwaysTwentyRng(random.Random):
+    def randint(self, a, b):
+        return 20 if (a, b) == (1, 20) else super().randint(a, b)
+
+
+def test_a_felled_foe_stops_being_the_obstacle():
+    """Attacking mints a per-foe obstacle keyed `foe:<name>`, so what you
+    learn by fighting somebody sticks the way it does for a door. Nothing
+    marked it resolved when they died.
+
+    `_obstacle_for` falls back to `scene.unresolved[0]` and `_next_stage`
+    only ever resolves `main`, so the moment an act's project clock passed
+    halfway the list read [main=resolved, foe:Kaelen=unresolved,
+    stage2=unresolved] and the corpse was first. The game announces "Now: A
+    vault door bars the way" and then rates every non-attack action for the
+    rest of the act against an obstacle named Kaelen -- carrying the bearings
+    learned by fighting him -- and keys the stage's free look to him too.
+    """
+    from engine.scene import Obstacle
+    from engine.turn import _obstacle_for
+
+    run = _run(hostiles=["Kaelen"])
+    run.scene.foes[0].hp = 1
+    advance_turn(run, _intent(verb=Verb.ATTACK, target="Kaelen"),
+                 StubKeeper(bearing=Bearing.SOUND), rng=_AlwaysTwentyRng(3))
+    assert not run.scene.foes[0].alive, "the fixture has to kill them"
+
+    # What the mid-act handover does.
+    run.scene.obstacle("door").resolved = True
+    run.scene.add(Obstacle(id="stage2", name="A vault door bars the way"))
+
+    chosen = _obstacle_for(run, _intent(verb=Verb.APPROACH, stat="STR"),
+                           StubKeeper(bearing=Bearing.SOUND))
+
+    assert chosen is not None
+    assert chosen.id == "stage2", f"rated against {chosen.id}"
+
+
+def test_someone_you_broke_contact_with_stops_being_the_obstacle():
+    """A Withdraw is not a kill, and it ends the encounter just the same."""
+    from engine.scene import Obstacle
+    from engine.turn import _obstacle_for
+
+    run = _run(hostiles=["Kaelen"], exits=["north"])
+    advance_turn(run, _intent(verb=Verb.ATTACK, target="Kaelen"),
+                 StubKeeper(bearing=Bearing.SOUND))
+    advance_turn(run, _intent(verb=Verb.WITHDRAW, stat="AGI"),
+                 StubKeeper(bearing=Bearing.SOUND))
+
+    run.scene.obstacle("door").resolved = True
+    run.scene.add(Obstacle(id="stage2", name="A vault door bars the way"))
+
+    chosen = _obstacle_for(run, _intent(verb=Verb.APPROACH, stat="STR"),
+                           StubKeeper(bearing=Bearing.SOUND))
+
+    assert chosen is not None and chosen.id == "stage2"

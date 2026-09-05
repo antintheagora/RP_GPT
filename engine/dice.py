@@ -91,7 +91,7 @@ class Roll:
     outcome: Outcome
     effect: Optional[Effect]
     stat: str = ""
-    lucky: bool = False          # LUC granted a second die
+    lucky: bool = False          # explicit Fortune reroll was spent
 
     @property
     def succeeded(self) -> bool:
@@ -131,16 +131,17 @@ def resolve_roll(roll: int, target: int, stat: str = "", lucky: bool = False) ->
 def roll_against(
     target: int,
     stat: str = "",
-    luck: int = 5,
     rng: Optional[random.Random] = None,
 ) -> Roll:
-    """Roll once, with Luck's second-die chance preserved from the old check()."""
+    """Roll one die.
+
+    Fortune is an explicit, campaign-scoped player decision in the turn
+    engine.  Keeping a second-die chance here made it fire invisibly and on
+    every roll, including in headless callers that had no way to show or
+    decline it.
+    """
     source = rng or random
-    first = source.randint(1, 20)
-    chance = min(0.30, max(0, luck - 5) / 40.0)
-    lucky = source.random() < chance
-    value = max(first, source.randint(1, 20)) if lucky else first
-    return resolve_roll(value, target, stat, lucky)
+    return resolve_roll(source.randint(1, 20), target, stat)
 
 
 # =============================
@@ -173,9 +174,7 @@ def check(state: GameState, stat: str, dc: int) -> Tuple[bool, int]:
     changed is upstream: `dc` no longer escalates.
     """
     modifier = state.player.effective_stat(stat)
-    result = roll_against(
-        dc - modifier, stat, luck=state.player.effective_stat("LUC")
-    )
+    result = roll_against(dc - modifier, stat)
     return result.succeeded, result.roll + modifier
 
 

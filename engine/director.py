@@ -159,6 +159,32 @@ class Director:
 
     # ---------- what it decides ----------
 
+    def refresh(self, run) -> None:
+        """Re-read the world without taking a turn or moving the stance.
+
+        The stance is carried across an act boundary on purpose -- the world
+        does not forget how hard it was leaning a moment ago. The *reasons*
+        must not be, because they name things.
+
+        `read()` freezes the danger clock's name into the sentence it
+        produces, and a new act replaces both clocks. So the first screen of
+        act two showed "The tide takes the glass waste 0 / 8" as its meter and
+        "The tide takes the drowned steps is nearly on you" as the sentence
+        beside it -- the previous act's clock, which no longer exists, named
+        as almost full next to a bar that says nothing has started. Measured on
+        seeds 0 and 2 of the gauntlet, and on 3, 4, 5 and 6 under both
+        policies.
+
+        That is exactly what MECHANICS 13.2 forbids: the Director reads "state
+        that is already on screen" so the player "can always see why the
+        pressure changed". A clock on no screen is not state on screen.
+
+        Deliberately not `update()`: that bumps `held_for` and can move the
+        stance, and rebuilding a Run is not a turn.
+        """
+        if self.last_reading is not None:
+            self.last_reading = read(run, sum(self.outcomes), len(self.outcomes))
+
     def update(self, run) -> Stance:
         """Take a turn's reading and move, or hold."""
         self.held_for += 1

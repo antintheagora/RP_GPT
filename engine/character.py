@@ -135,12 +135,15 @@ def heal_chance(wound: Wound) -> float:
     return min(1.0, base + HEAL_CLIMB.get(wound.level, 0.0) * wound.rests_carried)
 
 
+@dataclass
 class WoundTrack:
     """The permanent layer under HP."""
 
-    def __init__(self, slots: int = 3) -> None:
-        self.slots = max(1, slots)
-        self.wounds: List[Wound] = []
+    slots: int = 3
+    wounds: List[Wound] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        self.slots = max(1, self.slots)
 
     def __len__(self) -> int:
         return len(self.wounds)
@@ -182,9 +185,18 @@ class WoundTrack:
         if self.full:
             # No slot left: the pressure goes somewhere, so it deepens the
             # worst existing wound rather than being silently discarded.
-            worst = max(self.wounds, key=lambda w: w.level)
+            #
+            # It used to take the worst wound outright and reset it to RAW,
+            # which quietly undid the one thing treatment is for. A treated
+            # wound cannot worsen -- that is the whole reason a healer is
+            # worth finding, and there is a test named after it -- so a full
+            # track that took a new hit could hand back a wound the player had
+            # already paid to have seen to. An untended wound takes it first,
+            # and a track where every slot is already treated deepens one
+            # without dragging it back to raw.
+            raw = [w for w in self.wounds if w.state is WoundState.RAW]
+            worst = max(raw or self.wounds, key=lambda w: w.level)
             worst.level = min(4, worst.level + 1)
-            worst.state = WoundState.RAW
             return worst
         self.wounds.append(wound)
         return wound
@@ -192,6 +204,15 @@ class WoundTrack:
     def treat(self, wound: Wound) -> None:
         wound.state = WoundState.TREATED
         wound.rests_carried = 0
+
+    def treat_worst(self) -> Optional[Wound]:
+        """Treat the most serious raw wound, if there is one."""
+        raw = [wound for wound in self.wounds if wound.state is WoundState.RAW]
+        if not raw:
+            return None
+        wound = max(raw, key=lambda candidate: candidate.level)
+        self.treat(wound)
+        return wound
 
     def worsen_applicable(self, stat: str = "") -> Optional[Wound]:
         """A raw wound worsens on a natural 1. Not on a timer -- axiom A3.
@@ -210,13 +231,30 @@ class WoundTrack:
         return wound
 
     def rest(self, rng) -> List[Wound]:
-        """Roll healing for each wound. Returns the ones that closed."""
+        """Roll healing for each wound. Returns the ones that closed.
+
+        The counter goes up *after* the roll, not before it. Bumping it first
+        handed every wound the second night's chance on its first night, and
+        the whole ladder shifted a rung: MECHANICS 1.2 says a level-1 wound
+        closes 40% of the time at the first rest and the code was rolling
+        against 60%, level 2 against 35% where the spec says 20%. Measured
+        end to end through `take_rest`, 400 campaigns each --
+
+            as shipped   level 1: 1.54 nights, closes first night 64%
+                         level 2: 2.41 nights, closes first night 35%
+            corrected    level 1: 2.14 nights, closes first night 42%  (spec 40)
+                         level 2: 3.06 nights, closes first night 23%  (spec 20)
+
+        `heal_chance` itself was right the whole time; it was being asked the
+        wrong question.
+        """
         healed: List[Wound] = []
         for wound in list(self.wounds):
-            wound.rests_carried += 1
             if rng.random() < heal_chance(wound):
                 self.wounds.remove(wound)
                 healed.append(wound)
+            else:
+                wound.rests_carried += 1
         return healed
 
 
@@ -303,7 +341,10 @@ class Condition:
 
     endurance: int = 5
     strength: int = 5
-    hp: int = 0
+    # None means a newly-created character and initializes to max HP. Zero is
+    # a real, persistable state; using truthiness here used to heal an explicit
+    # saved 0 back to full during decode.
+    hp: Optional[int] = None
     raw_damage: int = 0                # the Rally window
     resolve: int = RESOLVE_MAX
     wounds: WoundTrack = field(default_factory=lambda: WoundTrack(3))
@@ -312,8 +353,10 @@ class Condition:
     weapon: WeaponWeight = WeaponWeight.UNARMED
 
     def __post_init__(self) -> None:
-        if not self.hp:
+        if self.hp is None:
             self.hp = self.max_hp
+        else:
+            self.hp = max(0, min(int(self.hp), self.max_hp))
         self.wounds.slots = wound_slots(self.endurance)
         self.resolve = min(self.resolve, self.max_resolve)
 
@@ -369,6 +412,39 @@ class Condition:
     def settle(self) -> None:
         """The window closed. Whatever was raw is now permanent."""
         self.raw_damage = 0
+
+    def heal(self, amount: int) -> int:
+        """Restore hit points, clamped to maximum; return what was restored."""
+        try:
+            wanted = max(0, int(amount))
+        except (TypeError, ValueError):
+            wanted = 0
+        restored = min(wanted, self.max_hp - self.hp)
+        self.hp += restored
+        return restored
+
+    def recover_from_out(self) -> Optional[Wound]:
+        """Wake after going Out, stabilised but still seriously wounded.
+
+        MECHANICS says level four is a scene loss rather than death, but did
+        not state what condition play resumes in.  The live rule mirrors the
+        headless simulator's half-health recovery and makes the wound level
+        three + treated: it remains serious, it can heal after rest, and
+        ``is_out`` clears so the character can actually be played again.
+
+        More than one level-four wound can only come from an old/inconsistent
+        save. Stabilise all of them defensively so recovery has one meaning.
+        The first is returned for the event and result record.
+        """
+        out = [wound for wound in self.wounds if wound.level >= 4]
+        if not out:
+            return None
+        for wound in out:
+            wound.level = 3
+            self.wounds.treat(wound)
+        self.hp = max(1, self.max_hp // 2)
+        self.raw_damage = 0
+        return out[0]
 
     # ---------- resolve ----------
 

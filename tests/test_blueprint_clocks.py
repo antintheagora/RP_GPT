@@ -207,6 +207,23 @@ def test_the_schema_makes_the_clocks_impossible_to_omit():
         assert field in act["required"], f"{field} could be dropped silently"
 
 
+def test_the_schema_requires_a_complete_tide_and_rejects_extra_shape():
+    """The prompt promises an exact plan, so constrained decoding must not
+    accept an unfinished force or additional act keys behind the bridge's
+    back.
+    """
+    schema = campaign_blueprint_schema(2)
+    acts = schema["properties"]["acts"]
+    act = acts["properties"]["1"]
+    tide = act["properties"]["tides"]["items"]
+
+    assert schema["additionalProperties"] is False
+    assert acts["additionalProperties"] is False
+    assert act["additionalProperties"] is False
+    assert tide["additionalProperties"] is False
+    assert "if_completed" in tide["required"]
+
+
 def test_an_act_clock_is_never_short_enough_to_end_in_two_turns():
     """The enum used to offer [6, 8] and models overwhelmingly picked 6.
     Six was already known to be too short -- measured at ending in three
@@ -247,6 +264,75 @@ def test_the_prompt_asks_for_events_not_moods():
     assert "project_clock" in prompt and "danger_clock" in prompt
     assert "tides" in prompt and "seeded_facts" in prompt
     assert "never moods" in prompt
+
+
+def test_the_blueprint_contract_keeps_machine_text_out_of_player_prose():
+    prompt = campaign_blueprint_prompt("dark fantasy", {"acts": 3})
+    faction_id = campaign_blueprint_schema(3)["properties"]["factions"][
+        "items"
+    ]["properties"]["id"]
+
+    assert "Proofread every player-visible string" in prompt
+    assert "never snake_case or underscores" in prompt
+    assert "maintenance technician" in prompt and "maintenanceer" in prompt
+    assert faction_id["pattern"] == "^[a-z][a-z0-9-]{0,31}$"
+
+
+def test_the_prompt_and_schema_offer_the_same_clock_and_tide_contract():
+    prompt = campaign_blueprint_prompt("dark fantasy", {"acts": 3})
+    assert "two clocks and two or three Tides" in prompt
+    assert "10 for a normal act, 12 for a hard one" in prompt
+    assert "8 segments for urgent danger or 10" in prompt
+    assert "6 for a normal act" not in prompt
+    assert "Same segment sizes" not in prompt
+
+
+def test_authored_world_directives_reach_generation_and_remain_exact():
+    from ui.webapp.game_service import generate_blueprint
+
+    class CapturingClient:
+        prompt = ""
+        schema = None
+
+        def check_or_pull_model(self):
+            return None
+
+        def json(self, prompt, *, tag, schema):
+            self.prompt = prompt
+            self.schema = schema
+            return {
+                "campaign_goal": "A model paraphrase",
+                "pressure_name": "Generic Doom",
+                "factions": [],
+                "acts": {
+                    "1": {
+                        "goal": "Find the first seal",
+                        "intro_paragraph": "The road begins.",
+                        "pressure_evolution": "The dark gathers.",
+                    },
+                    "2": {
+                        "goal": "Close the last gate",
+                        "intro_paragraph": "The gate waits.",
+                        "pressure_evolution": "The dark arrives.",
+                    },
+                },
+            }
+
+    client = CapturingClient()
+    overrides = {
+        "campaign_goal": "Unite the fractured kingdoms",
+        "pressure_name": "The Rising Dark",
+        "player_role": "Guardian of forgotten lore",
+        "acts": 2,
+        "turns_per_act": 10,
+    }
+    blueprint = generate_blueprint(client, "Aethelgard", overrides)
+
+    for value in overrides.values():
+        assert str(value) in client.prompt
+    assert client.schema["properties"]["acts"]["required"] == ["1", "2"]
+    assert blueprint.campaign_goal == overrides["campaign_goal"]
+    assert blueprint.pressure_name == overrides["pressure_name"]
 
 
 def test_the_percentage_meters_are_gone_for_good():

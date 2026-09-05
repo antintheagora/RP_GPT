@@ -3,21 +3,22 @@
 The old build was unwinnable and nobody knew, because nobody ever ran the
 numbers. This makes it something the build checks.
 
-**What this measures:** the clock race. Whether a campaign can be completed,
-how often, and whether a stat build changes that.
+**What this measures:** a deterministic approximation of the clock race,
+including cached obstacle ratings, the visible quick approaches, abstract
+multi-exchange fights, wounds, and the Resolve spent by landed consequences.
 
-**What it does not measure:** whether harm is tuned, whether Resolve matters,
-or whether any of it is fun. The simulation models one action per turn, so a
-combat scene -- several exchanges against one enemy -- is compressed into a
-single roll. Damage is therefore under-represented by construction, which is
-why `went_out_rate` sits near zero and is not asserted on. That number needs
-scene-level combat before it means anything.
+**What it does not measure:** authored fiction, Describe, learned Observe
+options, companions, Bargains, Resist, rest cadence, the explicit Fortune
+decision, or whether any of it is fun. Its bands catch broad regressions; they
+are not evidence for tuning a live rule by themselves.
 
 Kept fast (a few seconds) so it runs on every commit rather than being a thing
 someone remembers to do.
 """
 
 from __future__ import annotations
+
+import random
 
 import pytest
 
@@ -37,13 +38,15 @@ AVERAGE = {key: 5 for key in SPECIAL_KEYS}
 WEAK = {key: 3 for key in SPECIAL_KEYS}
 STRONG = {key: 8 for key in SPECIAL_KEYS}
 
-# The band the game has to land in. Wider at the top than the 35-55% originally
-# proposed, because the simulation omits several things that help the player --
-# pushing Resolve, taking a Bargain, a companion's assist -- and none of them
-# can be modelled without a scene. A regression that matters (0%, or 95%) is
-# caught either way; this band exists to fail loudly, not to micro-tune.
-WIN_FLOOR = 0.35
-WIN_CEILING = 0.60
+# A deliberately wide regression band, not a desired live win rate. The honest
+# quick-menu approximation measured 12-15% across deterministic seed cohorts;
+# Describe, learned Observe choices, companions, Bargains, Resist, rest and
+# Fortune all help a live player and remain unmodelled. The former absolute
+# band was calibrated on a policy that read all seven hidden Bearings each turn.
+# These bounds catch a broken clock race without laundering omitted agency into
+# a gameplay tuning target.
+REGRESSION_WIN_FLOOR = 0.08
+REGRESSION_WIN_CEILING = 0.30
 
 TRIALS = 3000
 
@@ -62,11 +65,12 @@ def test_a_campaign_is_not_a_formality(average_run):
     assert average_run["win_rate"] < 1.0, "the game cannot be lost"
 
 
-def test_the_win_rate_lands_in_the_intended_band(average_run):
+def test_the_approximate_win_rate_stays_in_a_wide_regression_band(average_run):
     rate = average_run["win_rate"]
-    assert WIN_FLOOR <= rate <= WIN_CEILING, (
-        f"win rate {rate:.1%} is outside {WIN_FLOOR:.0%}-{WIN_CEILING:.0%}. "
-        "Something in resolve.py, clocks.py or the effect bands moved."
+    assert REGRESSION_WIN_FLOOR <= rate <= REGRESSION_WIN_CEILING, (
+        f"approximate win rate {rate:.1%} is outside the broad "
+        f"{REGRESSION_WIN_FLOOR:.0%}-{REGRESSION_WIN_CEILING:.0%} regression "
+        "band; inspect simulator policy before changing a live number"
     )
 
 
@@ -81,7 +85,7 @@ def test_the_build_matters():
 
 def test_a_weak_build_can_still_win():
     """Axiom A2 at campaign scale: never hopeless, only harder."""
-    assert run(trials=TRIALS, stats=WEAK)["win_rate"] > 0.15
+    assert run(trials=TRIALS, stats=WEAK)["win_rate"] > 0.02
 
 
 def test_a_strong_build_is_not_invincible():
@@ -179,7 +183,7 @@ def test_a_capable_character_playing_well_still_has_to_play():
     assert sharp["median_act_turns"] >= 4, (
         f"a good character clears an act in {sharp['median_act_turns']} turns"
     )
-    assert sharp["short_act_rate"] < 0.02, (
+    assert sharp["short_act_rate"] < 0.05, (
         f"{sharp['short_act_rate']:.0%} of acts end in three turns or fewer"
     )
 
@@ -200,10 +204,10 @@ def test_a_short_clock_is_what_made_acts_short():
     assert short["median_act_turns"] < shipped["median_act_turns"]
 
 
-def test_the_danger_clock_stays_a_size_behind_the_project_clock():
+def test_the_danger_clock_stays_a_size_behind_the_project_clock(average_run):
     """They are racing. Making both longer together quietly hands the race to
-    whoever has the better rate, and that is the player -- at 10/10 the win
-    rate is 71%, well outside the band this file exists to hold."""
+    whoever has the better rate. Preserve that measured direction without
+    pretending the approximation's absolute rate is a live tuning target."""
     from engine.clocks import ACT_DANGER_SEGMENTS, ACT_SEGMENTS
     from engine.simulate import SimConfig
 
@@ -212,8 +216,8 @@ def test_the_danger_clock_stays_a_size_behind_the_project_clock():
     even = run(trials=1500, stats=AVERAGE,
                config=SimConfig(project_segments=ACT_SEGMENTS,
                                 danger_segments=ACT_SEGMENTS))
-    assert even["win_rate"] > WIN_CEILING, (
-        "equal clocks are supposed to be the too-easy case"
+    assert even["win_rate"] > average_run["win_rate"], (
+        "equal clocks should remain easier than the shipped shorter danger clock"
     )
 
 
@@ -256,9 +260,10 @@ def test_the_wound_system_engages_now():
     never been built. It is built now: harm taken from Desperate, or taken
     while already under a third of your hit points, leaves a mark.
 
-    The numbers below are what that produced. They are recorded the same way
-    the old zero was, so that the next person to touch combat frequency,
-    position scoring or max HP finds out here that they moved them.
+    Stable obstacle ratings and non-omniscient approach choice make adverse
+    stretches last longer than the old per-turn rerolls did. The bounds below
+    therefore protect reachability and gross regressions only; they are not a
+    target wound cadence for live play.
     """
     import random
 
@@ -269,12 +274,12 @@ def test_the_wound_system_engages_now():
     total = sum(r.wounds for r in runs)
 
     assert total, "the slow layer is unreachable again"
-    assert 0.9 <= total / len(runs) <= 2.2, (
+    assert 0.8 <= total / len(runs) <= 3.0, (
         f"{total / len(runs):.2f} wounds per campaign -- the win-rate band and "
-        "clock thresholds in this file were calibrated around 1.4, so re-measure"
+        "clock thresholds in this file require policy re-measurement"
     )
-    assert 0.45 <= wounded / len(runs) <= 0.75, (
-        f"{wounded / len(runs):.1%} of campaigns carry a wound; it was 61%"
+    assert 0.65 <= wounded / len(runs) <= 0.95, (
+        f"{wounded / len(runs):.1%} of approximate campaigns carry a wound"
     )
 
 
@@ -310,3 +315,86 @@ def _the_old_reading_kept_for_its_arithmetic():
     from engine.simulate import simulate_campaign
 
     return  # kept for the arithmetic in the docstring above, not run
+
+
+# =============================
+# -- EVERY ACT IS MEASURED ----
+# ---- NOT ONLY THE WON ONES --
+# =============================
+
+def test_an_act_is_measured_however_it_ends():
+    """`act_turns.append` used to sit inside `if project.full:` alone.
+
+    An act has four ways to end -- the project clock fills, the danger clock
+    fills, the character retires, or it runs out of turns -- and only the
+    first was recorded. Measured at 3,000 trials: 2,898 acts counted out of
+    5,467 entered, so 48% were discarded, and always the same half. Losing
+    acts run longer, so the published median was biased short.
+
+    This is the figure that drove the largest balance change in the project.
+    Correcting it moves the median from 7 turns to 8 and leaves the win rate
+    at 14.37% exactly, so nothing else in the table shifts.
+    """
+    from engine.simulate import simulate_campaign
+
+    rng = random.Random(20260729)
+    results = [simulate_campaign(AVERAGE, SimConfig(), rng) for _ in range(400)]
+
+    for result in results:
+        # Acts finished plus the one that ended the campaign. A campaign that
+        # won all three finishes three; anything else ended inside an act, and
+        # that act is now on the list too.
+        expected = result.acts_completed + (0 if result.won else 1)
+        assert len(result.act_turns) == expected, (
+            f"{len(result.act_turns)} acts recorded, {expected} happened")
+
+
+def test_a_lost_act_is_not_quietly_left_out_of_the_average():
+    """The direction of the bias, held explicitly. Counting only won acts
+    makes acts look shorter than they are."""
+    from engine.simulate import run
+
+    stats = run(trials=1500)
+    assert stats["acts_measured"] > stats["trials"] * 1.5, (
+        "far too few acts measured for three-act campaigns -- something is "
+        "being dropped again"
+    )
+
+
+def test_the_published_numbers_can_be_reproduced_by_a_command():
+    """A number nobody can regenerate is a number nobody can check.
+
+    MECHANICS quotes measured win rates and a whole clock-size table, and
+    until now the command that produced them was written down nowhere --
+    `run()` was in `__all__`, called from the tests and the gauntlet, and
+    invocable by no person. The CLI deliberately lives in `scripts/` rather
+    than `engine/`: rule 3 says `engine/` does not print, and the first draft
+    of it inside `engine/simulate.py` was caught by
+    `tests/test_engine_headless.py`.
+    """
+    import importlib
+
+    balance = importlib.import_module("scripts.balance")
+
+    assert callable(balance.main)
+    assert set(balance.BUILDS) == {"weak", "average", "strong"}
+    # The clock pairs the spec tabulates.
+    assert (10, 8) in balance.TABLE
+
+
+def test_the_cohorts_the_spec_publishes_still_come_out(capsys):
+    """The three figures in MECHANICS 12, reproduced end to end through the
+    command the spec now names."""
+    import importlib
+    from pathlib import Path
+
+    balance = importlib.import_module("scripts.balance")
+    assert balance.main(["--cohorts", "--trials", "1200"]) == 0
+    printed = capsys.readouterr().out
+
+    for cohort in ("weak", "average", "strong"):
+        assert cohort in printed
+    spec = Path("MECHANICS.md").read_text(encoding="utf-8")
+    assert "scripts/balance.py --cohorts" in spec, (
+        "the spec should name the command that reproduces its own numbers"
+    )

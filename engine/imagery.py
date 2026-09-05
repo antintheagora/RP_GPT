@@ -68,6 +68,7 @@ class ImageResult:
     prompt: str
     act: int
     turn: int
+    actors: list = field(default_factory=list)
 
 
 #: Seconds between requests leaving the worker. The service this talks to
@@ -205,7 +206,7 @@ class ImageWorker:
         if self.on_ready is not None:
             self.on_ready(ImageResult(
                 kind=request.kind, path=str(out), prompt=request.prompt,
-                act=request.act, turn=request.turn,
+                act=request.act, turn=request.turn, actors=list(request.actors),
             ))
 
     @property

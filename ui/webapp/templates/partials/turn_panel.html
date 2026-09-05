@@ -7,19 +7,19 @@
   <div class="nf tl"></div><div class="nf t"></div><div class="nf tr"></div>
   <div class="nf l"></div><div class="nf c"></div><div class="nf r"></div>
   <div class="nf bl"></div><div class="nf b"></div><div class="nf br"></div>
-  <div class="nine-content p-5 sm:p-10 space-y-5">
+  <div class="nine-content turn-content p-5 sm:p-10">
 
-  <div class="flex flex-wrap items-center justify-between gap-3">
+  <header class="turn-header flex flex-wrap items-center justify-between gap-3">
     <div>
       <p class="text-sm text-dust">Act {{ payload.act_index }} of {{ payload.act_count }} &bull; Turn {{ payload.turn }}</p>
       <h2 class="text-2xl font-semibold text-bone">{{ payload.act_goal }}</h2>
     </div>
-  </div>
+  </header>
 
   {# Clocks, not percentages. A player can count segments and know exactly how
      many more good turns they need; "62 / 100" told them nothing they could
      act on. #}
-  <div class="grid gap-3 sm:grid-cols-2">
+  <div class="turn-clocks grid gap-3 sm:grid-cols-2">
     {% for clock in payload.clocks %}
       <div class="rounded-sm bg-soot/80 border border-edge p-4">
         <p class="overline {{ 'text-flare' if clock.kind == 'danger' else 'text-brass' }}">
@@ -48,7 +48,7 @@
     {% endfor %}
   </div>
 
-  <div class="grid gap-4 sm:grid-cols-2">
+  <div class="turn-vitals grid gap-4 sm:grid-cols-2">
     <div class="rounded-sm bg-soot/80 border border-edge p-4">
       <p class="overline text-dust">Adventurer</p>
       <p class="text-lg font-semibold">{{ player.name }}</p>
@@ -58,6 +58,10 @@
           {% if cond.raw_damage %}<span class="text-brass">&bull; {{ cond.raw_damage }} still winnable back</span>{% endif %}
         </p>
         <p class="text-sm text-dust">Resolve {{ cond.resolve }} / {{ cond.max_resolve }}</p>
+        <p class="text-sm {{ 'text-verdigris' if payload.luck_ready else 'text-ash' }}">
+          Fortune {{ 'ready' if payload.luck_ready else 'spent' }}
+          &bull; one reroll this campaign
+        </p>
       {% else %}
         <p class="text-sm text-dust">HP {{ player.hp }}</p>
       {% endif %}
@@ -87,6 +91,21 @@
       {% endif %}
     </div>
   </div>
+
+  {# Details that change less often stay one deliberate click away. This keeps
+     the action surface visible on a laptop and turns a 3,400px phone column
+     into a screen that can actually be played. It opens itself when active
+     foes or wounds make the information immediately consequential. #}
+  <details class="turn-disclosure turn-world-details"
+           {% if payload.foes or (cond and cond.wounds.wounds) %}open{% endif %}>
+    <summary>
+      <span>Character &amp; world state</span>
+      <span class="turn-disclosure-note">
+        {% if payload.foes %}{{ payload.foes|length }} foe{{ '' if payload.foes|length == 1 else 's' }} &bull; {% endif %}
+        {{ payload.tides|length if payload.tides else 0 }} moving force{{ '' if payload.tides and payload.tides|length == 1 else 's' }}
+      </span>
+    </summary>
+    <div class="turn-detail-grid">
 
   {# This was a two-column grid holding exactly one box, so half the row was
      always empty. #}
@@ -195,18 +214,32 @@
                    else 'border-edge bg-soot/80' }}">
       <p class="text-sm">{{ payload.pacing.text }}</p>
       {% if payload.pacing.why %}
-        <p class="text-xs text-ash mt-1">{{ payload.pacing.why | join(' · ') }}</p>
+        {# The Director hands these over as lowercase clauses meant to be
+           strung together -- "you are in good shape · your nerve is nearly
+           gone". Joined they read as a list of reasons; on their own, and one
+           reason is the common case, "you are in good shape" sat under a
+           finished sentence looking like a fragment somebody forgot. Sentence
+           case and a full stop cost nothing and fix both. #}
+        {% set why = payload.pacing.why | join(' · ') %}
+        <p class="text-xs text-ash mt-1">{{ why[:1] | upper }}{{ why[1:] }}.</p>
       {% endif %}
     </div>
   {% endif %}
 
-  <div class="rounded-sm bg-soot/80 border border-edge p-4 space-y-2">
+    </div>
+  </details>
+
+  <div class="turn-situation rounded-sm bg-soot/80 border border-edge p-4 space-y-2">
     <p class="overline text-dust">Situation</p>
     <p class="text-parchment leading-relaxed">{{ payload.situation or 'Waiting for the first spark of adventure.' }}</p>
   </div>
 
-  <div>
-    <p class="overline text-dust mb-2">SPECIAL spread</p>
+  <details class="turn-disclosure turn-special">
+    <summary>
+      <span>SPECIAL &amp; modifiers</span>
+      <span class="turn-disclosure-note">Open your full roll spread</span>
+    </summary>
+    <div class="turn-special-grid">
     {# The number the dice actually use, not the one on the character sheet.
        These read player.stats directly, so a +1 INT book showed nothing here
        even once it started working -- and a stat that disagrees with the odds
@@ -244,27 +277,185 @@
         </div>
       {% endfor %}
     </div>
-  </div>
+    </div>
+  </details>
 
   {# A standing Bargain takes over the panel: it has to be answered before the
      dice, so leaving the ordinary menu clickable underneath would let the
      player walk past a decision the engine is waiting on. #}
+  <div class="turn-decision" id="current-decision" tabindex="-1">
   {% if payload.game_over %}
-    {# Nothing left to decide. The banner used to appear *under* a full menu,
-       so a won campaign printed "The line holds. Choices converge; the world
-       loosens its grip." and then asked what you do next, with both clocks
-       full and act 3 of 3 in the header. #}
-    <div class="rounded-sm border border-rust/70 bg-rust/10 p-5 space-y-2">
-      <p class="overline text-flare">The end of it</p>
-      <p class="text-lg text-bone">{{ payload.game_over_text }}</p>
-      <a href="{{ url_for('landing') }}" class="u-button mt-2 inline-flex">Back to the worlds</a>
+    {# The last page.
+
+       This was an overline, one sentence and a link -- the same three lines
+       whether you had won in eleven turns without a scratch or been killed in
+       the third act. A campaign is the only thing this game asks hours for,
+       and it ended with less on screen than a single turn shows.
+
+       Everything below is already in the payload the panel renders every
+       turn. Nothing new is computed and nothing is asked of the model: this
+       is the run's own record, set out once, at the point it stops.
+
+       MECHANICS 11.2 wants a bound book with a frontispiece, the chapters and
+       a dramatis personae from the ledger. That needs the image cache
+       assembled and is a phase of its own. This is its final page. #}
+    {% set ending = payload.game_over_kind %}
+    <div class="ending ending-{{ ending or 'lost' }}" role="group" aria-labelledby="ending-title">
+      {# A label, not a second version of the sentence underneath. The first
+         draft opened "The line holds" directly above "The line holds. Choices
+         converge..." -- the same three words twice, three inches apart. #}
+      <p class="overline ending-kicker">
+        {% if ending == 'won' %}Campaign complete
+        {% elif ending == 'died' %}Character lost
+        {% elif ending == 'retired' %}Character retired
+        {% else %}Campaign lost{% endif %}
+      </p>
+      <h3 id="ending-title" class="ending-title" tabindex="-1">{{ payload.game_over_text }}</h3>
+
+      <dl class="ending-tally">
+        <div>
+          <dt>Lasted</dt>
+          <dd>{{ payload.act_index }} of {{ payload.act_count }} acts,
+              {{ payload.turn }} turn{{ '' if payload.turn == 1 else 's' }}</dd>
+        </div>
+        {% if cond %}
+          <div>
+            <dt>Ended on</dt>
+            <dd>{{ cond.hp }} / {{ cond.max_hp }} health,
+                {{ cond.resolve }} / {{ cond.max_resolve }} resolve</dd>
+          </div>
+          <div>
+            <dt>Fortune</dt>
+            <dd>{{ 'never spent' if payload.luck_ready else 'spent' }}</dd>
+          </div>
+        {% endif %}
+      </dl>
+
+      {% if cond and (cond.wounds.wounds or cond.scars or cond.virtues) %}
+        <div class="ending-marks">
+          <p class="overline text-dust">What it left</p>
+          <ul>
+            {% for wound in cond.wounds.wounds %}
+              <li class="text-flare">{{ wound.name }}{% if wound.level %}, level {{ wound.level }}{% endif %}</li>
+            {% endfor %}
+            {% for scar in cond.scars %}<li class="text-brass">{{ scar.value }}</li>{% endfor %}
+            {% for virtue in cond.virtues %}<li class="text-verdigris">{{ virtue.value }}</li>{% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+
+      {% if payload.party and payload.party.members %}
+        <div class="ending-company">
+          <p class="overline text-dust">Who was with you at the end</p>
+          <ul>
+            {% for member in payload.party.members %}
+              <li><span>{{ member.name }}</span><span class="capitalize text-dust">{{ member.regard }}</span></li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+
+      <div class="ending-actions">
+        <a href="{{ url_for('landing') }}" class="u-button">Back to the worlds</a>
+      </div>
+    </div>
+  {% elif payload.luck %}
+    <div class="rounded-sm border border-brass/70 bg-brass/10 p-5 space-y-3"
+         role="group" aria-labelledby="luck-heading" data-blocking-decision>
+      <p class="overline text-brass">Fortune waits</p>
+      <p id="luck-heading" class="text-lg text-bone" tabindex="-1"
+         data-decision-heading>
+        You rolled {{ payload.luck.roll }} against {{ payload.luck.target }}
+        &mdash; {{ payload.luck.outcome_label }}{% if payload.luck.effect_label %}, {{ payload.luck.effect_label }} effect{% endif %}.
+      </p>
+      <p class="text-sm text-parchment">
+        Nothing from this roll has landed yet. Spend your one Fortune to
+        reroll and keep the higher die, or keep {{ payload.luck.roll }} and
+        save Fortune for later.
+      </p>
+      <p class="text-xs text-dust">
+        The second die is already fixed and hidden. Refreshing will not change it.
+      </p>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <form hx-post="{{ url_for('handle_action') }}" hx-swap="none">
+          <input type="hidden" name="action" value="luck" />
+          <input type="hidden" name="choice" value="{{ payload.luck.reroll }}" />
+          <input type="hidden" name="luck_token" value="{{ payload.luck.token }}" />
+          <button class="w-full rounded-sm bg-brass text-night font-semibold py-3 button-glow">
+            Reroll &mdash; use Fortune
+          </button>
+        </form>
+        <form hx-post="{{ url_for('handle_action') }}" hx-swap="none">
+          <input type="hidden" name="action" value="luck" />
+          <input type="hidden" name="choice" value="{{ payload.luck.keep }}" />
+          <input type="hidden" name="luck_token" value="{{ payload.luck.token }}" />
+          <button class="w-full rounded-sm bg-hearth font-semibold py-3 hover:bg-edge transition">
+            Keep {{ payload.luck.roll }} &mdash; save Fortune
+          </button>
+        </form>
+      </div>
+    </div>
+
+  {% elif payload.resist %}
+    <div class="rounded-sm border border-flare/70 bg-rust/10 p-5 space-y-3"
+         role="group" aria-labelledby="resist-heading" data-blocking-decision>
+      <p class="overline text-flare">A consequence lands</p>
+      <p id="resist-heading" class="text-lg text-bone" tabindex="-1"
+         data-decision-heading>{{ payload.resist.label }}.</p>
+      <p class="text-sm text-parchment">
+        The roll is settled. Spend {{ payload.resist.cost }} Resolve to resist
+        this {{ payload.resist.kind }}, or let it stand. This answer costs no
+        extra turn and makes no new Keeper call.
+      </p>
+      {% if payload.resist.base_cost != payload.resist.cost %}
+        <p class="text-xs text-verdigris">
+          Endurance reduced the cost from {{ payload.resist.base_cost }}.
+        </p>
+      {% endif %}
+      {% if payload.resist.cost_note %}
+        <p class="text-xs text-dust">{{ payload.resist.cost_note }}</p>
+      {% endif %}
+      <p class="text-sm {{ 'text-dust' if payload.resist.affordable else 'text-flare' }}">
+        Resolve {{ payload.resist.resolve }} &bull; cost {{ payload.resist.cost }}
+        {% if not payload.resist.affordable %}&bull; not enough Resolve{% endif %}
+      </p>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <form hx-post="{{ url_for('handle_action') }}" hx-swap="none">
+          <input type="hidden" name="action" value="resist" />
+          <input type="hidden" name="choice" value="{{ payload.resist.take }}" />
+          <input type="hidden" name="resist_token" value="{{ payload.resist.token }}" />
+          <button class="w-full rounded-sm bg-flare text-night font-semibold py-3 button-glow"
+                  {% if not payload.resist.affordable %}disabled aria-disabled="true"{% endif %}>
+            Resist for {{ payload.resist.cost }}
+          </button>
+        </form>
+        <form hx-post="{{ url_for('handle_action') }}" hx-swap="none">
+          <input type="hidden" name="action" value="resist" />
+          <input type="hidden" name="choice" value="{{ payload.resist.decline }}" />
+          <input type="hidden" name="resist_token" value="{{ payload.resist.token }}" />
+          <button class="w-full rounded-sm bg-hearth font-semibold py-3 hover:bg-edge transition">
+            Let it stand
+          </button>
+        </form>
+      </div>
     </div>
 
   {% elif payload.bargain %}
     <div class="rounded-sm border border-brass/70 bg-brass/10 p-5 space-y-3">
       <p class="overline text-brass">A bargain</p>
       <p class="text-lg text-bone">{{ payload.bargain.text }}</p>
-      <p class="text-sm text-brass/80">Better odds now. It costs you: {{ payload.bargain.cost }}. The cost lands whether you succeed or not.</p>
+      <p class="text-sm text-brass/80">Better odds now. It costs you: {{ payload.bargain.cost }}. The cost lands before the roll whether you succeed or not.</p>
+      {% if payload.bargain.cost_note %}
+        <p class="text-xs text-dust">Adjusted to an enforceable cost: {{ payload.bargain.cost_note }}.</p>
+      {% endif %}
+      {% if payload.bargain.push or payload.bargain.luck_armed %}
+        <p class="text-sm text-verdigris">
+          Already committed for this action:
+          {% if payload.bargain.push %}Push{% endif %}
+          {% if payload.bargain.push and payload.bargain.luck_armed %} &bull; {% endif %}
+          {% if payload.bargain.luck_armed %}Fortune armed{% endif %}.
+        </p>
+      {% endif %}
       <div class="grid gap-3 sm:grid-cols-2">
         <form hx-post="{{ url_for('handle_action') }}" hx-swap="none">
           <input type="hidden" name="action" value="bargain" />
@@ -281,15 +472,24 @@
   {% elif payload.talk %}
   {# A conversation is several exchanges, so it takes over the panel the way
      a bargain does. Talking costs no turn -- what it costs is exposure. #}
-  <div class="rounded-sm border border-verdigris/60 bg-verdigris/5 p-5 space-y-4">
-    <div class="flex items-baseline justify-between gap-3">
+  <div class="talk-surface rounded-sm border border-verdigris/60 bg-verdigris/5 p-5 space-y-4">
+    <div class="talk-head flex items-start justify-between gap-3">
       <div>
         <p class="overline text-verdigris">Talking with</p>
         <p class="text-xl font-semibold">{{ payload.talk.actor }}</p>
       </div>
-      <div class="text-right">
-        <p class="overline text-dust">They find you</p>
-        <p class="text-lg font-semibold capitalize">{{ payload.talk.regard }}</p>
+      <div class="talk-head-actions">
+        <div class="text-right">
+          <p class="overline text-dust">They find you</p>
+          <p class="text-lg font-semibold capitalize">{{ payload.talk.regard }}</p>
+        </div>
+        <form hx-post="{{ url_for('handle_action') }}" hx-swap="none">
+          <input type="hidden" name="action" value="menu" />
+          <input type="hidden" name="choice" value="{{ payload.talk.end }}" />
+          <button class="talk-leave" type="submit" aria-label="Leave the conversation with {{ payload.talk.actor }}">
+            Leave conversation
+          </button>
+        </form>
       </div>
     </div>
 
@@ -316,10 +516,29 @@
     </p>
 
     {% if not payload.talk.spent %}
-      <div class="space-y-2">
+      {% if cond and cond.resolve >= 2 %}
+        <label class="talk-push">
+          <input type="checkbox" id="talk-push-toggle" name="push" value="1" />
+          <span>
+            <span class="talk-push-title">Push this exchange</span>
+            <span class="talk-push-note">Spend 2 Resolve for a better chance. You have {{ cond.resolve }}.</span>
+          </span>
+        </label>
+      {% endif %}
+      {% if payload.luck_ready %}
+        <label class="talk-push">
+          <input type="checkbox" id="talk-luck-toggle" name="luck_armed" value="1" />
+          <span>
+            <span class="talk-push-title">Arm Fortune</span>
+            <span class="talk-push-note">See the first die, then choose Keep or Reroll. One reroll this campaign.</span>
+          </span>
+        </label>
+      {% endif %}
+      <div class="talk-option-grid">
         {% for option in payload.talk.options %}
           <div class="rounded-sm border border-edge bg-soot/80 hover:border-verdigris/70 transition">
-            <form hx-post="{{ url_for('handle_action') }}" hx-swap="none">
+            <form hx-post="{{ url_for('handle_action') }}" hx-swap="none"
+                  hx-include="#talk-push-toggle, #talk-luck-toggle">
               <input type="hidden" name="action" value="menu" />
               <input type="hidden" name="choice" value="{{ option.code }}" />
               <button type="submit" class="w-full text-left px-4 py-2">
@@ -327,15 +546,31 @@
                 <span class="block font-semibold">{{ option.label }}</span>
               </button>
             </form>
-            <details class="px-4 pb-2">
+            <details class="px-4 pb-2" data-composer>
               <summary class="cursor-pointer text-sm text-dust hover:text-parchment">Say it in your own words</summary>
-              <form hx-post="{{ url_for('handle_action') }}" hx-swap="none" class="mt-2 space-y-2">
+              <form hx-post="{{ url_for('handle_action') }}" hx-swap="none" class="mt-2 space-y-2"
+                    hx-include="#talk-push-toggle, #talk-luck-toggle">
                 <input type="hidden" name="action" value="menu" />
                 <input type="hidden" name="choice" value="{{ option.code }}" />
-                <textarea name="describe" rows="2" required
+                <label class="sr-only" for="talk-{{ loop.index }}">What do you say?</label>
+                <textarea id="talk-{{ loop.index }}" name="describe" rows="2" required maxlength="500"
+                          aria-describedby="talk-{{ loop.index }}-limit" data-composer-input
                           class="w-full rounded-sm bg-hearth border-edge text-sm"
                           placeholder="What do you say?"></textarea>
-                <button class="w-full rounded-sm bg-verdigris text-night font-semibold py-2">Say it</button>
+                <p id="talk-{{ loop.index }}-limit" class="composer-meta">
+                  <span>Keep it concise.</span>
+                  <span data-character-count aria-live="polite">0 / 500</span>
+                </p>
+                <div class="composer-actions">
+                  <button class="rounded-sm bg-verdigris text-night font-semibold py-2">Say it</button>
+                  <button type="button" class="composer-cancel" data-collapse-details>Cancel</button>
+                  {# This submits the dedicated header form through shell.js,
+                     not this exchange form, so a checked Push is never sent
+                     when the player is only leaving. #}
+                  <button type="button" data-leave-conversation
+                          class="composer-leave"
+                          aria-label="Leave the conversation with {{ payload.talk.actor }}">Leave</button>
+                </div>
               </form>
             </details>
           </div>
@@ -345,11 +580,7 @@
       <p class="text-sm text-brass">You have said enough for now.</p>
     {% endif %}
 
-    <form hx-post="{{ url_for('handle_action') }}" hx-swap="none">
-      <input type="hidden" name="action" value="menu" />
-      <input type="hidden" name="choice" value="{{ payload.talk.end }}" />
-      <button class="w-full rounded-sm bg-hearth font-semibold py-2 hover:bg-edge transition">End the conversation</button>
-    </form>
+    <p class="text-xs text-ash">You can leave at any time; choosing to speak never locks you into another exchange.</p>
   </div>
 
   {% else %}
@@ -373,49 +604,105 @@
                class="mt-1 h-4 w-4 accent-brass" />
         <span>
           <span class="block text-parchment">Push yourself</span>
+          {# "worth about fifteen points" -- points of what?
+
+             MECHANICS 3.1 says a Push is "worth 15 percentage points", and
+             this line is that sentence with the load-bearing word dropped.
+             The player is left to guess the unit, and the game teaches them
+             one that gives the wrong answer: the character sheet says "A
+             point of a stat is 5% on the die", so fifteen points reads as
+             75% -- five times what a Push is actually worth.
+
+             Not fixed by putting the percentage back. This panel shows no
+             odds before a roll on purpose (MECHANICS 2.8: the default
+             setting is to show them *after*), and a percentage here would
+             leak the thing that setting exists to withhold. So it is said in
+             the unit the sheet already taught, which is exact rather than
+             approximate: a Push takes three off the target, and so does three
+             points of a stat. #}
           <span class="block text-xs text-dust mt-0.5">
             2 Resolve for a better chance at whatever you do next &mdash;
-            worth about fifteen points. You have {{ cond.resolve }}.
+            worth about as much as three points of a stat.
+            You have {{ cond.resolve }}.
+          </span>
+        </span>
+      </label>
+    {% endif %}
+    {% if payload.luck_ready %}
+      <label class="flex items-start gap-3 mb-3 rounded-sm border border-brass/50 bg-brass/5 p-3 cursor-pointer hover:border-brass transition">
+        <input type="checkbox" id="luck-toggle" name="luck_armed" value="1"
+               class="mt-1 h-4 w-4 accent-brass" />
+        <span>
+          <span class="block text-parchment">Arm Fortune</span>
+          <span class="block text-xs text-dust mt-0.5">
+            See the first die before deciding. Reroll once this campaign and keep the higher result.
           </span>
         </span>
       </label>
     {% endif %}
 
-    <div class="space-y-2">
+    <div class="turn-action-grid">
       {% for option in payload.options %}
-        <div class="rounded-sm border border-edge bg-soot/80 hover:border-ember/80 transition">
+        {% set option_enabled = option.enabled is not defined or option.enabled %}
+        <div class="turn-action-option rounded-sm border border-edge bg-soot/80 transition
+                    {{ 'hover:border-ember/80' if option_enabled else 'is-disabled' }}">
           {% if not option.must_describe %}
             {# Quick: one click, the game fills in the details.
                `hx-include` carries the Push toggle, which lives above the
                menu rather than being repeated on every row. #}
             <form hx-post="{{ url_for('handle_action') }}" hx-swap="none"
-                  hx-include="#push-toggle">
+                  hx-include="#push-toggle, #luck-toggle">
               <input type="hidden" name="action" value="menu" />
               <input type="hidden" name="choice" value="{{ option.code }}" />
-              <button type="submit" class="w-full text-left px-4 py-3">
+              <button type="submit" class="w-full text-left px-4 py-3"
+                      {% if not option_enabled %}disabled aria-disabled="true"{% endif %}
+                      {% if option.note %}aria-describedby="option-note-{{ loop.index }}"{% endif %}>
                 <p class="text-sm text-dust">{% if option.verb %}{{ option.verb }} &bull; {% endif %}{{ option.stat }}</p>
                 <p class="text-lg font-semibold">{{ option.label }}</p>
-                {% if option.note %}<p class="text-sm text-brass/90 mt-1">{{ option.note }}</p>{% endif %}
+                {% if option.note %}<p id="option-note-{{ loop.index }}" class="text-sm text-brass/90 mt-1">{{ option.note }}</p>{% endif %}
               </button>
             </form>
           {% endif %}
           {# Describe: your own words, read by the Keeper. Same Intent, same
              pipeline -- it is not a different game, just a longer sentence. #}
-          <details class="px-4 {{ 'pb-3' if not option.must_describe else 'py-3' }}">
+          {% if option_enabled %}
+          <details class="px-4 {{ 'pb-3' if not option.must_describe else 'py-3' }}" data-composer>
             <summary class="cursor-pointer text-sm text-dust hover:text-parchment">
-              {% if option.must_describe %}<span class="text-lg font-semibold text-parchment block">{{ option.label }}</span>{% endif %}
+              {% if option.must_describe %}
+                {# The same kicker the one-click rows carry. Without it a
+                   describe-only option was the one row in the menu that never
+                   said what it leans on: "Canteen" read "use • END" and "Old
+                   Journal" read nothing at all, though the engine gives both
+                   a stat. "Something else" is the deliberate exception -- it
+                   is built with no stat, because which one it leans on is not
+                   decided until the Keeper reads what you wrote. #}
+                {% if option.stat %}
+                  <span class="block text-sm text-dust">{% if option.verb %}{{ option.verb }} &bull; {% endif %}{{ option.stat }}</span>
+                {% endif %}
+                <span class="text-lg font-semibold text-parchment block">{{ option.label }}</span>
+              {% endif %}
               Describe it yourself
             </summary>
             <form hx-post="{{ url_for('handle_action') }}" hx-swap="none" class="mt-2 space-y-2"
-                  hx-include="#push-toggle">
+                  hx-include="#push-toggle, #luck-toggle">
               <input type="hidden" name="action" value="menu" />
               <input type="hidden" name="choice" value="{{ option.code }}" />
-              <textarea name="describe" rows="2" required
+              <label class="sr-only" for="action-{{ loop.index }}">Describe what you try</label>
+              <textarea id="action-{{ loop.index }}" name="describe" rows="2" required maxlength="500"
+                        aria-describedby="action-{{ loop.index }}-limit" data-composer-input
                         class="w-full rounded-sm bg-hearth border-edge text-sm"
                         placeholder="What do you actually try?"></textarea>
-              <button class="w-full rounded-sm bg-ember/90 text-night font-semibold py-2 button-glow">Do it</button>
+              <p id="action-{{ loop.index }}-limit" class="composer-meta">
+                <span>Keep it concise.</span>
+                <span data-character-count aria-live="polite">0 / 500</span>
+              </p>
+              <div class="composer-actions composer-actions-short">
+                <button class="rounded-sm bg-ember/90 text-night font-semibold py-2 button-glow">Do it</button>
+                <button type="button" class="composer-cancel" data-collapse-details>Cancel</button>
+              </div>
             </form>
           </details>
+          {% endif %}
         </div>
       {% endfor %}
     </div>
@@ -424,27 +711,28 @@
   {# Rest is not an attempt at anything, so it is not a menu verb. It states
      its price up front: the night is not free, and the danger clock is
      visible directly above this button. #}
-  {# Whether there is anything to recover. A night at full health and full
-     nerve only ticks the danger clock, so the button was offering a move
-     that is strictly bad and saying nothing about it. #}
+  {# Whether there is anything bodily to recover. Even unhurt, rest is still
+     a real choice: it brings a mechanical dream and refreshes companion
+     assists while danger and moving forces advance. #}
   {% set unhurt = cond and cond.hp >= cond.max_hp and cond.resolve >= cond.max_resolve
                   and not cond.wounds.wounds %}
   <form hx-post="{{ url_for('handle_action') }}" hx-swap="none">
     <input type="hidden" name="action" value="rest" />
-    <button class="w-full rounded-sm bg-hearth px-4 py-3 text-left hover:bg-edge transition">
+    <button class="rest-action w-full rounded-sm bg-hearth px-4 py-3 text-left hover:bg-edge transition">
       <span class="font-semibold">Camp for the night</span>
       <span class="block text-sm text-dust">
         Recover, and dream. The world moves while you sleep{% if payload.clocks and payload.clocks|length > 1 %} — {{ payload.clocks[1].name }} advances{% endif %}.
       </span>
       {% if unhurt %}
         <span class="block text-sm text-brass mt-1">
-          Nothing to sleep off. Tonight would cost you a segment and give nothing back.
+          You need no recovery, but sleep still brings a dream and refreshes companion assists. Danger and moving forces advance.
         </span>
       {% endif %}
     </button>
   </form>
 
   {% endif %}
+  </div>
 
   {# The journal used to be printed here as well as in the log panel beside
      it: the same six entries, twice, on one screen. It has one home now, and

@@ -32,6 +32,7 @@ tmp_*
 *.tmp
 *.bak
 *.orig
+.playwright-cli/
 
 # --- Recorded LLM fixtures are committed on purpose; caches are not ---
 tests/fixtures/**/*.live.json
@@ -50,3 +51,5 @@ art/style_review/
 art/export/
 # .blend snapshots for opening by hand; the code is the source
 art/blend/
+# VRML exports for opening in Bryce. Same reason: generated, and 4MB each
+art/bryce/

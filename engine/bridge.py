@@ -16,10 +16,11 @@ from __future__ import annotations
 from typing import Dict, List, Optional
 
 from engine.actions import Depth, Intent, ObserveTarget, Verb
-from engine.character import Condition, WeaponWeight
+from engine.character import Condition, WeaponWeight, wound_slots
 from engine.clocks import (
     ACT_DANGER_SEGMENTS,
     ACT_SEGMENTS,
+    racing_pair,
     Clock,
     ClockBoard,
     ClockKind,
@@ -87,6 +88,68 @@ def weapon_of(player) -> WeaponWeight:
     return best
 
 
+def _condition_from_state(state, stats: Dict[str, int]) -> Condition:
+    """Restore the campaign condition, or upgrade a save from before it existed.
+
+    Player.hp was the only condition field older saves carried. It is still
+    mirrored for old readers, but the typed Condition is authoritative once a
+    Run has been built. Stats and carried weapon are sheet-derived, so refresh
+    those without healing or otherwise changing the persisted state.
+    """
+    saved = getattr(state, "condition", None)
+    if isinstance(saved, Condition):
+        condition = saved
+        condition.endurance = stats["END"]
+        condition.strength = stats["STR"]
+        condition.weapon = weapon_of(state.player)
+        condition.wounds.slots = wound_slots(condition.endurance)
+        condition.hp = max(0, min(int(condition.hp), condition.max_hp))
+        condition.resolve = max(
+            0, min(int(condition.resolve), condition.max_resolve)
+        )
+    else:
+        condition = Condition(
+            endurance=stats["END"],
+            strength=stats["STR"],
+            weapon=weapon_of(state.player),
+        )
+        # Backward compatibility: old saves persisted only Player.hp. New
+        # characters still carry the old default of 100, so clamp that to the
+        # END-derived maximum rather than granting health above the new scale.
+        try:
+            legacy_hp = int(getattr(state.player, "hp", condition.max_hp))
+        except (TypeError, ValueError):
+            legacy_hp = condition.max_hp
+        condition.hp = max(0, min(legacy_hp, condition.max_hp))
+
+    state.condition = condition
+    state.player.hp = condition.hp
+    return condition
+
+
+def _actor_foe(state, actor) -> Foe:
+    """Translate one enemy while preserving any act-scoped damage."""
+    try:
+        maximum = max(1, int(getattr(actor, "hp", 14) or 14))
+    except (TypeError, ValueError):
+        maximum = 14
+    saved = getattr(state.act, "foe_hp", None)
+    try:
+        current = int(saved.get(actor.name, maximum)) if isinstance(saved, dict) \
+            else maximum
+    except (TypeError, ValueError):
+        current = maximum
+    current = max(0, min(current, maximum))
+    return Foe(
+        name=actor.name,
+        hp=current,
+        max_hp=maximum,
+        threat=threat_of(actor),
+        strength=5 + int(getattr(actor, "attack", 3) or 3) // 2,
+        faction_id=getattr(actor, "faction_id", None),
+    )
+
+
 def obstacle_to_dict(obstacle: Obstacle) -> Dict:
     """An obstacle as plain data, so a save can hold it."""
     return {
@@ -130,6 +193,45 @@ def threat_of(actor) -> WeaponWeight:
     return WeaponWeight.LIGHT
 
 
+def _whole(value, default: int = 0) -> int:
+    """Read an integer from an old or hand-edited save without breaking it."""
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _restore_tide_state(tides: TideBoard, state) -> None:
+    """Restore mutable Tide clocks without copying authored definitions.
+
+    The ActPlan remains authority for names, wants and moves. The save owns
+    only how far each clock had filled and which moves had already happened.
+    Replacing the Clock here is restoration, not a game tick, so it emits no
+    event and cannot replay a move merely because the campaign was opened.
+    """
+    saved = getattr(state.act, "tide_state", None) or {}
+    if not isinstance(saved, dict):
+        return
+
+    for tide in tides:
+        snapshot = saved.get(tide.id)
+        if not isinstance(snapshot, dict):
+            continue
+        current = tide.clock
+        segments = _whole(snapshot.get("segments"), current.segments)
+        filled = _whole(snapshot.get("filled"), 0)
+        tide.clock = Clock(
+            id=current.id,
+            name=current.name,
+            segments=segments,
+            filled=filled,
+            kind=current.kind,
+            tide_id=current.tide_id,
+            visible=current.visible,
+        )
+        tide.fired = max(0, min(len(tide.moves), _whole(snapshot.get("fired"), 0)))
+
+
 def build_run(state) -> Run:
     """Construct a Run from a live GameState.
 
@@ -150,19 +252,17 @@ def build_run(state) -> Run:
     # Anyone in the scene who is trying to stop you, with the health and reach
     # they were seeded with. This was a list of names, so a hit landed on
     # nothing and no enemy could die.
+    disengaged = set(getattr(state.act, "foe_disengaged", None) or [])
     for actor in getattr(state.act, "actors", []) or []:
         if (getattr(actor, "role", "") or "").lower() != "enemy":
             continue
         if not getattr(actor, "alive", True):
             continue
-        scene.add_foe(Foe(
-            name=actor.name,
-            hp=int(getattr(actor, "hp", 14) or 14),
-            max_hp=int(getattr(actor, "hp", 14) or 14),
-            threat=threat_of(actor),
-            strength=5 + int(getattr(actor, "attack", 3) or 3) // 2,
-            faction_id=getattr(actor, "faction_id", None),
-        ))
+        foe = _actor_foe(state, actor)
+        if actor.name in disengaged:
+            scene.disengaged.append(foe)
+        else:
+            scene.add_foe(foe)
     # Restore what was learned here, or open a fresh obstacle.
     saved = list(getattr(state.act, "obstacles", None) or [])
     if saved:
@@ -179,11 +279,7 @@ def build_run(state) -> Run:
                    if f and f not in already]
 
     stats = stats_of(state.player)
-    condition = Condition(
-        endurance=stats["END"],
-        strength=stats["STR"],
-        weapon=weapon_of(state.player),
-    )
+    condition = _condition_from_state(state, stats)
 
     # The act's own clocks, named by whoever designed the act. Falling back to
     # the goal and the pressure name only when an older save has no clocks in
@@ -198,10 +294,13 @@ def build_run(state) -> Run:
     wanted = getattr(state, "turns_per_act_override", None)
     if wanted:
         project_segments = segments_for_turns(wanted)
-        danger_segments = max(4, project_segments - 2)
+        danger_segments = project_segments - 2
     else:
         project_segments = project_spec.get("segments") or ACT_SEGMENTS
         danger_segments = danger_spec.get("segments") or ACT_DANGER_SEGMENTS
+    # Whatever the two of them asked for, they have to be a race. Both paths
+    # could produce a pair of the same size, and that is the easy setting.
+    project_segments, danger_segments = racing_pair(project_segments, danger_segments)
 
     clocks = ClockBoard([
         Clock(id="project", name=project_spec.get("name") or goal,
@@ -242,26 +341,48 @@ def build_run(state) -> Run:
             tides.add(Tide(id="act_tide", name=pressure,
                            wants=getattr(state.blueprint, "campaign_goal", ""),
                            moves=moves))
+    _restore_tide_state(tides, state)
 
-    return Run(
+    run = Run(
         scene=scene,
         condition=condition,
+        # The Run owns mutations during a turn. sync_back replaces the
+        # player's list afterwards, so consuming an item crosses the same
+        # explicit bridge boundary as HP, clocks and wounds.
+        inventory=list(getattr(state.player, "inventory", None) or []),
         stats=stats,
         clocks=clocks,
         tides=tides,
         act=state.act.index,
         turn=getattr(state.act, "turns_taken", 0),
+        prepared=bool(getattr(state.act, "prepared", False)),
         # The party as (name, affinity). `companion_available` was a single
         # boolean for the whole party, so who they were and what they thought
         # of you made no difference to anything.
         companions=[(c.name, int(getattr(c, "disposition", 0) or 0))
                     for c in (getattr(state, "companions", []) or [])
                     if getattr(c, "name", "") and getattr(c, "alive", True)],
+        assists_used=max(0, _whole(getattr(state.act, "assists_used", 0))),
+        wound_taken_for_you=bool(
+            getattr(state.act, "wound_taken_for_you", False)
+        ),
+        free_observe_keys=list(dict.fromkeys(
+            str(key) for key in
+            (getattr(state.act, "free_observe_keys", None) or [])
+            if str(key)
+        )),
+        luck_reroll_used=bool(getattr(state, "luck_reroll_used", False)),
         ledger=getattr(state, "ledger", None),
         # Carried, not recreated: an act boundary is not a reason for the
         # world to forget how hard it was leaning a moment ago.
         director=getattr(state, "director", None) or Director(),
     )
+    # The stance carries; the sentence explaining it does not. `read()` freezes
+    # the danger clock's *name* into that sentence, and this function is what
+    # runs when a new act replaces both clocks -- so act two opened with its own
+    # empty danger meter beside a line naming act one's, "nearly on you".
+    run.director.refresh(run)
+    return run
 
 
 def sync_foes(run: Run, state) -> None:
@@ -281,18 +402,13 @@ def sync_foes(run: Run, state) -> None:
             continue
         present[actor.name] = actor
 
-    known = {foe.name for foe in run.scene.foes}
+    # Disengaged foes are known too. Omitting them here made a successful
+    # Withdraw last only until this routine ran at the end of the same turn.
+    known = {foe.name for foe in run.scene.foes + run.scene.disengaged}
     for name, actor in present.items():
         if name in known:
             continue
-        run.scene.add_foe(Foe(
-            name=name,
-            hp=int(getattr(actor, "hp", 14) or 14),
-            max_hp=int(getattr(actor, "hp", 14) or 14),
-            threat=threat_of(actor),
-            strength=5 + int(getattr(actor, "attack", 3) or 3) // 2,
-            faction_id=getattr(actor, "faction_id", None),
-        ))
+        run.scene.add_foe(_actor_foe(state, actor))
 
     # Someone who left, or was killed elsewhere, stops being in the fight.
     for foe in run.scene.foes:
@@ -320,10 +436,32 @@ def sync_back(run: Run, state, result: Optional[TurnResult] = None) -> None:
         clock.render() for clock in (project, danger) if clock
     )
     state.act.turns_taken = run.turn
+    state.act.prepared = bool(run.prepared)
+    state.act.assists_used = max(0, _whole(run.assists_used))
+    state.act.wound_taken_for_you = bool(run.wound_taken_for_you)
+    state.act.free_observe_keys = list(dict.fromkeys(run.free_observe_keys))
+    state.luck_reroll_used = bool(run.luck_reroll_used)
+    state.act.tide_state = {
+        tide.id: {
+            "segments": int(tide.clock.segments),
+            "filled": int(tide.clock.filled),
+            "fired": int(tide.fired),
+        }
+        for tide in run.tides
+    }
+    state.condition = run.condition
     state.player.hp = run.condition.hp
-    # Deaths go back to the actor list, so a felled enemy stays felled across
-    # the act boundary and the save.
-    down = {f.name for f in run.scene.foes if not f.alive}
+    state.player.inventory = list(run.inventory)
+    # Current health as well as deaths goes back to the act. Actor.hp remains
+    # the authored maximum, so a damaged enemy returns as 7/20 after a reload
+    # rather than being silently healed or redefined as a 7-HP enemy.
+    foe_hp = dict(getattr(state.act, "foe_hp", None) or {})
+    foe_hp.update({foe.name: foe.hp
+                   for foe in run.scene.foes + run.scene.disengaged})
+    state.act.foe_hp = foe_hp
+    state.act.foe_disengaged = [foe.name for foe in run.scene.disengaged
+                                if foe.alive]
+    down = {name for name, hp in foe_hp.items() if hp <= 0}
     for actor in getattr(state.act, "actors", []) or []:
         if getattr(actor, "name", "") in down:
             actor.alive = False
@@ -382,6 +520,22 @@ def render_result(result: TurnResult, run: Run) -> List[str]:
         )
     if result.observation:
         lines.append(result.observation)
+    if result.bargain_cost:
+        lines.append(
+            f"Bargain paid before the roll: {result.bargain_cost.description}."
+        )
+    elif result.bargain_error:
+        lines.append(f"Bargain rejected: {result.bargain_error}.")
+    if result.item_error:
+        lines.append(result.item_error)
+    elif result.item_used:
+        lines.append(f"You use {result.item_used}.")
+        if result.hp_restored:
+            lines.append(f"You recover {result.hp_restored} health.")
+        if result.treated_wound:
+            lines.append(f"{result.treated_wound} is treated.")
+    if result.disengaged:
+        lines.append("You break contact and leave the fight behind.")
     for move in result.tide_moves:
         lines.append(move.text)
     if result.struck:

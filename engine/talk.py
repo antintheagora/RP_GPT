@@ -208,7 +208,16 @@ def close(conversation: Conversation, actor, run=None) -> TalkOutcome:
         net_shift=conversation.net_shift,
     )
 
-    if regard in (Regard.WARM, Regard.TRUSTED, Regard.DEVOTED):
+    # Warm regard alone used to be the whole test, so any conversation with
+    # someone who already liked you handed over a free +1 on the next action
+    # however badly it had just gone -- and talking costs no turn, so the loop
+    # was open the panel, one exchange, Leave, act, for a permanent +1 on
+    # every action in the campaign. Measured: Sable at +40, a single critical
+    # failure, "Sable takes that badly" -- and still "tells you something
+    # worth knowing". What the reward is for is a conversation that went well,
+    # so it now asks the conversation and not only the standing.
+    if (regard in (Regard.WARM, Regard.TRUSTED, Regard.DEVOTED)
+            and conversation.net_shift > 0):
         outcome.learned_something = True
         if run is not None:
             run.prepared = True

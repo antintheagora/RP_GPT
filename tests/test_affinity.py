@@ -258,6 +258,131 @@ def test_a_scene_runs_out_of_assists():
     assert helped == 1, "one assist at CHA 5, not one per turn"
 
 
+class _AgencyRoll:
+    """A fixed clean failure, with no accidental Luck reroll."""
+
+    def randint(self, _low, _high):
+        return 2
+
+    def random(self):
+        return 1.0
+
+    def choice(self, values):
+        return list(values)[0]
+
+
+class _DesperateKeeper:
+    def __init__(self, consequence=None):
+        from engine.resolve import Consequence
+
+        self.consequence = consequence or Consequence.HARM
+
+    def assess(self, intent, _scene, _obstacle):
+        from engine.model import SPECIAL_KEYS
+        from engine.resolve import Assessment, Bearing
+
+        return Assessment(
+            stat=intent.stat_hint or "STR",
+            bearings={key: Bearing.FUTILE for key in SPECIAL_KEYS},
+            cornered=True,
+            consequence=self.consequence,
+        )
+
+
+def _agency_run(affinity):
+    from engine.character import Condition
+    from engine.clocks import Clock, ClockBoard, ClockKind
+    from engine.model import SPECIAL_KEYS
+    from engine.scene import Obstacle, Scene
+    from engine.turn import Run
+
+    scene = Scene(id="s", name="A closing yard", description="")
+    scene.add(Obstacle(id="main", name="The barred gate"))
+    return Run(
+        scene=scene,
+        condition=Condition(endurance=5, strength=5),
+        stats={**{key: 5 for key in SPECIAL_KEYS}, "CHA": 5},
+        companions=[("Sable", affinity)],
+        clocks=ClockBoard([
+            Clock.for_act("project", "Escape", ClockKind.PROJECT),
+            Clock.for_act("danger", "The Guard", ClockKind.DANGER),
+        ]),
+    )
+
+
+def test_a_neutral_companion_sees_the_real_desperate_position_and_refuses():
+    """Keeper facts and Bearing must be present before willingness is read."""
+    from engine.actions import Depth, Intent, Verb
+    from engine.turn import advance_turn
+
+    run = _agency_run(0)
+    result = advance_turn(
+        run,
+        Intent(Verb.APPROACH, Depth.QUICK, stat_hint="STR"),
+        _DesperateKeeper(),
+        rng=_AgencyRoll(),
+    )
+
+    assert result.resolution.position.value == "desperate"
+    assert not result.assisted_by
+    assert run.assists_used == 0
+
+
+def test_a_trusted_companion_still_follows_you_into_desperate_ground():
+    from engine.actions import Depth, Intent, Verb
+    from engine.turn import advance_turn
+
+    run = _agency_run(60)
+    result = advance_turn(
+        run,
+        Intent(Verb.APPROACH, Depth.QUICK, stat_hint="STR"),
+        _DesperateKeeper(),
+        rng=_AgencyRoll(),
+    )
+
+    assert result.resolution.position.value == "desperate"
+    assert result.assisted_by == "Sable"
+    assert run.assists_used == 1
+
+
+def test_a_trusted_companion_really_takes_one_wound_level_for_you():
+    """The old event said "takes it instead" after leaving all harm intact."""
+    from engine.actions import Depth, Intent, Verb
+    from engine.turn import advance_turn
+
+    run = _agency_run(60)
+    result = advance_turn(
+        run,
+        Intent(Verb.APPROACH, Depth.QUICK, stat_hint="STR"),
+        _DesperateKeeper(),
+        rng=_AgencyRoll(),
+    )
+
+    wound = next(w for w in run.condition.wounds if w.name == result.wound)
+    assert wound.level == 1, "the level-2 wound was never intercepted"
+    assert result.companion_hurt == "Sable"
+    assert run.wound_taken_for_you
+
+
+def test_wound_protection_is_not_spent_on_a_clock_consequence():
+    from engine.actions import Depth, Intent, Verb
+    from engine.resolve import Consequence
+    from engine.turn import advance_turn
+
+    run = _agency_run(60)
+    result = advance_turn(
+        run,
+        Intent(Verb.APPROACH, Depth.QUICK, stat_hint="STR"),
+        _DesperateKeeper(Consequence.CLOCK_TICK),
+        rng=_AgencyRoll(),
+    )
+
+    assert result.assisted_by == "Sable"
+    assert result.companion_hurt == "Sable"
+    assert not result.wound
+    assert not run.wound_taken_for_you
+
+
 # =============================
 # ------- IT PERSISTS ---------
 # =============================

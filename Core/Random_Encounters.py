@@ -1,7 +1,3 @@
-from __future__ import annotations
-
-from engine import events as _ev
-
 """
 Random_Encounters
 -----------------
@@ -18,6 +14,10 @@ Simple design notes:
 - We rely on existing helpers for text wrapping and journal utilities so the
   behavior stays exactly the same as before extraction.
 """
+
+from __future__ import annotations
+
+from engine import events as _ev
 
 import random
 from typing import Optional

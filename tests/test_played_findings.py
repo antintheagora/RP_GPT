@@ -80,6 +80,41 @@ def test_markdown_does_not_reach_the_screen():
     assert "**bold**" not in sanitize_prose("A **bold** claim")
 
 
+@pytest.mark.parametrize("line, expected", [
+    # The one found by playing: Mallow's reply arrived on screen ending
+    # `...decides we're an easy mark.".`
+    ('"Keep your voice down," he mutters. "We move before something hungrier '
+     'decides we\'re an easy mark."',
+     '"Keep your voice down," he mutters. "We move before something hungrier '
+     'decides we\'re an easy mark."'),
+    ("\u201cWe should go,\u201d she said. \u201cNow.\u201d",
+     "\u201cWe should go,\u201d she said. \u201cNow.\u201d"),
+    ("He asked, \"why?\"", "He asked, \"why?\""),
+    ("(the door was already open.)", "(the door was already open.)"),
+])
+def test_a_line_that_ends_inside_a_quote_keeps_its_own_full_stop(line, expected):
+    """Dialogue ends on a closing quote, and a quote is not a full stop.
+
+    `sanitize_prose` checked the last character against ".!?…", found a `"`,
+    and added a stop after it -- on every quoted line an NPC has ever spoken.
+    """
+    from Core.Helpers import sanitize_prose
+
+    assert sanitize_prose(line) == expected
+
+
+@pytest.mark.parametrize("line, expected", [
+    ('They said "no"', 'They said "no".'),
+    ("He walked away", "He walked away."),
+    ("(a whisper)", "(a whisper)."),
+])
+def test_a_line_still_gains_the_stop_it_is_actually_missing(line, expected):
+    """The quote fix must not turn the rule off, only look past the quote."""
+    from Core.Helpers import sanitize_prose
+
+    assert sanitize_prose(line) == expected
+
+
 def test_an_encounter_is_not_announced_with_its_own_plumbing():
     """"Encounter: iguana (creature/npc) appears." -- the label, the internal
     kind and the internal role, printed immediately above a paragraph that
@@ -237,20 +272,28 @@ def test_the_act_boundary_is_announced():
 
 
 def test_winning_is_an_ending_the_screen_can_see():
-    """Both halves of _advance_act end the campaign, and only one of them
-    said so in a way anything could read. The losing branch sets
-    `state.ending`, which `is_game_over` returns and the panel renders. The
-    winning branch set only `state.running = False`, so finishing a campaign
-    narrated one triumphant line and then went straight back to offering the
-    menu: clocks full, act 3 of 3, "What do you do?"."""
+    """Final-act truth is staged before recap and then emitted to the screen.
+
+    The transition was split into a durable pre-model boundary and a later
+    recap after this regression was first written.  Keep checking both halves:
+    a crash-safe terminal state must contain an ending, and the successful
+    recap path must make that ending visible rather than offering another
+    action menu.
+    """
     from pathlib import Path
 
     source = (Path(__file__).resolve().parent.parent / "ui" / "webapp"
               / "game_service.py").read_text(encoding="utf-8")
-    body = source[source.index("def _advance_act"):]
-    body = body[:body.index("\n    def ", 10)]
-    won = body[body.index("if state.act.index >= state.act_count"):]
-    assert "state.ending" in won[:600], "a won campaign never sets an ending"
+    boundary = source[source.index("def _stage_act_boundary"):]
+    boundary = boundary[:boundary.index("\n    def ", 10)]
+    terminal = boundary[boundary.index("if state.act.index >= state.act_count"):]
+    assert "state.running = False" in terminal
+    assert "state.ending" in terminal, "a won campaign never sets an ending"
+
+    advance = source[source.index("def _advance_act"):]
+    advance = advance[:advance.index("\n    def ", 10)]
+    final = advance[advance.index("if final_act"):]
+    assert "ev.chapter(state.ending)" in final, "the ending never reaches the screen"
 
 
 def test_pacing_is_decided_in_one_place():
@@ -345,14 +388,16 @@ def test_a_free_turn_does_not_stamp_its_number_on_every_line():
     assert log.count("Turn {{ event.turn }}") == 1, "one divider, not one per entry"
 
 
-def test_camping_at_full_health_says_it_is_a_waste():
-    """A night at full HP and full nerve only ticks the danger clock. The
-    button offered a move that is strictly bad and said nothing about it."""
+def test_camping_at_full_health_explains_the_real_risk_and_reward():
+    """Full HP does not make rest useless: a night brings a dream and resets
+    companion assists, while danger and moving forces still advance."""
     from pathlib import Path
 
     turn = (Path(__file__).resolve().parent.parent / "ui" / "webapp"
             / "templates" / "partials" / "turn_panel.html").read_text(encoding="utf-8")
-    assert "Nothing to sleep off" in turn
+    assert "sleep still brings a dream" in turn
+    assert "refreshes companion assists" in turn
+    assert "Danger and moving forces advance" in turn
 
 
 def test_a_problem_is_never_named_after_the_progress_bar():

@@ -1,11 +1,3 @@
-from __future__ import annotations
-
-from engine import events as _ev
-
-from Core.Logging import get_logger
-
-_log = get_logger("turn_and_act_flow")
-
 """Setting up an act.
 
 All that is left here is `begin_act`: the intro text, the seeded cast and
@@ -18,6 +10,14 @@ the sequence in between lives in engine/turn.py.
 To avoid a circular import with RP_GPT, a few shared names are looked up at
 call time through the `_core()` helper.
 """
+
+from __future__ import annotations
+
+from engine import events as _ev
+
+from Core.Logging import get_logger
+
+_log = get_logger("turn_and_act_flow")
 
 import random
 from typing import Optional

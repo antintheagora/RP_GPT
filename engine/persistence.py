@@ -17,12 +17,21 @@ import logging
 import time
 from dataclasses import fields, is_dataclass
 
-from engine.affinity import Faction, Ledger, Person
+from engine.affinity import Faction, Ledger, Move, Person
 from engine.director import Director, Reading, Stance
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from engine.character import (
+    Condition,
+    Scar,
+    Virtue,
+    WeaponWeight,
+    Wound,
+    WoundState,
+    WoundTrack,
+)
 from engine.model import (
     ActPlan,
     ActState,
@@ -36,6 +45,22 @@ from engine.model import (
     Scenario,
     Stats,
     TurnMode,
+)
+from engine.actions import Depth, Intent, ObserveTarget, Verb
+from engine.clocks import ClockKind, ClockTick
+from engine.dice import Effect, Outcome, Roll
+from engine.resolve import Assessment, Bargain, Bearing, Consequence, Position, Resolution
+from engine.talk import Exchange
+from engine.tides import TideMove
+from engine.turn import (
+    BargainCost,
+    LuckDecision,
+    PendingLuck,
+    PendingOffer,
+    PendingResist,
+    ResistDecision,
+    ResistKind,
+    TurnResult,
 )
 
 _log = logging.getLogger("rp_gpt.persistence")
@@ -54,6 +79,9 @@ _TYPES = {
     "Item": Item,
     "Player": Player,
     "Stats": Stats,
+    "Condition": Condition,
+    "Wound": Wound,
+    "WoundTrack": WoundTrack,
     "Ledger": Ledger,
     "Person": Person,
     "Faction": Faction,
@@ -62,9 +90,44 @@ _TYPES = {
     # it with a plain dict here, and the next screen the player opened
     # died on `.why`.
     "Reading": Reading,
+    "Intent": Intent,
+    "Roll": Roll,
+    "Resolution": Resolution,
+    "ClockTick": ClockTick,
+    "TideMove": TideMove,
+    "BargainCost": BargainCost,
+    "Bargain": Bargain,
+    "Assessment": Assessment,
+    # One conversation, as it stood when the offer interrupted it.
+    "Exchange": Exchange,
+    "PendingOffer": PendingOffer,
+    "LuckDecision": LuckDecision,
+    "PendingLuck": PendingLuck,
+    "ResistDecision": ResistDecision,
+    "PendingResist": PendingResist,
+    "TurnResult": TurnResult,
 }
 
-_ENUMS = {"Scenario": Scenario, "TurnMode": TurnMode, "Stance": Stance}
+_ENUMS = {
+    "Scenario": Scenario,
+    "TurnMode": TurnMode,
+    "Stance": Stance,
+    "Scar": Scar,
+    "Virtue": Virtue,
+    "WeaponWeight": WeaponWeight,
+    "WoundState": WoundState,
+    "Depth": Depth,
+    "Verb": Verb,
+    "ObserveTarget": ObserveTarget,
+    "ClockKind": ClockKind,
+    "Effect": Effect,
+    "Outcome": Outcome,
+    "Bearing": Bearing,
+    "Consequence": Consequence,
+    "Position": Position,
+    "ResistKind": ResistKind,
+    "Move": Move,
+}
 
 
 # ---------------------------------------------------------------- encoding
@@ -202,6 +265,8 @@ def describe(state: GameState) -> Dict[str, Any]:
         if candidate:
             last_line = candidate.strip().split("\n")[0]
             break
+    running = bool(getattr(state, "running", True))
+    ending = str(getattr(state, "ending", "") or "").strip()
     return {
         "act": getattr(getattr(state, "act", None), "index", 1),
         "act_count": getattr(state, "act_count", 1),
@@ -209,7 +274,45 @@ def describe(state: GameState) -> Dict[str, Any]:
         "player": getattr(getattr(state, "player", None), "name", "Explorer"),
         "scenario": getattr(state, "scenario_label", ""),
         "last_line": last_line[:180],
+        # Continue cards are also the campaign archive. A completed run is
+        # still worth opening to read its ending, but calling it "Unfinished"
+        # makes the front-to-back flow look as though it never concluded.
+        # Old summaries have neither key and the web layer deliberately
+        # treats them as in progress.
+        "running": running,
+        "ending": ending[:180],
     }
+
+
+def _summary_of(payload: dict) -> dict:
+    """The Continue card's data, repaired from the save if it is missing.
+
+    `describe` has written `running` and `ending` into the summary for a
+    while, and the web layer treats a summary without them as in progress so
+    that older saves stay resumable. That is the right default and it has one
+    bad case: a campaign that finished *before* the field existed is labelled
+    "In progress" for ever, because nothing rewrites a summary on load. Every
+    completed run in an archive of fifty was reading as unfinished.
+
+    The authority is already here. `list_runs` parses the whole file to reach
+    the summary, so `state.running` and `state.ending` are in memory at this
+    point and cost nothing to consult. Filling the gap here rather than in the
+    web layer means every reader of a save gets the same answer.
+    """
+    summary = dict(payload.get("summary") or {})
+    if "running" in summary:
+        # It knows. The state block is the repair, not a second opinion --
+        # filling the ending from it here would let a save whose summary says
+        # the run is live acquire an ending anyway.
+        return summary
+    state = payload.get("state") or {}
+    if not isinstance(state.get("running"), bool):
+        # Older still: no status in either place. Resumable by default.
+        return summary
+    summary["running"] = state["running"]
+    if state.get("ending"):
+        summary["ending"] = str(state["ending"])[:180]
+    return summary
 
 
 def list_runs(root: Path) -> list:
@@ -231,7 +334,7 @@ def list_runs(root: Path) -> list:
                 "run_id": payload.get("run_id", ""),
                 "label": payload.get("label", ""),
                 "saved_at": payload.get("saved_at", 0),
-                "summary": payload.get("summary", {}),
+                "summary": _summary_of(payload),
             }
         )
     return sorted(out, key=lambda r: r["saved_at"], reverse=True)

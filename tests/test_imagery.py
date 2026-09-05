@@ -59,6 +59,17 @@ def test_a_picture_is_written_where_it_was_asked_for(tmp_path):
     assert ready and ready[0].path.endswith("a02_t0007_turn.jpg")
 
 
+def test_result_keeps_actor_routing(tmp_path):
+    ready = []
+    worker = _worker(tmp_path, on_ready=ready.append)
+    worker.submit(ImageRequest(
+        kind="portrait", prompt="a watchful companion", actors=["Mara"]
+    ))
+
+    assert worker.wait(10)
+    assert ready[0].actors == ["Mara"]
+
+
 def test_the_filename_carries_the_act_and_turn(tmp_path):
     """Not turn_00000.jpg, forever, in the project root."""
     assert ImageRequest(kind="turn", prompt="x", act=3, turn=12).filename() == \
@@ -181,6 +192,77 @@ def test_the_url_needs_no_flask_context():
     url = session.get_turn_payload()["image_url"]
     assert url == f"/run-image/{session.id}/a01_t0002_turn.jpg"
 
+# ---------------------------------------------------------------------------
+# Serving the picture, not just naming it.
+#
+# The test above asserts the *shape* of the URL and stops there. Nothing in
+# the suite ever fetched one, so when `/run-image/` began refusing every file
+# it had, the scene panel showed a broken image for a whole session with 1,584
+# tests green. The route built `Path(IMAGES_DIR).resolve()` and required it to
+# appear in `target.resolve().parents`; where a reparse point sits above the
+# images directory, `resolve()` follows it for the file and not for the root,
+# so the two never matched.
+#
+# That particular redirection is a packaged-app LocalCache mapping and cannot
+# be reproduced in-process -- a plain directory junction resolves
+# symmetrically and does not trigger it, which was measured. So these do not
+# recreate the original fault. What they do is cover the route at all, which
+# is what was missing.
+# ---------------------------------------------------------------------------
+
+def _image_client(tmp_path, monkeypatch):
+    """A Flask client whose IMAGES_DIR is a directory we control."""
+    import Core.Paths
+    from ui.webapp.server import create_app
+
+    monkeypatch.setattr(Core.Paths, "IMAGES_DIR", tmp_path)
+    app = create_app()
+    app.config.update(TESTING=True)
+    return app.test_client()
+
+
+def test_a_generated_picture_is_actually_served(tmp_path, monkeypatch):
+    run = tmp_path / "9f8e7d6c5b4a3210"
+    run.mkdir()
+    (run / "a03_t0002_turn.png").write_bytes(b"\x89PNG\r\n\x1a\nnot really a png")
+
+    client = _image_client(tmp_path, monkeypatch)
+    response = client.get("/run-image/9f8e7d6c5b4a3210/a03_t0002_turn.png")
+
+    assert response.status_code == 200
+    assert response.data.startswith(b"\x89PNG")
+
+
+def test_a_picture_that_was_never_drawn_is_a_miss_not_a_crash(tmp_path, monkeypatch):
+    (tmp_path / "9f8e7d6c5b4a3210").mkdir()
+    client = _image_client(tmp_path, monkeypatch)
+
+    assert client.get("/run-image/9f8e7d6c5b4a3210/a09_t0099.png").status_code == 404
+
+
+@pytest.mark.parametrize("attempt", [
+    "../../../../Windows/win.ini",
+    "sub/../../escape.png",
+])
+def test_a_filename_cannot_climb_out_of_the_run_folder(tmp_path, monkeypatch, attempt):
+    """`send_from_directory` refuses this; the route leans on that deliberately."""
+    (tmp_path / "9f8e7d6c5b4a3210").mkdir()
+    (tmp_path.parent / "escape.png").write_bytes(b"should not be reachable")
+
+    client = _image_client(tmp_path, monkeypatch)
+    response = client.get(f"/run-image/9f8e7d6c5b4a3210/{attempt}")
+
+    assert response.status_code == 404
+    assert b"should not be reachable" not in response.data
+
+
+@pytest.mark.parametrize("run_id", ["..", "a.b", "a-b/c"])
+def test_a_run_id_that_is_not_one_is_refused(tmp_path, monkeypatch, run_id):
+    """The run id is the only part of this URL used to build a directory."""
+    client = _image_client(tmp_path, monkeypatch)
+
+    assert client.get(f"/run-image/{run_id}/x.png").status_code == 404
+
 
 def test_no_image_means_no_url():
     from tests.test_menu_flow import _session
@@ -191,91 +273,54 @@ def test_no_image_means_no_url():
     assert session.get_turn_payload()["image_url"] == ""
 
 
-# =============================
-# ------- SEEDED ART ----------
-# =============================
+def test_portrait_never_replaces_the_scene():
+    from tests.test_menu_flow import _session
 
-def test_the_same_prompt_twice_does_not_return_the_same_picture():
-    """The host is deterministic on the prompt, so two turns in the same room
-    fetched byte-identical files."""
-    from Core.Image_Gen import pollinations_url
+    session = _session()
+    session._images = [
+        {"kind": "turn", "path": "/somewhere/turn.jpg", "act": 1, "turn": 1},
+        {"kind": "player_portrait", "path": "/somewhere/portrait.jpg", "act": 1, "turn": 1},
+    ]
 
-    first = pollinations_url("a drowned coast", 768, 432, seed=1)
-    second = pollinations_url("a drowned coast", 768, 432, seed=2)
-    assert first != second
+    assert session.get_turn_payload()["image_url"].endswith("/turn.jpg")
 
 
-def test_no_seed_still_builds_a_url():
-    from Core.Image_Gen import pollinations_url
+def test_completed_scene_notifies_browser_and_persists(tmp_path, monkeypatch):
+    from engine.events import EventKind
+    from tests.test_menu_flow import _session
 
-    assert pollinations_url("x", 768, 432).startswith("https://")
+    session = _session()
+    session._images = []
+    heard = []
+    session._listeners = [heard.append]
+    monkeypatch.setattr(session, "save", lambda: None)
+    picture = tmp_path / "scene.png"
+    picture.write_bytes(b"x" * 2048)
+
+    session._image_ready(ImageResult(
+        kind="turn", path=str(picture), prompt="scene", act=1, turn=2
+    ))
+
+    assert session.state.last_image_path == str(picture)
+    assert heard and heard[-1].kind is EventKind.PLATE
+    assert heard[-1].meta["refresh_scene"] is True
 
 
-# =============================
-# ------ WHICH MODEL ----------
-# =============================
+def test_runtime_image_module_has_no_remote_transport():
+    """Campaign prose must never acquire an internet transport by accident."""
+    import Core.Image_Gen as image_gen
 
-def _rebuild(monkeypatch, value=None):
+    assert not hasattr(image_gen, "pollinations_url")
+    assert not hasattr(image_gen, "build_urls_with_fallbacks")
+    assert not hasattr(image_gen, "download_image")
+
+
+def _rebuild(monkeypatch):
+    """Reset image-style configuration without any remote model setting."""
     from Core.Config import Config, set_config
 
-    if value is None:
-        monkeypatch.delenv("RP_GPT_IMAGE_MODEL", raising=False)
-    else:
-        monkeypatch.setenv("RP_GPT_IMAGE_MODEL", value)
+    monkeypatch.delenv("RP_GPT_IMAGE_STYLE", raising=False)
     set_config(Config.from_env())
-
-
-def test_the_request_names_a_model(monkeypatch):
-    """It named none at all, so every picture in this game's history was
-    whatever the host happened to be defaulting to that week."""
-    from Core.Image_Gen import pollinations_url
-
-    _rebuild(monkeypatch)
-    assert "model=flux" in pollinations_url("a coast", 768, 432)
-
-
-@pytest.mark.parametrize("name", ["flux", "gptimage", "turbo"])
-def test_the_model_can_be_switched_without_touching_code(monkeypatch, name):
-    from Core.Image_Gen import pollinations_url
-
-    _rebuild(monkeypatch, name)
-    assert f"model={name}" in pollinations_url("a coast", 768, 432)
-
-
-def test_a_typo_falls_back_instead_of_failing_silently(monkeypatch):
-    """An unknown name makes the host return a 500 with a JSON body. The
-    worker sees a file too small to be an image and pictures simply stop,
-    with nothing on screen to say why."""
-    from Core.Config import DEFAULT_IMAGE_MODEL, get_config
-    from Core.Image_Gen import pollinations_url
-
-    _rebuild(monkeypatch, "fluxx")
-    assert get_config().image_model == DEFAULT_IMAGE_MODEL
-    assert f"model={DEFAULT_IMAGE_MODEL}" in pollinations_url("a coast", 768, 432)
-
-
-def test_case_and_spacing_are_forgiven(monkeypatch):
-    from Core.Config import get_config
-
-    _rebuild(monkeypatch, "  GPTImage  ")
-    assert get_config().image_model == "gptimage"
-
-
-def test_the_fallback_url_uses_the_same_model(monkeypatch):
-    """Both URLs go to the same place; a simplified retry on a different
-    model would change the look of the game mid-campaign."""
-    from Core.Image_Gen import build_urls_with_fallbacks
-
-    _rebuild(monkeypatch, "turbo")
-    primary, simple = build_urls_with_fallbacks("a coast", 768, 432, seed=3)
-    assert "model=turbo" in primary and "model=turbo" in simple
-
-
-def test_kontext_is_not_offered(monkeypatch):
-    """It edits an existing image and 500s on a plain prompt."""
-    from Core.Config import IMAGE_MODELS
-
-    assert "kontext" not in IMAGE_MODELS
 
 
 # =============================
@@ -487,6 +532,57 @@ def test_a_style_with_no_downgrade_renders_straight_through():
     assert "palette" not in graph
 
 
+def test_comfy_availability_is_bounded_and_cached(monkeypatch):
+    """Rendering a partial must not repeat a slow local-service health check."""
+    import json
+
+    from engine import comfy
+
+    calls = []
+
+    def local_info(host, path, timeout):
+        calls.append((host, path, timeout))
+        return json.dumps({
+            "UNETLoader": {
+                "input": {"required": {"unet_name": [[comfy.UNET]]}}
+            }
+        }).encode("utf-8")
+
+    monkeypatch.setattr(comfy, "_get", local_info)
+
+    assert comfy.available("http://127.0.0.1:18188")
+    assert comfy.available("http://127.0.0.1:18188")
+    assert len(calls) == 1
+    assert calls[0][1] == "/object_info/UNETLoader"
+    assert calls[0][2] <= 1.0
+
+
+def test_comfy_availability_can_be_explicitly_refreshed(monkeypatch):
+    """Starting ComfyUI mid-session can replace a cached unavailable answer."""
+    import json
+
+    from engine import comfy
+
+    responses = [OSError("offline"), json.dumps({
+        "UNETLoader": {
+            "input": {"required": {"unet_name": [[comfy.UNET]]}}
+        }
+    }).encode("utf-8")]
+
+    def changing_info(_host, _path, timeout):
+        assert timeout <= 1.0
+        response = responses.pop(0)
+        if isinstance(response, Exception):
+            raise response
+        return response
+
+    monkeypatch.setattr(comfy, "_get", changing_info)
+
+    assert not comfy.available("http://127.0.0.1:28188")
+    assert not comfy.available("http://127.0.0.1:28188")
+    assert comfy.available("http://127.0.0.1:28188", refresh=True)
+
+
 def test_the_downgrade_keeps_the_shape_of_a_portrait():
     """320 across a landscape and 320 down a portrait give the same size of
     pixel, which is what actually reads as one machine."""
@@ -494,3 +590,65 @@ def test_the_downgrade_keeps_the_shape_of_a_portrait():
 
     assert Downgrade(long_edge=320).small(768, 432) == (320, 180)
     assert Downgrade(long_edge=320).small(576, 768) == (240, 320)
+
+
+# =============================
+# -- A NEW ACT SHOWS ----------
+# ---- THE NEW ACT ------------
+# =============================
+
+SCENE_KINDS = {"startup", "act_transition", "act_start", "turn", "combat", "ending"}
+
+
+def _plate_finder(monkeypatch, tmp_path, names):
+    """A session-shaped object whose pictures are the files we name."""
+    import Core.Paths
+    from ui.webapp.game_service import GameSession
+
+    monkeypatch.setattr(Core.Paths, "IMAGES_DIR", tmp_path)
+    folder = tmp_path / "campaign-abc"
+    folder.mkdir(parents=True, exist_ok=True)
+    for name in names:
+        (folder / name).write_bytes(b"")
+
+    class _Stub:
+        id = "campaign-abc"
+        _newest_scene_plate = GameSession._newest_scene_plate
+
+    return _Stub()
+
+
+def test_the_picture_a_new_act_opens_with_is_not_filtered_away(monkeypatch, tmp_path):
+    """Pictures are named `a{act}_t{turn}_{kind}`, and two kinds have an
+    underscore in them -- `act_start` and `act_transition`, which are the only
+    two drawn at an act boundary. Reading the kind as the last underscored
+    token saw "start" and "transition", matched neither against the set, and
+    dropped exactly the pictures a new act opens with. The player pressed
+    Continue into act 3 and the newest surviving candidate was act 2's last
+    turn plate -- the previous act's picture, over the new act's prose.
+    """
+    session = _plate_finder(monkeypatch, tmp_path, [
+        "a01_t0000_startup.jpg",
+        "a02_t0007_turn.jpg",
+        "a03_t0000_act_start.jpg",
+    ])
+    assert session._newest_scene_plate(SCENE_KINDS) == "a03_t0000_act_start.jpg"
+
+
+def test_an_act_transition_plate_counts_as_a_scene(monkeypatch, tmp_path):
+    session = _plate_finder(monkeypatch, tmp_path, [
+        "a02_t0009_turn.jpg",
+        "a03_t0000_act_transition.jpg",
+    ])
+    assert session._newest_scene_plate(SCENE_KINDS) == "a03_t0000_act_transition.jpg"
+
+
+def test_portraits_are_still_not_scenery(monkeypatch, tmp_path):
+    """The filter's original job. A face is not a backdrop, and the widened
+    kind test must not quietly let one through."""
+    session = _plate_finder(monkeypatch, tmp_path, [
+        "a01_t0001_turn.jpg",
+        "a09_t0009_player_portrait.jpg",
+        "a09_t0009_portrait.jpg",
+    ])
+    assert session._newest_scene_plate(SCENE_KINDS) == "a01_t0001_turn.jpg"

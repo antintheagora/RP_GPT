@@ -269,13 +269,34 @@ class FogSystem {
 // Drifting fog is exactly the kind of continuous ambient motion that
 // prefers-reduced-motion exists for. Everything else on the page honours it;
 // this did not.
-const FOG_WANTED = !(window.matchMedia &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+function fogWanted() {
+    const systemReduced = window.matchMedia &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let playerReduced = document.documentElement.classList.contains('user-reduced-motion');
+    try {
+        playerReduced = playerReduced || window.localStorage.getItem('rpgpt.reduceMotion') === '1';
+    } catch (_) {
+        // Storage can be unavailable in private browsing. The system setting
+        // and the live class still provide the same safe fallback.
+    }
+    return !(systemReduced || playerReduced);
+}
+
+function reconcileFog() {
+    if (fogWanted() && !window.fogSystem) {
+        window.fogSystem = new FogSystem();
+    } else if (!fogWanted() && window.fogSystem) {
+        window.fogSystem.destroy();
+        window.fogSystem = null;
+    }
+}
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    if (FOG_WANTED) window.fogSystem = new FogSystem();
+    reconcileFog();
 });
+
+document.addEventListener('rpgpt:preferences', reconcileFog);
 
 // Handle HTMX swaps to persist fog
 document.body.addEventListener('htmx:beforeSwap', (event) => {
@@ -290,7 +311,7 @@ document.body.addEventListener('htmx:afterSwap', (event) => {
     if (event.target === document.body) {
         if (window.fogSystem) {
             window.fogSystem.attach();
-        } else if (FOG_WANTED) {
+        } else if (fogWanted()) {
             window.fogSystem = new FogSystem();
         }
     }

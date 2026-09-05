@@ -54,8 +54,24 @@ def sanitize_prose(raw: str) -> str:
     # was never closed, because the closing one fell off the end of the
     # character budget.
     cleaned = re.sub(r"\*{1,3}|(?<!\w)_{1,3}(?!\w)|`", "", cleaned)
-    # Make sure the sentence ends with strong punctuation so it feels complete.
-    if cleaned and cleaned[-1] not in ".!?…":
+    # Make sure the sentence ends with strong punctuation so it feels
+    # complete -- but look past the closing quote first.
+    #
+    # Dialogue almost always ends on one, and `"` is not terminal
+    # punctuation, so every spoken line in the game was picking up a full
+    # stop it did not need:
+    #
+    #     ...decides we're an easy mark.".
+    #
+    # Found by talking to a companion. It affects every quoted reply, which
+    # is most of what an NPC ever says. Closing brackets have the same
+    # problem and are rarer only by luck.
+    #
+    # Stripping them to find the real last character keeps both cases right:
+    # a line that already ended in a stop inside the quote is left alone,
+    # and `they said "no"` still gains the stop it is missing.
+    closed = cleaned.rstrip('"\'\u201d\u2019)]}\u00bb')
+    if cleaned and (closed or cleaned)[-1] not in ".!?…":
         cleaned += "."
     return cleaned
 
@@ -142,22 +158,17 @@ def journal_lore_line(
     extra_world_text: str = "",
     seed: str = "",
 ) -> None:
-    """Ask the model for a lore sentence and store it in the journal."""
+    """Store a canonical turn sentence; retained for legacy callers.
+
+    ``gemma``, ``extra_world_text`` and ``seed`` remain in the signature so
+    the superseded terminal path and third-party callers keep working. They
+    are intentionally not used: journal lines are durable prompt input, and a
+    narrator may not promote fresh fiction into campaign truth.
+    """
     try:
-        # Fall back to the latest situation when no seed text is provided.
-        situation = state.act.situation or seed or "The situation evolves."
-        # Build a short prompt that points the model at current story beats.
-        prompt = (
-            "Append ONE sentence to a world chronicle based on this situation and campaign nouns. "
-            "Past tense. No numeric meters. No quotes. Complete sentence.\n"
-            f"Campaign: {state.blueprint.campaign_goal}. Pressure name: {state.pressure_name}.\n"
-            f"Situation: {situation}\n"
-        )
-        # Include optional world-building notes when we have them.
-        if extra_world_text:
-            prompt += f"World bible details: {extra_world_text[:500]}\n"
-        # Ask Gemma to craft the line, then sanitize it before saving.
-        line = sanitize_prose(gemma.text(prompt, tag="Lore", max_chars=220))
+        from Core.Journal import canonical_chronicle_line
+
+        line = canonical_chronicle_line(state)
         if line:
             journal_add(state, line)
     except Exception:
