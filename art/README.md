@@ -26,6 +26,10 @@ python art/render.py -- painted_hall_flats_stair
 `save` in that list writes `.blend` files to `art/blend/` instead of PNGs, for
 opening and posing by hand. `export` writes an OBJ.
 
+The checked-in scene snapshots, model exports, and visual-review images use
+Git LFS. Install Git LFS before cloning; for an existing checkout, run
+`git lfs install` followed by `git lfs pull` to retrieve the full assets.
+
 ## Why this exists
 
 The hand-painted textures in `static/ui/` are good and they have two problems

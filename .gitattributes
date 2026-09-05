@@ -1,0 +1,7 @@
+# Preserve heavyweight art assets without inflating ordinary Git history.
+art/blend/*.blend filter=lfs diff=lfs merge=lfs -text
+art/blend/*.blend1 filter=lfs diff=lfs merge=lfs -text
+art/blend/*.png filter=lfs diff=lfs merge=lfs -text
+art/bryce/*.wrl filter=lfs diff=lfs merge=lfs -text
+art/export/*.obj filter=lfs diff=lfs merge=lfs -text
+art/style_review/*.png filter=lfs diff=lfs merge=lfs -text
